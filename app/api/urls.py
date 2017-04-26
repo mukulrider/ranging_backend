@@ -23,7 +23,7 @@ urlpatterns = [
     url(r'^npd_impact_view_bubble_chart', views.npdpage_impact_bubble_chart.as_view(), name='npd_impact_view_bubble_chart'),
     url(r'^npd_impact_view_bubble_table', views.npdpage_impact_bubble_table.as_view(), name='npd_impact_view_bubble_table'),
     url(r'^npd_impact_view_forecast', views.npdpage_impact_forecast.as_view(), name='npd_impact_view_forecast'),
-    url(r'^npd_edit_forecast', views.npdpage_impact_edit_forecast.as_view(), name='npd_impact_view_edit_forecast'),
+    # url(r'^npd_edit_forecast', views.npdpage_impact_edit_forecast.as_view(), name='npd_impact_view_edit_forecast'),
 
 
 
@@ -48,4 +48,7 @@ urlpatterns = [
     url(r'^supplier_table_popup', views.supplier_popup.as_view(), name='supplier_popup'),
     url(r'^delist_table_popup', views.delist_popup.as_view(), name='delist_popup'),
 
+    # url(r'^classa', views.classA.as_view(), name='classA'),
+    # url(r'^classb', views.classB.as_view(), name='classB'),
+    
     ]
