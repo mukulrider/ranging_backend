@@ -1,0 +1,12 @@
+
+class product_impact_filter(models.Model):
+	bc = models.TextField('buying_controller', max_length=100, blank=True, null=True)
+	store = models.TextField('store_type', max_length=100, blank=True, null=True)
+	future = models.TextField('time_period', max_length=100, blank=True, null=True)
+	input_tpns = models.IntegerField('base_product_number', blank=True, null=True)
+	def __str__(self):
+		return '%s' % (self.input_tpns)
+
+
+
+

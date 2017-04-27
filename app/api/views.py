@@ -2297,7 +2297,8 @@ class npdpage_impact_forecast(APIView):
                 #call function for substitute calculation 
                 if (len(sim_prod)) > 0:
                     df2 = subs_same_different(df1)
-                elif ():
+                else:
+                    df2 = df1
                     df2.loc[:, 'no_of_subs_same_brand'] = 0
                     df2.loc[:, 'no_of_subs_diff_brand'] = 0
 
@@ -2412,7 +2413,8 @@ class npdpage_impact_forecast(APIView):
                 #call function for substitute calculation 
                 if (len(sim_prod)) > 0:
                     df2 = subs_same_different(df1)
-                elif ():
+                else:
+                    df2 = df1
                     df2.loc[:, 'no_of_subs_same_brand'] = 0
                     df2.loc[:, 'no_of_subs_diff_brand'] = 0
 
