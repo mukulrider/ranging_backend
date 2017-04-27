@@ -2234,10 +2234,10 @@ class npdpage_impact_forecast(APIView):
                 
                 data_dict_volume={}
                 data = [{
-                           "name":"NPD_Volume","value":int(output_cannib_volume['forecast'][0])
+                           "name":"NPD Volume","value":int(output_cannib_volume['forecast'][0])
                            },
                         {
-                            "name":"Cannibilized_volume","value":-int(output_cannib_volume['cannibilization_value'][0])
+                            "name":"Cannibalized Volume","value":-int(output_cannib_volume['cannibilization_value'][0])
                             }]
 
                 volume={}
@@ -2249,10 +2249,10 @@ class npdpage_impact_forecast(APIView):
 
                 data_dict_sales={}
                 data = [{
-                                "name":"NPD_Value","value":int(output_cannib_sales['forecast'][0])
+                                "name":"NPD Value","value":int(output_cannib_sales['forecast'][0])
                                 },
                                 {
-                                                "name":"Cannibilized_sales",
+                                                "name":"Cannibalized Sales",
                                                 "value":-int(output_cannib_sales['cannibilization_value'][0])
                                 }]
                 sales={}
@@ -2345,10 +2345,10 @@ class npdpage_impact_forecast(APIView):
                 
                 data_dict_volume={}
                 data = [{
-                           "name":"NPD_Volume","value":int(output_cannib_volume['forecast'][0])
+                           "name":"NPD Volume","value":int(output_cannib_volume['forecast'][0])
                            },
                         {
-                            "name":"Cannibilized_volume","value":-int(output_cannib_volume['cannibilization_value'][0])
+                            "name":"Cannibalized Volume","value":-int(output_cannib_volume['cannibilization_value'][0])
                             }]
 
                 volume={}
@@ -2360,10 +2360,10 @@ class npdpage_impact_forecast(APIView):
 
                 data_dict_sales={}
                 data = [{
-                        "name":"NPD_Value","value":int(output_cannib_sales['forecast'][0])
+                        "name":"NPD Value","value":int(output_cannib_sales['forecast'][0])
                         },
                         {
-                                        "name":"Cannibilized_sales",
+                                        "name":"Cannibalized sales",
                                         "value":-int(output_cannib_sales['cannibilization_value'][0])
                         }]
                 sales={}
@@ -2458,10 +2458,10 @@ class npdpage_impact_forecast(APIView):
                 
                 data_dict_volume={}
                 data = [{
-                           "name":"NPD_Volume","value":int(output_cannib_volume['forecast'][0])
+                           "name":"NPD Volume","value":int(output_cannib_volume['forecast'][0])
                            },
                         {
-                            "name":"Cannibilized_volume","value":-int(output_cannib_volume['cannibilization_value'][0])
+                            "name":"Cannibalized Volume","value":-int(output_cannib_volume['cannibilization_value'][0])
                             }]
 
                 volume={}
@@ -2473,10 +2473,10 @@ class npdpage_impact_forecast(APIView):
 
                 data_dict_sales={}
                 data = [{
-                        "name":"NPD_Value","value":int(output_cannib_sales['forecast'][0])
+                        "name":"NPD Value","value":int(output_cannib_sales['forecast'][0])
                         },
                         {
-                        "name":"Cannibilized_sales",
+                        "name":"Cannibalized Sales",
                         "value":-int(output_cannib_sales['cannibilization_value'][0])
                         }]
                 sales={}
@@ -2630,10 +2630,10 @@ class npdpage_impact_forecast(APIView):
 
             data_dict_volume={}
             data = [{
-                       "name":"NPD_Volume","value":output_cannib_volume['forecast'][0]
+                       "name":"NPD Volume","value":output_cannib_volume['forecast'][0]
                        },
                     {
-                        "name":"Cannibilized_volume","value":output_cannib_volume['cannibilization_value'][0]
+                        "name":"Cannibalized Volume","value":output_cannib_volume['cannibilization_value'][0]
                         }]
 
             volume={}
@@ -2644,10 +2644,10 @@ class npdpage_impact_forecast(APIView):
             data_dict_volume["impact"]=volume
             data_dict_sales={}
             data = [{
-                    "name":"NPD_Value","value":output_cannib_sales['forecast'][0]
+                    "name":"NPD Value","value":output_cannib_sales['forecast'][0]
                     },
                     {
-                    "name":"Cannibilized_sales",
+                    "name":"Cannibalized Sales",
                     "value":output_cannib_sales['cannibilization_value'][0]
                     }]
             sales={}
@@ -2669,6 +2669,7 @@ class npdpage_impact_forecast(APIView):
 
 
 #### Product Impact Filters
+
 
 def col_distinct_product(kwargs, col_name):
     queryset = product_hierarchy.objects.filter(**kwargs).values(col_name).order_by(col_name).distinct()
@@ -3696,6 +3697,10 @@ class product_impact_chart(APIView):
             else:
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
             vols_waterfall = vols_waterfall.to_dict(orient='records')
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume)*100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
+            vol_tot_transfer = float(vol_tot_transfer)
+
 
             # In[45]:
             #sales chart
@@ -3724,7 +3729,9 @@ class product_impact_chart(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
-
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
+            sales_tot_transfer = float(sales_tot_transfer)
             # In[46]:
             #cgm chart
             initial_cgm = product_dataset[['productcode', 'predicted_cgm']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_cgm':max})
@@ -3753,6 +3760,9 @@ class product_impact_chart(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
+            cgm_tot_transfer = float(cgm_tot_transfer)
 
             # In[47]:
             #cts chart
@@ -3782,6 +3792,9 @@ class product_impact_chart(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
+            cts_tot_transfer = float(cts_tot_transfer)
 
             # In[14]:
 
@@ -4254,7 +4267,7 @@ class product_impact_chart(APIView):
             del sup_table['vols_gain']
             del sup_table['vols_loss']
             del sup_table['predicted_volume']
-            #sup_table_exp = sup_table
+
 
             prod_price_data = read_frame(
                 product_price.objects.all().filter(buying_controller__in=bc, store_type__in=['Express']).values(
@@ -4267,7 +4280,7 @@ class product_impact_chart(APIView):
             sup_table['value_gain_share'] = sup_table['vols_gain_share'] * sup_table['asp']
             sup_table['value_loss_share'] = sup_table['vols_loss_share'] * sup_table['asp']
             sup_table['predicted_value_share'] = sup_table['predicted_volume_share'] * sup_table['asp']
-
+            sup_table_exp = sup_table
             sup_table_share = sup_table.groupby(['parent_supplier'], as_index=False).agg(
                 {'predicted_volume_share': sum, 'vols_gain_share': sum, 'vols_loss_share': sum,
                  'predicted_value_share': sum, 'value_gain_share': sum,
@@ -4354,9 +4367,29 @@ class product_impact_chart(APIView):
             sup_sales_table = sup_sales_table[sup_sales_table['vol_impact'] != 0]
 
             print('final sup_sales table at 4571, inside product_impact_chart')
+
+            print(sup_table_main.columns)
+            print(sup_table_exp.columns)
             #print(sup_sales_table)
 
+            sup_table = pd.merge(sup_table_main, sup_table_exp, on=['parent_supplier', 'base_product_number'],
+                                 how="outer")
 
+            sup_table = sup_table.drop_duplicates().reset_index(drop=True).fillna(0)
+
+            sup_table['predicted_volume_share'] = sup_table['predicted_volume_share_x'] + sup_table[
+                'predicted_volume_share_y']
+            sup_table['vols_gain_share'] = sup_table['vols_gain_share_x'] + sup_table['vols_gain_share_y']
+            sup_table['vols_loss_share'] = sup_table['vols_loss_share_x'] + sup_table['vols_loss_share_y']
+
+            sup_table['predicted_value_share'] = sup_table['predicted_value_share_x'] + sup_table[
+                'predicted_value_share_y']
+            sup_table['value_gain_share'] = sup_table['value_gain_share_x'] + sup_table['value_gain_share_y']
+            sup_table['value_loss_share'] = sup_table['value_loss_share_x'] + sup_table['value_loss_share_y']
+
+            sup_table = sup_table[
+                ['parent_supplier', 'base_product_number', 'predicted_volume_share', 'vols_gain_share',
+                 'vols_loss_share', 'predicted_value_share', 'value_gain_share', 'value_loss_share']]
 
             # In[32]:
 
@@ -4449,7 +4482,7 @@ class product_impact_chart(APIView):
 
 
 
-            supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
+            #supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
 
 
         else:
@@ -4511,6 +4544,9 @@ class product_impact_chart(APIView):
 
             vols_waterfall = vols_waterfall.to_dict(orient='records')
 
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
+
             # In[45]:
 
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
@@ -4539,6 +4575,8 @@ class product_impact_chart(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
 
             # In[46]:
 
@@ -4568,6 +4606,8 @@ class product_impact_chart(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
 
@@ -4597,6 +4637,8 @@ class product_impact_chart(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[48]:
 
@@ -4954,7 +4996,11 @@ class product_impact_chart(APIView):
             'psg_vols_contri': psg_vols_contri,
             'psg_sales_contri': psg_sales_contri,
             'psg_cgm_contri': psg_cgm_contri,
-            'psg_cts_contri': psg_cts_contri
+            'psg_cts_contri': psg_cts_contri,
+            'vol_tot_transfer' : vol_tot_transfer,
+            'sales_tot_transfer': sales_tot_transfer,
+            'cgm_tot_transfer': cgm_tot_transfer,
+            'cts_tot_transfer': cts_tot_transfer
         }
         return JsonResponse(data, safe=False)
 
@@ -5386,7 +5432,7 @@ class product_impact_supplier_table(APIView):
                 [u'base_product_number', u'sub_prod', u'ros_quantile', u'similarity_score']].drop_duplicates().reset_index(drop = True).fillna(0)
             similar_prods = pd.merge(similar_prods, sub_prod[['sub_prod', 'ros_tag_sub']], left_on="sub_prod",
                                      right_on='sub_prod', how="left")
-            similar_prods.similarity_score = similar_prods.similarity_score.astype(float)
+            similar_prods.similarity_score = similar_prods.similarity_score.astype('float')
             similar_prods_filter1 = similar_prods[
                 (similar_prods.similarity_score > cut_off) & (similar_prods.ros_quantile == similar_prods.ros_tag_sub)]
             similar_prods_filter1['sim_ros'] = "P"
@@ -5782,7 +5828,8 @@ class product_impact_supplier_table(APIView):
             else:
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
             vols_waterfall = vols_waterfall.to_dict(orient='records')
-
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) *100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
             # In[45]:
             #sales chart
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
@@ -5810,7 +5857,8 @@ class product_impact_supplier_table(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
-
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
             # In[46]:
             #cgm chart
             initial_cgm = product_dataset[['productcode', 'predicted_cgm']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_cgm':max})
@@ -5839,6 +5887,8 @@ class product_impact_supplier_table(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
             #cts chart
@@ -5868,6 +5918,8 @@ class product_impact_supplier_table(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[14]:
 
@@ -6338,7 +6390,7 @@ class product_impact_supplier_table(APIView):
             del sup_table['vols_gain']
             del sup_table['vols_loss']
             del sup_table['predicted_volume']
-            #sup_table_exp = sup_table
+
 
             prod_price_data = read_frame(
                 product_price.objects.all().filter(buying_controller__in=bc, store_type__in=['Express']).values(
@@ -6351,6 +6403,7 @@ class product_impact_supplier_table(APIView):
             sup_table['value_gain_share'] = sup_table['vols_gain_share'] * sup_table['asp']
             sup_table['value_loss_share'] = sup_table['vols_loss_share'] * sup_table['asp']
             sup_table['predicted_value_share'] = sup_table['predicted_volume_share'] * sup_table['asp']
+            sup_table_exp = sup_table
 
             sup_table_share = sup_table.groupby(['parent_supplier'], as_index=False).agg(
                 {'predicted_volume_share': sum, 'vols_gain_share': sum, 'vols_loss_share': sum,
@@ -6440,7 +6493,24 @@ class product_impact_supplier_table(APIView):
             print('final sup_sales table at 4571, inside product_impact_chart')
             #print(sup_sales_table)
 
+            sup_table = pd.merge(sup_table_main, sup_table_exp, on=['parent_supplier', 'base_product_number'],
+                                 how="outer")
 
+            sup_table = sup_table.drop_duplicates().reset_index(drop=True).fillna(0)
+
+            sup_table['predicted_volume_share'] = sup_table['predicted_volume_share_x'] + sup_table[
+                'predicted_volume_share_y']
+            sup_table['vols_gain_share'] = sup_table['vols_gain_share_x'] + sup_table['vols_gain_share_y']
+            sup_table['vols_loss_share'] = sup_table['vols_loss_share_x'] + sup_table['vols_loss_share_y']
+
+            sup_table['predicted_value_share'] = sup_table['predicted_value_share_x'] + sup_table[
+                'predicted_value_share_y']
+            sup_table['value_gain_share'] = sup_table['value_gain_share_x'] + sup_table['value_gain_share_y']
+            sup_table['value_loss_share'] = sup_table['value_loss_share_x'] + sup_table['value_loss_share_y']
+
+            sup_table = sup_table[
+                ['parent_supplier', 'base_product_number', 'predicted_volume_share', 'vols_gain_share',
+                 'vols_loss_share', 'predicted_value_share', 'value_gain_share', 'value_loss_share']]
 
             # In[32]:
 
@@ -6533,7 +6603,7 @@ class product_impact_supplier_table(APIView):
 
 
 
-            supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
+            #supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
 
 
 
@@ -6594,8 +6664,8 @@ class product_impact_supplier_table(APIView):
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
 
             vols_waterfall = vols_waterfall.to_dict(orient='records')
-
-            # In[45]:
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
 
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
             initial_sales = initial_sales['predicted_value'].sum()
@@ -6623,6 +6693,10 @@ class product_impact_supplier_table(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
+
+
 
             # In[46]:
 
@@ -6652,6 +6726,8 @@ class product_impact_supplier_table(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
 
@@ -6681,6 +6757,8 @@ class product_impact_supplier_table(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[48]:
 
@@ -7097,7 +7175,9 @@ class supplier_popup(APIView):
 
         all_filter = read_frame(product_impact_filter.objects.all())
         input_tpns = all_filter['input_tpns']
-        input_tpns =list(input_tpns)
+        input_tpns = list(input_tpns)
+        print('inside supplier pop up')
+        print(input_tpns)
         bc = all_filter['bc'][0]
         bc=[bc]
         store = all_filter['store'][0]
@@ -7786,7 +7866,7 @@ class supplier_popup(APIView):
         # Logic for overview
         if store == ['Overview']:
 
-            if input_tpns[0] ==0:
+            if input_tpns[0]==0:
                 input_tpns_main = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Main Estate'],
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -7906,7 +7986,8 @@ class supplier_popup(APIView):
             else:
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
             vols_waterfall = vols_waterfall.to_dict(orient='records')
-
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
             # In[45]:
             # sales chart
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
@@ -7934,6 +8015,8 @@ class supplier_popup(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
 
             # In[46]:
             # cgm chart
@@ -7963,6 +8046,8 @@ class supplier_popup(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
             # cts chart
@@ -7992,7 +8077,8 @@ class supplier_popup(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
-
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
             # In[14]:
 
             # PSGs of delisted products
@@ -8462,7 +8548,7 @@ class supplier_popup(APIView):
             del sup_table['vols_gain']
             del sup_table['vols_loss']
             del sup_table['predicted_volume']
-            # sup_table_exp = sup_table
+
 
             prod_price_data = read_frame(
                 product_price.objects.all().filter(buying_controller__in=bc, store_type__in=['Express']).values(
@@ -8475,6 +8561,7 @@ class supplier_popup(APIView):
             sup_table['value_gain_share'] = sup_table['vols_gain_share'] * sup_table['asp']
             sup_table['value_loss_share'] = sup_table['vols_loss_share'] * sup_table['asp']
             sup_table['predicted_value_share'] = sup_table['predicted_volume_share'] * sup_table['asp']
+            sup_table_exp = sup_table
 
             sup_table_share = sup_table.groupby(['parent_supplier'], as_index=False).agg(
                 {'predicted_volume_share': sum, 'vols_gain_share': sum, 'vols_loss_share': sum,
@@ -8563,7 +8650,24 @@ class supplier_popup(APIView):
 
             print('final sup_sales table at 4571, inside product_impact_chart')
             # print(sup_sales_table)
+            sup_table = pd.merge(sup_table_main, sup_table_exp, on=['parent_supplier', 'base_product_number'],
+                                 how="outer")
 
+            sup_table = sup_table.drop_duplicates().reset_index(drop=True).fillna(0)
+
+            sup_table['predicted_volume_share'] = sup_table['predicted_volume_share_x'] + sup_table[
+                'predicted_volume_share_y']
+            sup_table['vols_gain_share'] = sup_table['vols_gain_share_x'] + sup_table['vols_gain_share_y']
+            sup_table['vols_loss_share'] = sup_table['vols_loss_share_x'] + sup_table['vols_loss_share_y']
+
+            sup_table['predicted_value_share'] = sup_table['predicted_value_share_x'] + sup_table[
+                'predicted_value_share_y']
+            sup_table['value_gain_share'] = sup_table['value_gain_share_x'] + sup_table['value_gain_share_y']
+            sup_table['value_loss_share'] = sup_table['value_loss_share_x'] + sup_table['value_loss_share_y']
+
+            sup_table = sup_table[
+                ['parent_supplier', 'base_product_number', 'predicted_volume_share', 'vols_gain_share',
+                 'vols_loss_share', 'predicted_value_share', 'value_gain_share', 'value_loss_share']]
 
             # In[32]:
 
@@ -8654,7 +8758,13 @@ class supplier_popup(APIView):
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             delist_table_popup = pd.DataFrame(delist_prod_subs)
 
-            supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
+            print('supplier pop up before pop up condition')
+            print(supplier_table_popup)
+
+            #supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
+
+            print('\n supplier pop up after pop up condition')
+            print(supplier_table_popup)
 
 
         else:
@@ -8674,9 +8784,6 @@ class supplier_popup(APIView):
                 #input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
                 #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
-
-            print('below values are passed')
-            print(args, bc, store, future, input_tpns)
 
             # In[4]:
             product_dataset = volume_transfer_logic(bc, store, future, input_tpns, delist)
@@ -8716,8 +8823,8 @@ class supplier_popup(APIView):
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
 
             vols_waterfall = vols_waterfall.to_dict(orient='records')
-
-            # In[45]:
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) *100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
 
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
             initial_sales = initial_sales['predicted_value'].sum()
@@ -8745,6 +8852,8 @@ class supplier_popup(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
 
             # In[46]:
 
@@ -8774,6 +8883,8 @@ class supplier_popup(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
 
@@ -8803,6 +8914,8 @@ class supplier_popup(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[48]:
 
@@ -8937,10 +9050,6 @@ class supplier_popup(APIView):
             delist_prod_table = delist_prod_table[delist_prod_table['no_of_stores'] > 0]
             delist_prod_table = delist_prod_table[delist_prod_table['predicted_volume'] > 0]
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True)
-
-            print('inside product)impactchart-- at 4936, delist_prod_table')
-
-            # print(delist_prod_table)
 
             # In[51]:
 
@@ -9145,21 +9254,34 @@ class supplier_popup(APIView):
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             delist_table_popup = pd.DataFrame(delist_prod_subs)
 
-            supplier_table_popup = supplier_table_popup[
-                (supplier_table_popup.delist_vol_loss != 0) & (supplier_table_popup.substitute_vol_gain != 0)]
+
+            print('\n supplier pop up before condition', supplier_table_popup)
+
+            #supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
+
+            print('\n suppplier pop up after condition', supplier_table_popup)
+
+            print('\n supplier pop up before original condition',supplier_table_popup.head())
 
         ## original supplier pop up starts here
 
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         args.pop('format__iexact', None)
         supplier = args.get('supplier__iexact')
+        print('\n supplier from arguments',supplier)
         supplier = [supplier]
+        print('\n supplier from arguments after converting to list _____', supplier)
         sup_pop = pd.DataFrame(supplier)
         sup_pop['supplier'] = sup_pop[0]
+        print('\n supplier from arguments after converting to list and sup pop[0] _____', sup_pop)
         popup_data1 = pd.merge(supplier_table_popup, sup_pop, left_on=['delist_supplier'], right_on=['supplier'], how='inner')
+        print('\n supplier from arguments after converting to list and popup_data1 _____', popup_data1)
         popup_data1 = popup_data1.drop_duplicates().fillna(0).reset_index(drop=True)
 
+        print('\n supplier from arguments after converting to list and popup_data1 final _____', popup_data1)
+
         ## set default page as 1
+
         supplier_popup_page = 1
 
         ## take page from args if entered
@@ -9173,7 +9295,7 @@ class supplier_popup(APIView):
 
         ## assign start and end points for subsetting data frame
         start_row = (supplier_popup_page - 1) * 8  ## example: for page 2 => 9
-        end_row = start_row + 8
+        end_row = start_row + 7
 
         ## calculate total number of pages
         num_pages = math.ceil((len(popup_data1) / 8))
@@ -9186,6 +9308,8 @@ class supplier_popup(APIView):
         end_index = supplier_popup_page * 8
         ## subset the queryset to display required data
         popup_data1 = popup_data1.loc[start_row:end_row, ]
+
+        print('\n final output of supplier pop up after everything',popup_data1)
 
         data = {
             'supplier_table_popup': popup_data1.to_dict(orient='records')
@@ -10013,7 +10137,8 @@ class product_impact_delist_table(APIView):
             else:
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
             vols_waterfall = vols_waterfall.to_dict(orient='records')
-
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
             # In[45]:
             # sales chart
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
@@ -10041,6 +10166,8 @@ class product_impact_delist_table(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
 
             # In[46]:
             # cgm chart
@@ -10070,6 +10197,8 @@ class product_impact_delist_table(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
             # cts chart
@@ -10099,6 +10228,8 @@ class product_impact_delist_table(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[14]:
 
@@ -10569,7 +10700,6 @@ class product_impact_delist_table(APIView):
             del sup_table['vols_gain']
             del sup_table['vols_loss']
             del sup_table['predicted_volume']
-            # sup_table_exp = sup_table
 
             prod_price_data = read_frame(
                 product_price.objects.all().filter(buying_controller__in=bc, store_type__in=['Express']).values(
@@ -10582,6 +10712,7 @@ class product_impact_delist_table(APIView):
             sup_table['value_gain_share'] = sup_table['vols_gain_share'] * sup_table['asp']
             sup_table['value_loss_share'] = sup_table['vols_loss_share'] * sup_table['asp']
             sup_table['predicted_value_share'] = sup_table['predicted_volume_share'] * sup_table['asp']
+            sup_table_exp = sup_table
 
             sup_table_share = sup_table.groupby(['parent_supplier'], as_index=False).agg(
                 {'predicted_volume_share': sum, 'vols_gain_share': sum, 'vols_loss_share': sum,
@@ -10671,6 +10802,24 @@ class product_impact_delist_table(APIView):
             print('final sup_sales table at 4571, inside product_impact_chart')
             # print(sup_sales_table)
 
+            sup_table = pd.merge(sup_table_main, sup_table_exp, on=['parent_supplier', 'base_product_number'],
+                                 how="outer")
+
+            sup_table = sup_table.drop_duplicates().reset_index(drop=True).fillna(0)
+
+            sup_table['predicted_volume_share'] = sup_table['predicted_volume_share_x'] + sup_table[
+                'predicted_volume_share_y']
+            sup_table['vols_gain_share'] = sup_table['vols_gain_share_x'] + sup_table['vols_gain_share_y']
+            sup_table['vols_loss_share'] = sup_table['vols_loss_share_x'] + sup_table['vols_loss_share_y']
+
+            sup_table['predicted_value_share'] = sup_table['predicted_value_share_x'] + sup_table[
+                'predicted_value_share_y']
+            sup_table['value_gain_share'] = sup_table['value_gain_share_x'] + sup_table['value_gain_share_y']
+            sup_table['value_loss_share'] = sup_table['value_loss_share_x'] + sup_table['value_loss_share_y']
+
+            sup_table = sup_table[
+                ['parent_supplier', 'base_product_number', 'predicted_volume_share', 'vols_gain_share',
+                 'vols_loss_share', 'predicted_value_share', 'value_gain_share', 'value_loss_share']]
 
             # In[32]:
 
@@ -10761,7 +10910,7 @@ class product_impact_delist_table(APIView):
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             delist_table_popup = pd.DataFrame(delist_prod_subs)
 
-            supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
+            #supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
 
 
         else:
@@ -10823,9 +10972,8 @@ class product_impact_delist_table(APIView):
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
 
             vols_waterfall = vols_waterfall.to_dict(orient='records')
-
-            # In[45]:
-
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
             initial_sales = initial_sales['predicted_value'].sum()
             sales_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(
@@ -10852,6 +11000,8 @@ class product_impact_delist_table(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
 
             # In[46]:
 
@@ -10881,6 +11031,8 @@ class product_impact_delist_table(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
 
@@ -10910,6 +11062,8 @@ class product_impact_delist_table(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[48]:
 
@@ -12127,6 +12281,8 @@ class delist_popup(APIView):
             else:
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
             vols_waterfall = vols_waterfall.to_dict(orient='records')
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
 
             # In[45]:
             # sales chart
@@ -12155,6 +12311,8 @@ class delist_popup(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
 
             # In[46]:
             # cgm chart
@@ -12184,6 +12342,8 @@ class delist_popup(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
             # cts chart
@@ -12213,6 +12373,8 @@ class delist_popup(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[14]:
 
@@ -12683,7 +12845,7 @@ class delist_popup(APIView):
             del sup_table['vols_gain']
             del sup_table['vols_loss']
             del sup_table['predicted_volume']
-            # sup_table_exp = sup_table
+
 
             prod_price_data = read_frame(
                 product_price.objects.all().filter(buying_controller__in=bc, store_type__in=['Express']).values(
@@ -12696,6 +12858,7 @@ class delist_popup(APIView):
             sup_table['value_gain_share'] = sup_table['vols_gain_share'] * sup_table['asp']
             sup_table['value_loss_share'] = sup_table['vols_loss_share'] * sup_table['asp']
             sup_table['predicted_value_share'] = sup_table['predicted_volume_share'] * sup_table['asp']
+            sup_table_exp = sup_table
 
             sup_table_share = sup_table.groupby(['parent_supplier'], as_index=False).agg(
                 {'predicted_volume_share': sum, 'vols_gain_share': sum, 'vols_loss_share': sum,
@@ -12784,8 +12947,24 @@ class delist_popup(APIView):
 
             print('final sup_sales table at 4571, inside product_impact_chart')
             # print(sup_sales_table)
+            sup_table = pd.merge(sup_table_main, sup_table_exp, on=['parent_supplier', 'base_product_number'],
+                                 how="outer")
 
+            sup_table = sup_table.drop_duplicates().reset_index(drop=True).fillna(0)
 
+            sup_table['predicted_volume_share'] = sup_table['predicted_volume_share_x'] + sup_table[
+                'predicted_volume_share_y']
+            sup_table['vols_gain_share'] = sup_table['vols_gain_share_x'] + sup_table['vols_gain_share_y']
+            sup_table['vols_loss_share'] = sup_table['vols_loss_share_x'] + sup_table['vols_loss_share_y']
+
+            sup_table['predicted_value_share'] = sup_table['predicted_value_share_x'] + sup_table[
+                'predicted_value_share_y']
+            sup_table['value_gain_share'] = sup_table['value_gain_share_x'] + sup_table['value_gain_share_y']
+            sup_table['value_loss_share'] = sup_table['value_loss_share_x'] + sup_table['value_loss_share_y']
+
+            sup_table = sup_table[
+                ['parent_supplier', 'base_product_number', 'predicted_volume_share', 'vols_gain_share',
+                 'vols_loss_share', 'predicted_value_share', 'value_gain_share', 'value_loss_share']]
 
             # In[32]:
 
@@ -12876,7 +13055,7 @@ class delist_popup(APIView):
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             delist_table_popup = pd.DataFrame(delist_prod_subs)
 
-            supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
+            #supplier_table_popup = supplier_table_popup[(supplier_table_popup.substitute_vol_gain != 0)]
 
 
         else:
@@ -12938,9 +13117,8 @@ class delist_popup(APIView):
                 vols_waterfall.ix[2, 'value'] = -volume_transfer_ownlabel['volume_transfer'].iloc[0]
 
             vols_waterfall = vols_waterfall.to_dict(orient='records')
-
-            # In[45]:
-
+            vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
+            vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
             initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
             initial_sales = initial_sales['predicted_value'].sum()
             sales_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(
@@ -12967,6 +13145,8 @@ class delist_popup(APIView):
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
             sales_waterfall = sales_waterfall.to_dict(orient='records')
+            sales_tot_transfer = (product_dataset['value_transfer'].sum() / initial_sales) * 100
+            sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
 
             # In[46]:
 
@@ -12996,6 +13176,8 @@ class delist_popup(APIView):
             else:
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
+            cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
+            cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
 
             # In[47]:
 
@@ -13025,6 +13207,8 @@ class delist_popup(APIView):
             else:
                 cts_waterfall.ix[2, 'value'] = -cts_transfer_ownlabel['cts_transfer'].iloc[0]
             cts_waterfall = cts_waterfall.to_dict(orient='records')
+            cts_tot_transfer = (product_dataset['cts_transfer'].sum() / initial_cts) * 100
+            cts_tot_transfer = (format(cts_tot_transfer, '.1f'))
 
             # In[48]:
 
