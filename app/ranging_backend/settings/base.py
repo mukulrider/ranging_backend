@@ -36,6 +36,22 @@ ALLOWED_HOSTS = ['*']
 
 CORS_ORIGIN_ALLOW_ALL = True
 
+#changes for cache 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '172.20.244.236:8000',
+    },
+    # 'rest_backend': {
+    #     'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    #     'LOCATION': 'unique-snowflake',
+    # }
+}
+
+REST_FRAMEWORK_CACHE = {
+     'DEFAULT_CACHE_BACKEND': 'rest_backend',
+}
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -57,6 +73,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.facebook',
     'rest_framework_swagger',
+    'rest_framework_cache',
 ]
 
 MIDDLEWARE = [
@@ -64,7 +81,6 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -87,7 +103,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'ranging_backend.wsgi.application'
+cache_regis_APPLICATION = 'ranging_backend.wsgi.application'
 
 
 # Password validation

@@ -28,12 +28,17 @@ import numpy as np
 import gzip
 import xgboost as xgb
 import pickle
+#for cache 
+from rest_framework_extensions.cache.decorators import cache_response
+
 
 
 ## for NPD Opportunity View Filters
 class npdpage_filterdata_new(APIView):
+    @cache_response()
     def get(self, request, format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+        args.pop('format__iexact',None)
         default = args.pop('default__iexact',None)
         if default is None:
             if not args:
@@ -273,8 +278,8 @@ class npdpage_filterdata_new(APIView):
                 final.append(d)
 
         
-        return JsonResponse(final, safe=False)
-
+        #return JsonResponse(final, safe=False)
+        return Response(final)
 
 ## for NPD Opportunity View
 
@@ -289,6 +294,7 @@ class npdpage_outperformance(APIView):
 
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
+        args.pop('format__iexact',None)
         args.pop('page__iexact', None)
         print("getting session details ")
         x=request.session
@@ -363,6 +369,7 @@ class npdpage_pricebucket(APIView):
 
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
+        args.pop('format__iexact', None)
         args.pop('page__iexact', None)
 
         week={}
@@ -430,6 +437,7 @@ class npdpage_psgskudistribution(APIView):
 
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
+        args.pop('format__iexact', None)
         args.pop('page__iexact', None)
         args.pop('product_sub_group_description__iexact',None)
         week={}
@@ -531,133 +539,135 @@ def col_distinct(kwargs, col_name):
 
 
 
-def make_json(sent_req):
-    print('*********************\n       FILTERS2 \n*********************')
-    cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
+# def make_json(sent_req):
+#     print('*********************\n       FILTERS2 \n*********************')
+#     cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
 
-    # find lowest element of cols
-    lowest = 0
-    second_lowest = 0
+#     # find lowest element of cols
+#     lowest = 0
+#     second_lowest = 0
 
-    element_list = []
-    for i in sent_req.keys():
-        if i in cols:
-            element_list.append(cols.index(i))
+#     element_list = []
+#     for i in sent_req.keys():
+#         if i in cols:
+#             element_list.append(cols.index(i))
 
-    element_list.sort()
+#     element_list.sort()
 
-    try:
-        lowest = element_list[-1]
-    except:
-        pass
+#     try:
+#         lowest = element_list[-1]
+#     except:
+#         pass
 
-    try:
-        second_lowest = element_list[-2]
-    except:
-        pass
+#     try:
+#         second_lowest = element_list[-2]
+#     except:
+#         pass
 
-    lowest_key = cols[lowest]
-    second_lowest_key = cols[lowest]
+#     lowest_key = cols[lowest]
+#     second_lowest_key = cols[lowest]
 
-    # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
+#     # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
 
-    final_list = []  # final list to send
+#     final_list = []  # final list to send
 
-    col_unique_list_name = []  # rename
-    col_unique_list_name_obj = {}  # rename
-    for col_name in cols:
-        print('\n********* \n' + col_name + '\n*********')
-        # print('sent_req.get(col_name):', sent_req.get(col_name))
-        col_unique_list = col_distinct({}, col_name)
-        col_unique_list_name.append({'name': col_name,
-                                     'unique_elements': col_unique_list})
-        col_unique_list_name_obj[col_name] = col_unique_list
-        # args sent as url params
-        kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
+#     col_unique_list_name = []  # rename
+#     col_unique_list_name_obj = {}  # rename
+#     for col_name in cols:
+#         print('\n********* \n' + col_name + '\n*********')
+#         # print('sent_req.get(col_name):', sent_req.get(col_name))
+#         col_unique_list = col_distinct({}, col_name)
+#         col_unique_list_name.append({'name': col_name,
+#                                      'unique_elements': col_unique_list})
+#         col_unique_list_name_obj[col_name] = col_unique_list
+#         # args sent as url params
+#         kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
 
-        category_of_sent_obj_list = col_distinct(kwargs2, col_name)
-        print(len(category_of_sent_obj_list))
-        sent_obj_category_list = []
+#         category_of_sent_obj_list = col_distinct(kwargs2, col_name)
+#         print(len(category_of_sent_obj_list))
+#         sent_obj_category_list = []
 
-        # get unique elements for `col_name`
-        for i in category_of_sent_obj_list:
-            sent_obj_category_list.append(i)
+#         # get unique elements for `col_name`
+#         for i in category_of_sent_obj_list:
+#             sent_obj_category_list.append(i)
 
-        def highlight_check(category_unique):
-            # print(title)
-            if len(sent_req.keys()) > 0:
-                highlighted = False
-                if col_name in sent_req.keys():
-                    if col_name == cols[lowest]:
-                        queryset = nego_ads_drf.objects.filter(**{col_name: category_unique})[:1].get()
-                        # x = getattr(queryset, cols[lowest])
-                        y = getattr(queryset, cols[second_lowest])
-                        # print(x, '|', y, '|', cols[lowest], '|',
-                        #       'Category_second_last:' + cols[second_lowest],
-                        #       '|', col_name,
-                        #       '|', category_unique)
-                        for i in sent_req.keys():
-                            print('keys:', i, sent_req.get(i))
-                            if y in sent_req.get(i) and cols[second_lowest] == i:
-                                highlighted = True
+#         def highlight_check(category_unique):
+#             # print(title)
+#             if len(sent_req.keys()) > 0:
+#                 highlighted = False
+#                 if col_name in sent_req.keys():
+#                     if col_name == cols[lowest]:
+#                         queryset = nego_ads_drf.objects.filter(**{col_name: category_unique})[:1].get()
+#                         # x = getattr(queryset, cols[lowest])
+#                         y = getattr(queryset, cols[second_lowest])
+#                         # print(x, '|', y, '|', cols[lowest], '|',
+#                         #       'Category_second_last:' + cols[second_lowest],
+#                         #       '|', col_name,
+#                         #       '|', category_unique)
+#                         for i in sent_req.keys():
+#                             print('keys:', i, sent_req.get(i))
+#                             if y in sent_req.get(i) and cols[second_lowest] == i:
+#                                 highlighted = True
 
-                        return highlighted
-                    else:
-                        return False
-                else:
-                    if category_unique in sent_obj_category_list:
-                        highlighted = True
-                    return highlighted
-            else:
-                return True
+#                         return highlighted
+#                     else:
+#                         return False
+#                 else:
+#                     if category_unique in sent_obj_category_list:
+#                         highlighted = True
+#                     return highlighted
+#             else:
+#                 return True
 
-        # assign props to send as json response
+#         # assign props to send as json response
 
-        y = []
-        for title in col_unique_list:
-            selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
-            y.append({'title': title,
-                      'resource': {'params': col_name + '=' + title,
-                                   'selected': selected},
-                      'highlighted': selected if selected else highlight_check(title)})
+#         y = []
+#         for title in col_unique_list:
+#             selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
+#             y.append({'title': title,
+#                       'resource': {'params': col_name + '=' + title,
+#                                    'selected': selected},
+#                       'highlighted': selected if selected else highlight_check(title)})
 
-        final_list.append({'items': y,
-                           'input_type': 'Checkbox',
-                           'title': col_name,
-                           'buying_controller': 'Beers, Wines and Spirits',
-                           'id': col_name,
-                           'required': True if col_name == 'buying_controller' else False
-                           })
+#         final_list.append({'items': y,
+#                            'input_type': 'Checkbox',
+#                            'title': col_name,
+#                            'buying_controller': 'Beers, Wines and Spirits',
+#                            'id': col_name,
+#                            'required': True if col_name == 'buying_controller' else False
+#                            })
 
-    def get_element_type(title):
-        if title == 'buying_controller':
-            return 'Checkbox'
-        else:
-            return 'Checkbox'
+#     def get_element_type(title):
+#         if title == 'buying_controller':
+#             return 'Checkbox'
+#         else:
+#             return 'Checkbox'
 
-    # sort list with checked at top
+#     # sort list with checked at top
 
-    final_list2 = []
-    for i in final_list:
-        m = []
-        for j in i.get('items'):
+#     final_list2 = []
+#     for i in final_list:
+#         m = []
+#         for j in i.get('items'):
 
-            if j['resource']['selected']:
-                m.append(j)
+#             if j['resource']['selected']:
+#                 m.append(j)
 
-        for j in i.get('items'):
-            if not j['resource']['selected']:
-                m.append(j)
+#         for j in i.get('items'):
+#             if not j['resource']['selected']:
+#                 m.append(j)
 
-        final_list2.append({'items': m,
-                            'input_type': get_element_type(i['title']),
-                            'title': i['title'],
-                            'required': i['required'],
-                            'category_director': 'Beers, Wines and Spirits',
-                            'id': i['id']})
-    return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
+#         final_list2.append({'items': m,
+#                             'input_type': get_element_type(i['title']),
+#                             'title': i['title'],
+#                             'required': i['required'],
+#                             'category_director': 'Beers, Wines and Spirits',
+#                             'id': i['id']})
+#     # return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
+#     return Response({'cols': cols, 'checkbox_list': final_list2})
 
 class filters_nego(APIView):
+    @cache_response()
     def get(self, request):
         print(request.GET)
         obj = {}
@@ -666,7 +676,134 @@ class filters_nego(APIView):
             # print(request.GET.getlist(i))
             obj[i] = request.GET.getlist(i)
         # print(obj)
-        return make_json(obj)
+        # return make_json(obj)
+        sent_req = obj
+        print('*********************\n       FILTERS2 \n*********************')
+        cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
+
+        # find lowest element of cols
+        lowest = 0
+        second_lowest = 0
+
+        element_list = []
+        for i in sent_req.keys():
+            if i in cols:
+                element_list.append(cols.index(i))
+
+        element_list.sort()
+
+        try:
+            lowest = element_list[-1]
+        except:
+            pass
+
+        try:
+            second_lowest = element_list[-2]
+        except:
+            pass
+
+        lowest_key = cols[lowest]
+        second_lowest_key = cols[lowest]
+
+        # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
+
+        final_list = []  # final list to send
+
+        col_unique_list_name = []  # rename
+        col_unique_list_name_obj = {}  # rename
+        for col_name in cols:
+            print('\n********* \n' + col_name + '\n*********')
+            # print('sent_req.get(col_name):', sent_req.get(col_name))
+            col_unique_list = col_distinct({}, col_name)
+            col_unique_list_name.append({'name': col_name,
+                                         'unique_elements': col_unique_list})
+            col_unique_list_name_obj[col_name] = col_unique_list
+            # args sent as url params
+            kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
+
+            category_of_sent_obj_list = col_distinct(kwargs2, col_name)
+            print(len(category_of_sent_obj_list))
+            sent_obj_category_list = []
+
+            # get unique elements for `col_name`
+            for i in category_of_sent_obj_list:
+                sent_obj_category_list.append(i)
+
+            def highlight_check(category_unique):
+                # print(title)
+                if len(sent_req.keys()) > 0:
+                    highlighted = False
+                    if col_name in sent_req.keys():
+                        if col_name == cols[lowest]:
+                            queryset = nego_ads_drf.objects.filter(**{col_name: category_unique})[:1].get()
+                            # x = getattr(queryset, cols[lowest])
+                            y = getattr(queryset, cols[second_lowest])
+                            # print(x, '|', y, '|', cols[lowest], '|',
+                            #       'Category_second_last:' + cols[second_lowest],
+                            #       '|', col_name,
+                            #       '|', category_unique)
+                            for i in sent_req.keys():
+                                print('keys:', i, sent_req.get(i))
+                                if y in sent_req.get(i) and cols[second_lowest] == i:
+                                    highlighted = True
+
+                            return highlighted
+                        else:
+                            return False
+                    else:
+                        if category_unique in sent_obj_category_list:
+                            highlighted = True
+                        return highlighted
+                else:
+                    return True
+
+            # assign props to send as json response
+
+            y = []
+            for title in col_unique_list:
+                selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
+                y.append({'title': title,
+                          'resource': {'params': col_name + '=' + title,
+                                       'selected': selected},
+                          'highlighted': selected if selected else highlight_check(title)})
+
+            final_list.append({'items': y,
+                               'input_type': 'Checkbox',
+                               'title': col_name,
+                               'buying_controller': 'Beers, Wines and Spirits',
+                               'id': col_name,
+                               'required': True if col_name == 'buying_controller' else False
+                               })
+
+        def get_element_type(title):
+            if title == 'buying_controller':
+                return 'Checkbox'
+            else:
+                return 'Checkbox'
+
+        # sort list with checked at top
+
+        final_list2 = []
+        for i in final_list:
+            m = []
+            for j in i.get('items'):
+
+                if j['resource']['selected']:
+                    m.append(j)
+
+            for j in i.get('items'):
+                if not j['resource']['selected']:
+                    m.append(j)
+
+            final_list2.append({'items': m,
+                                'input_type': get_element_type(i['title']),
+                                'title': i['title'],
+                                'required': i['required'],
+                                'category_director': 'Beers, Wines and Spirits',
+                                'id': i['id']})
+        # return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
+        return Response({'cols': cols, 'checkbox_list': final_list2})
+
 
 ####Negotiation
 
@@ -768,11 +905,12 @@ class nego_bubble_table(APIView):
 ## NPD Second Half 
 ## NPD IMPACT FILTERS
 class npdimpactpage_filterdata(APIView):
+    @cache_response()
     def get(self, request, format=None):
 
 
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-
+        args.pop('format__iexact',None)
         bc_name = args.get('buying_controller__iexact')
         buyer_name = args.get('buyer__iexact')
         jr_buyer_name = args.get('junior_buyer__iexact')
@@ -1350,7 +1488,8 @@ class npdimpactpage_filterdata(APIView):
             final["product_hierarchy"] = final_ph
             final["product_information"] = final_pi
         
-        return JsonResponse(final, safe=False)
+        # return JsonResponse(final, safe=False)
+        return Response(final)
 
 
 
@@ -2678,143 +2817,274 @@ def col_distinct_product(kwargs, col_name):
     base_product_number_list = [k.get(col_name) for k in queryset]
     return base_product_number_list
 
-def make_json_product(sent_req):
-    print('*********************\n       FILTERS2 \n*********************')
-    cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
-                                 'brand_name', 'product_sub_group_description', 'long_description']
+# def make_json_product(sent_req):
+    # print('*********************\n       FILTERS2 \n*********************')
+    # cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
+    #                              'brand_name', 'product_sub_group_description', 'long_description']
 
-    # find lowest element of cols
-    lowest = 0
-    second_lowest = 0
+    # # find lowest element of cols
+    # lowest = 0
+    # second_lowest = 0
 
-    element_list = []
-    for i in sent_req.keys():
-        if i in cols:
-            element_list.append(cols.index(i))
+    # element_list = []
+    # for i in sent_req.keys():
+    #     if i in cols:
+    #         element_list.append(cols.index(i))
 
-    element_list.sort()
+    # element_list.sort()
 
-    try:
-        lowest = element_list[-1]
-    except:
-        pass
+    # try:
+    #     lowest = element_list[-1]
+    # except:
+    #     pass
 
-    try:
-        second_lowest = element_list[-2]
-    except:
-        pass
+    # try:
+    #     second_lowest = element_list[-2]
+    # except:
+    #     pass
 
-    lowest_key = cols[lowest]
-    second_lowest_key = cols[lowest]
+    # lowest_key = cols[lowest]
+    # second_lowest_key = cols[lowest]
 
-    # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
+    # # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
 
-    final_list = []  # final list to send
+    # final_list = []  # final list to send
 
-    col_unique_list_name = []  # rename
-    col_unique_list_name_obj = {}  # rename
-    for col_name in cols:
-        print('\n********* \n' + col_name + '\n*********')
-        # print('sent_req.get(col_name):', sent_req.get(col_name))
-        col_unique_list = col_distinct_product({}, col_name)
-        col_unique_list_name.append({'name': col_name,
-                                     'unique_elements': col_unique_list})
-        col_unique_list_name_obj[col_name] = col_unique_list
-        # args sent as url params
-        kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
+    # col_unique_list_name = []  # rename
+    # col_unique_list_name_obj = {}  # rename
+    # for col_name in cols:
+    #     print('\n********* \n' + col_name + '\n*********')
+    #     # print('sent_req.get(col_name):', sent_req.get(col_name))
+    #     col_unique_list = col_distinct_product({}, col_name)
+    #     col_unique_list_name.append({'name': col_name,
+    #                                  'unique_elements': col_unique_list})
+    #     col_unique_list_name_obj[col_name] = col_unique_list
+    #     # args sent as url params
+    #     kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
 
-        category_of_sent_obj_list = col_distinct_product(kwargs2, col_name)
-        print(len(category_of_sent_obj_list))
-        sent_obj_category_list = []
+    #     category_of_sent_obj_list = col_distinct_product(kwargs2, col_name)
+    #     print(len(category_of_sent_obj_list))
+    #     sent_obj_category_list = []
 
-        # get unique elements for `col_name`
-        for i in category_of_sent_obj_list:
-            sent_obj_category_list.append(i)
+    #     # get unique elements for `col_name`
+    #     for i in category_of_sent_obj_list:
+    #         sent_obj_category_list.append(i)
 
-        def highlight_check(category_unique):
-            # print(title)
-            if len(sent_req.keys()) > 0:
-                highlighted = False
-                if col_name in sent_req.keys():
-                    if col_name == cols[lowest]:
-                        queryset = product_hierarchy.objects.filter(**{col_name: category_unique})[:1].get()
-                        # x = getattr(queryset, cols[lowest])
-                        y = getattr(queryset, cols[second_lowest])
-                        # print(x, '|', y, '|', cols[lowest], '|',
-                        #       'Category_second_last:' + cols[second_lowest],
-                        #       '|', col_name,
-                        #       '|', category_unique)
-                        for i in sent_req.keys():
-                            print('keys:', i, sent_req.get(i))
-                            if y in sent_req.get(i) and cols[second_lowest] == i:
-                                highlighted = True
+    #     def highlight_check(category_unique):
+    #         # print(title)
+    #         if len(sent_req.keys()) > 0:
+    #             highlighted = False
+    #             if col_name in sent_req.keys():
+    #                 if col_name == cols[lowest]:
+    #                     queryset = product_hierarchy.objects.filter(**{col_name: category_unique})[:1].get()
+    #                     # x = getattr(queryset, cols[lowest])
+    #                     y = getattr(queryset, cols[second_lowest])
+    #                     # print(x, '|', y, '|', cols[lowest], '|',
+    #                     #       'Category_second_last:' + cols[second_lowest],
+    #                     #       '|', col_name,
+    #                     #       '|', category_unique)
+    #                     for i in sent_req.keys():
+    #                         print('keys:', i, sent_req.get(i))
+    #                         if y in sent_req.get(i) and cols[second_lowest] == i:
+    #                             highlighted = True
 
-                        return highlighted
-                    else:
-                        return False
-                else:
-                    if category_unique in sent_obj_category_list:
-                        highlighted = True
-                    return highlighted
-            else:
-                return True
+    #                     return highlighted
+    #                 else:
+    #                     return False
+    #             else:
+    #                 if category_unique in sent_obj_category_list:
+    #                     highlighted = True
+    #                 return highlighted
+    #         else:
+    #             return True
 
-        # assign props to send as json response
+    #     # assign props to send as json response
 
-        y = []
-        for title in col_unique_list:
-            selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
-            y.append({'title': title,
-                      'resource': {'params': col_name + '=' + title,
-                                   'selected': selected},
-                      'highlighted': selected if selected else highlight_check(title)})
+    #     y = []
+    #     for title in col_unique_list:
+    #         selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
+    #         y.append({'title': title,
+    #                   'resource': {'params': col_name + '=' + title,
+    #                                'selected': selected},
+    #                   'highlighted': selected if selected else highlight_check(title)})
 
-        final_list.append({'items': y,
-                           'input_type': 'Checkbox',
-                           'title': col_name,
-                           'buying_controller': 'Beers, Wines and Spirits',
-                           'id': col_name,
-                           'required': True if col_name in ['buying_controller', 'long_description'] else False
-                           })
+    #     final_list.append({'items': y,
+    #                        'input_type': 'Checkbox',
+    #                        'title': col_name,
+    #                        'buying_controller': 'Beers, Wines and Spirits',
+    #                        'id': col_name,
+    #                        'required': True if col_name in ['buying_controller', 'long_description'] else False
+    #                        })
 
-    def get_element_type(title):
-        if title == 'buying_controller':
-            return 'Checkbox'
-        else:
-            return 'Checkbox'
+    # def get_element_type(title):
+    #     if title == 'buying_controller':
+    #         return 'Checkbox'
+    #     else:
+    #         return 'Checkbox'
 
-    # sort list with checked at top
+    # # sort list with checked at top
 
-    final_list2 = []
-    for i in final_list:
-        m = []
-        for j in i.get('items'):
+    # final_list2 = []
+    # for i in final_list:
+    #     m = []
+    #     for j in i.get('items'):
 
-            if j['resource']['selected']:
-                m.append(j)
+    #         if j['resource']['selected']:
+    #             m.append(j)
 
-        for j in i.get('items'):
-            if not j['resource']['selected']:
-                m.append(j)
+    #     for j in i.get('items'):
+    #         if not j['resource']['selected']:
+    #             m.append(j)
 
-        final_list2.append({'items': m,
-                            'input_type': get_element_type(i['title']),
-                            'title': i['title'],
-                            'required': i['required'],
-                            'category_director': 'Beers, Wines and Spirits',
-                            'id': i['id']})
-    return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
+    #     final_list2.append({'items': m,
+    #                         'input_type': get_element_type(i['title']),
+    #                         'title': i['title'],
+    #                         'required': i['required'],
+    #                         'category_director': 'Beers, Wines and Spirits',
+    #                         'id': i['id']})
+    # # return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
+    # return Response({'cols': cols, 'checkbox_list': final_list2})
 
 class filters_product_impact(APIView):
+    @cache_response()
     def get(self, request):
         print(request.GET)
         obj = {}
         get_keys = request.GET.keys()
         for i in get_keys:
-            # print(request.GET.getlist(i))
             obj[i] = request.GET.getlist(i)
-        # print(obj)
-        return make_json_product(obj)
+        sent_req = obj
+
+        # return make_json_product(obj)
+
+        print('*********************\n       FILTERS2 \n*********************')
+        cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
+                                     'brand_name', 'product_sub_group_description', 'long_description']
+
+        # find lowest element of cols
+        lowest = 0
+        second_lowest = 0
+
+        element_list = []
+        for i in sent_req.keys():
+            if i in cols:
+                element_list.append(cols.index(i))
+
+        element_list.sort()
+
+        try:
+            lowest = element_list[-1]
+        except:
+            pass
+
+        try:
+            second_lowest = element_list[-2]
+        except:
+            pass
+
+        lowest_key = cols[lowest]
+        second_lowest_key = cols[lowest]
+
+        # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
+
+        final_list = []  # final list to send
+
+        col_unique_list_name = []  # rename
+        col_unique_list_name_obj = {}  # rename
+        for col_name in cols:
+            print('\n********* \n' + col_name + '\n*********')
+            # print('sent_req.get(col_name):', sent_req.get(col_name))
+            col_unique_list = col_distinct_product({}, col_name)
+            col_unique_list_name.append({'name': col_name,
+                                         'unique_elements': col_unique_list})
+            col_unique_list_name_obj[col_name] = col_unique_list
+            # args sent as url params
+            kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
+
+            category_of_sent_obj_list = col_distinct_product(kwargs2, col_name)
+            print(len(category_of_sent_obj_list))
+            sent_obj_category_list = []
+
+            # get unique elements for `col_name`
+            for i in category_of_sent_obj_list:
+                sent_obj_category_list.append(i)
+
+            def highlight_check(category_unique):
+                # print(title)
+                if len(sent_req.keys()) > 0:
+                    highlighted = False
+                    if col_name in sent_req.keys():
+                        if col_name == cols[lowest]:
+                            queryset = product_hierarchy.objects.filter(**{col_name: category_unique})[:1].get()
+                            # x = getattr(queryset, cols[lowest])
+                            y = getattr(queryset, cols[second_lowest])
+                            # print(x, '|', y, '|', cols[lowest], '|',
+                            #       'Category_second_last:' + cols[second_lowest],
+                            #       '|', col_name,
+                            #       '|', category_unique)
+                            for i in sent_req.keys():
+                                print('keys:', i, sent_req.get(i))
+                                if y in sent_req.get(i) and cols[second_lowest] == i:
+                                    highlighted = True
+
+                            return highlighted
+                        else:
+                            return False
+                    else:
+                        if category_unique in sent_obj_category_list:
+                            highlighted = True
+                        return highlighted
+                else:
+                    return True
+
+            # assign props to send as json response
+
+            y = []
+            for title in col_unique_list:
+                selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
+                y.append({'title': title,
+                          'resource': {'params': col_name + '=' + title,
+                                       'selected': selected},
+                          'highlighted': selected if selected else highlight_check(title)})
+
+            final_list.append({'items': y,
+                               'input_type': 'Checkbox',
+                               'title': col_name,
+                               'buying_controller': 'Beers, Wines and Spirits',
+                               'id': col_name,
+                               'required': True if col_name in ['buying_controller', 'long_description'] else False
+                               })
+
+        def get_element_type(title):
+            if title == 'buying_controller':
+                return 'Checkbox'
+            else:
+                return 'Checkbox'
+
+        # sort list with checked at top
+
+        final_list2 = []
+        for i in final_list:
+            m = []
+            for j in i.get('items'):
+
+                if j['resource']['selected']:
+                    m.append(j)
+
+            for j in i.get('items'):
+                if not j['resource']['selected']:
+                    m.append(j)
+
+            final_list2.append({'items': m,
+                                'input_type': get_element_type(i['title']),
+                                'title': i['title'],
+                                'required': i['required'],
+                                'category_director': 'Beers, Wines and Spirits',
+                                'id': i['id']})
+        # return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
+        return Response({'cols': cols, 'checkbox_list': final_list2})
+
+       
 
 
 ####Product Impact
