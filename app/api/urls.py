@@ -23,8 +23,14 @@ urlpatterns = [
     url(r'^npd_impact_view_bubble_chart', views.npdpage_impact_bubble_chart.as_view(), name='npd_impact_view_bubble_chart'),
     url(r'^npd_impact_view_bubble_table', views.npdpage_impact_bubble_table.as_view(), name='npd_impact_view_bubble_table'),
     url(r'^npd_impact_view_forecast', views.npdpage_impact_forecast.as_view(), name='npd_impact_view_forecast'),
-    # url(r'^npd_edit_forecast', views.npdpage_impact_edit_forecast.as_view(), name='npd_impact_view_edit_forecast'),
 
+    ###NPD save scenario
+    url(r'^npd_impact_save_scenario', views.npdpage_impact_save_scenario.as_view(), name='npd_impact_save_scenario'),
+    url(r'^npd_impact_list_scenario', views.npd_scenario_list.as_view(), name='npd_impact_list_scenario'),
+    url(r'^npd_impact_view_scenario', views.npd_view_scenario.as_view(), name='npd_impact_list_scenario'),
+    
+
+    
 
 
     ####Url for negotiation filter data  
@@ -48,7 +54,21 @@ urlpatterns = [
     url(r'^supplier_table_popup', views.supplier_popup.as_view(), name='supplier_popup'),
     url(r'^delist_table_popup', views.delist_popup.as_view(), name='delist_popup'),
 
+
+    ##Delist save scenario
+    url(r'^delist_scenario', views.delist_scenario_final.as_view(), name='delist_scenario_final'),
+    url(r'^delist_list_scenario', views.delist_scenario_list.as_view(), name='delist_scenario_list'),
+    # url(r'^display_delist_scenario', views.display_delist_scenario.as_view(), name='display_delist_scenario'),
+
+
     # url(r'^classa', views.classA.as_view(), name='classA'),
     # url(r'^classb', views.classB.as_view(), name='classB'),
-    
+        
+
+
+
+    # url(r'^npd_impact_view_scenario', views.displaynpd_scenario.as_view(), name='displaynpd_scenario'),
+    # url(r'^npd_edit_forecast', views.npdpage_impact_edit_forecast.as_view(), name='npd_impact_view_edit_forecast'),
+
+
     ]
