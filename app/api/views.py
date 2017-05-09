@@ -8,27 +8,32 @@ from rest_framework import generics
 from rest_framework import status
 from django.http import JsonResponse
 import math
+import re
 from django.db.models import Count, Min, Max, Sum, Avg, F, FloatField
 import datetime
-from time import strftime,gmtime
+from time import strftime, gmtime
 from django.conf import settings
 import pandas as pd
 from django_pandas.io import read_frame
 from django.utils import six
 import json
 import numpy as np
-#models for npd 1st half and negotiation
+# models for npd 1st half and negotiation
 from .models import outperformance, pricebucket, unmatchedprod, nego_ads_drf
-#models for product impact
-from .models import product_hierarchy,product_impact_filter, pps_ros_quantile, shelf_review_subs, prod_similarity_subs, product_price, cts_data , supplier_share, product_contri, product_desc
-#models for npd 2nd half 
-from .models import bc_allprod_attributes, attribute_score_allbc, consolidated_calculated_cannibalization, npd_supplier_ads,features_allbc,consolidated_buckets,seasonality_index,uk_holidays,npd_calendar,merch_range,input_npd,brand_grp_mapping,range_space_store_future,store_details
-#models for save scenario
-from .models import Scenario,SaveScenario, delist_scenario
+# models for product impact
+from .models import product_hierarchy, product_impact_filter, pps_ros_quantile, shelf_review_subs, prod_similarity_subs, \
+    product_price, cts_data, supplier_share, product_contri, product_desc
+# models for npd 2nd half
+from .models import bc_allprod_attributes, attribute_score_allbc, consolidated_calculated_cannibalization, \
+    npd_supplier_ads, features_allbc, consolidated_buckets, seasonality_index, uk_holidays, npd_calendar, merch_range, \
+    input_npd, brand_grp_mapping, range_space_store_future, store_details
+# models for save scenario
+from .models import Scenario, SaveScenario, delist_scenario
 from .serializers import unmatchedprodSerializer, negochartsSerializer, npd_impact_tableSerializer
-#serializers for npd save scenario
-from .serializers import npd_scenarioSerializer,npd_SaveScenarioSerializer,npd_ViewScenarioSerializer,delist_savescenarioserializer
-from django.core.paginator import Paginator 
+# serializers for npd save scenario
+from .serializers import npd_scenarioSerializer, npd_SaveScenarioSerializer, npd_ViewScenarioSerializer, \
+    delist_savescenarioserializer
+from django.core.paginator import Paginator
 import numpy as np
 import gzip
 import xgboost as xgb
@@ -39,36 +44,34 @@ import pickle
 class npdpage_filterdata_new(APIView):
     def get(self, request, format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        default = args.pop('default__iexact',None)
+        default = args.pop('default__iexact', None)
         if default is None:
             if not args:
                 print("inside default")
 
                 df = read_frame(pricebucket.objects.filter(**args))
-                heirarchy = read_frame(pricebucket.objects.all().values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
+                heirarchy = read_frame(pricebucket.objects.all().values('buying_controller', 'buyer', 'junior_buyer',
+                                                                        'product_sub_group_description'))
 
-                data ={'buying_controller' : df.buying_controller.unique()}
+                data = {'buying_controller': df.buying_controller.unique()}
                 bc = pd.DataFrame(data)
-                bc['selected']=False
-                bc['disabled'] =False
+                bc['selected'] = False
+                bc['disabled'] = False
 
-
-                data ={'buyer' : df.buyer.unique()}
+                data = {'buyer': df.buyer.unique()}
                 buyer = pd.DataFrame(data)
-                buyer['selected']=False
-                buyer['disabled'] =False
+                buyer['selected'] = False
+                buyer['disabled'] = False
 
-
-                data ={'junior_buyer' : df.junior_buyer.unique()}
+                data = {'junior_buyer': df.junior_buyer.unique()}
                 jr_buyer = pd.DataFrame(data)
-                jr_buyer['selected']=False
-                jr_buyer['disabled'] =False
+                jr_buyer['selected'] = False
+                jr_buyer['disabled'] = False
 
-
-                data ={'product_sub_group_description' : df.product_sub_group_description.unique()}
+                data = {'product_sub_group_description': df.product_sub_group_description.unique()}
                 psg = pd.DataFrame(data)
-                psg['selected']=False
-                psg['disabled'] =False
+                psg['selected'] = False
+                psg['disabled'] = False
 
                 bc_df = heirarchy[['buying_controller']].drop_duplicates()
 
@@ -78,70 +81,60 @@ class npdpage_filterdata_new(APIView):
 
                 psg_df = heirarchy[['product_sub_group_description']].drop_duplicates()
 
-
-                bc_df = pd.merge(bc_df,bc,how='left')
-                bc_df['selected'] =bc_df['selected'].fillna(False)
-                bc_df['disabled'] =bc_df['disabled'].fillna(False)
+                bc_df = pd.merge(bc_df, bc, how='left')
+                bc_df['selected'] = bc_df['selected'].fillna(False)
+                bc_df['disabled'] = bc_df['disabled'].fillna(False)
 
                 bc_df = bc_df.rename(columns={'buying_controller': 'name'})
 
-
-                buyer_df = pd.merge(buyer_df,buyer,how='left')
-                buyer_df['selected'] =buyer_df['selected'].fillna(False)
-                buyer_df['disabled'] =buyer_df['disabled'].fillna(False)
+                buyer_df = pd.merge(buyer_df, buyer, how='left')
+                buyer_df['selected'] = buyer_df['selected'].fillna(False)
+                buyer_df['disabled'] = buyer_df['disabled'].fillna(False)
                 buyer_df = buyer_df.rename(columns={'buyer': 'name'})
 
-
-                jr_buyer_df = pd.merge(jr_buyer_df,jr_buyer,how='left')
-                jr_buyer_df['selected'] =jr_buyer_df['selected'].fillna(False)
-                jr_buyer_df['disabled'] =jr_buyer_df['disabled'].fillna(False)
+                jr_buyer_df = pd.merge(jr_buyer_df, jr_buyer, how='left')
+                jr_buyer_df['selected'] = jr_buyer_df['selected'].fillna(False)
+                jr_buyer_df['disabled'] = jr_buyer_df['disabled'].fillna(False)
                 jr_buyer_df = jr_buyer_df.rename(columns={'junior_buyer': 'name'})
 
-                psg_df = pd.merge(psg_df,psg,how='left')
-                psg_df['selected'] =psg_df['selected'].fillna(False)
-                psg_df['disabled'] =psg_df['disabled'].fillna(False)
+                psg_df = pd.merge(psg_df, psg, how='left')
+                psg_df['selected'] = psg_df['selected'].fillna(False)
+                psg_df['disabled'] = psg_df['disabled'].fillna(False)
                 psg_df = psg_df.rename(columns={'product_sub_group_description': 'name'})
 
-
-
-                bc_df = bc_df.sort_values(by='name',ascending=True)
+                bc_df = bc_df.sort_values(by='name', ascending=True)
 
                 bc_final = bc_df.to_json(orient='records')
                 bc_final = json.loads(bc_final)
 
-
                 a = {}
-                a['name']='buying_controller'
-                a['items']=bc_final
+                a['name'] = 'buying_controller'
+                a['items'] = bc_final
 
-                buyer_df = buyer_df.sort_values(by='name',ascending=True)
+                buyer_df = buyer_df.sort_values(by='name', ascending=True)
 
                 buyer_final = buyer_df.to_json(orient='records')
                 buyer_final = json.loads(buyer_final)
 
                 b = {}
-                b['name']='buyer'
-                b['items']=buyer_final
+                b['name'] = 'buyer'
+                b['items'] = buyer_final
 
-
-
-                jr_buyer_df = jr_buyer_df.sort_values(by='name',ascending=True)
+                jr_buyer_df = jr_buyer_df.sort_values(by='name', ascending=True)
                 jr_buyer_final = jr_buyer_df.to_json(orient='records')
                 jr_buyer_final = json.loads(jr_buyer_final)
 
                 c = {}
-                c['name']='junior_buyer'
-                c['items']=jr_buyer_final
+                c['name'] = 'junior_buyer'
+                c['items'] = jr_buyer_final
 
-
-                psg_df = psg_df.sort_values(by='name',ascending=True)
+                psg_df = psg_df.sort_values(by='name', ascending=True)
                 psg_final = psg_df.to_json(orient='records')
                 psg_final = json.loads(psg_final)
 
-                
                 d = {}
-                d['name']='product_sub_group_description'
-                d['items']=psg_final
+                d['name'] = 'product_sub_group_description'
+                d['items'] = psg_final
 
                 final = []
                 final.append(a)
@@ -149,127 +142,121 @@ class npdpage_filterdata_new(APIView):
                 final.append(c)
                 final.append(d)
             else:
-                
-                heirarchy = read_frame(pricebucket.objects.all().values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
 
+                heirarchy = read_frame(pricebucket.objects.all().values('buying_controller', 'buyer', 'junior_buyer',
+                                                                        'product_sub_group_description'))
 
                 bc_df = heirarchy[['buying_controller']].drop_duplicates()
                 buyer_df = heirarchy[['buyer']].drop_duplicates()
                 jr_buyer_df = heirarchy[['junior_buyer']].drop_duplicates()
                 psg_df = heirarchy[['product_sub_group_description']].drop_duplicates()
-            
+
                 df = read_frame(pricebucket.objects.filter(**args))
 
                 print("BC ")
-                data ={'buying_controller' : df.buying_controller.unique()}
+                data = {'buying_controller': df.buying_controller.unique()}
                 bc = pd.DataFrame(data)
                 print(len(bc))
-                
+
                 print("Buyer ")
-                data ={'buyer' : df.buyer.unique()}
+                data = {'buyer': df.buyer.unique()}
                 buyer = pd.DataFrame(data)
                 print(len(buyer))
 
                 print("Jr Buyer ")
-                data ={'junior_buyer' : df.junior_buyer.unique()}
+                data = {'junior_buyer': df.junior_buyer.unique()}
                 jr_buyer = pd.DataFrame(data)
                 print(len(jr_buyer))
 
-
                 print("PSG ")
-                data ={'product_sub_group_description' : df.product_sub_group_description.unique()}
+                data = {'product_sub_group_description': df.product_sub_group_description.unique()}
                 psg = pd.DataFrame(data)
                 print(len(psg))
 
-                bc['selected']=True
-                bc['disabled']=False
-                bc_df = pd.merge(bc_df,bc,how='left')
-                bc_df['selected'] =bc_df['selected'].fillna(False)
-                bc_df['disabled'] =bc_df['disabled'].fillna(True)
+                bc['selected'] = True
+                bc['disabled'] = False
+                bc_df = pd.merge(bc_df, bc, how='left')
+                bc_df['selected'] = bc_df['selected'].fillna(False)
+                bc_df['disabled'] = bc_df['disabled'].fillna(True)
                 print(bc_df)
                 bc_df = bc_df.rename(columns={'buying_controller': 'name'})
 
-                if len(buyer)==1:
-                    buyer['selected']=True
-                    buyer['disabled']=False
-                    buyer_df = pd.merge(buyer_df,buyer,how='left')
-                    buyer_df['selected'] =buyer_df['selected'].fillna(False)
-                    buyer_df['disabled'] =buyer_df['disabled'].fillna(True)
+                if len(buyer) == 1:
+                    buyer['selected'] = True
+                    buyer['disabled'] = False
+                    buyer_df = pd.merge(buyer_df, buyer, how='left')
+                    buyer_df['selected'] = buyer_df['selected'].fillna(False)
+                    buyer_df['disabled'] = buyer_df['disabled'].fillna(True)
                     buyer_df = buyer_df.rename(columns={'buyer': 'name'})
                 else:
-                    buyer['selected']=False
-                    buyer['disabled']=False
-                    buyer_df = pd.merge(buyer_df,buyer,how='left')
-                    buyer_df['selected'] =buyer_df['selected'].fillna(False)
-                    buyer_df['disabled'] =buyer_df['disabled'].fillna(True)
+                    buyer['selected'] = False
+                    buyer['disabled'] = False
+                    buyer_df = pd.merge(buyer_df, buyer, how='left')
+                    buyer_df['selected'] = buyer_df['selected'].fillna(False)
+                    buyer_df['disabled'] = buyer_df['disabled'].fillna(True)
                     buyer_df = buyer_df.rename(columns={'buyer': 'name'})
 
-
-                if len(jr_buyer)==1:
-                    jr_buyer['selected']=True
-                    jr_buyer['disabled']=False
-                    jr_buyer_df = pd.merge(jr_buyer_df,jr_buyer,how='left')
-                    jr_buyer_df['selected'] =jr_buyer_df['selected'].fillna(False)
-                    jr_buyer_df['disabled'] =jr_buyer_df['disabled'].fillna(True)
+                if len(jr_buyer) == 1:
+                    jr_buyer['selected'] = True
+                    jr_buyer['disabled'] = False
+                    jr_buyer_df = pd.merge(jr_buyer_df, jr_buyer, how='left')
+                    jr_buyer_df['selected'] = jr_buyer_df['selected'].fillna(False)
+                    jr_buyer_df['disabled'] = jr_buyer_df['disabled'].fillna(True)
                     jr_buyer_df = jr_buyer_df.rename(columns={'junior_buyer': 'name'})
                 else:
-                    jr_buyer['selected']=False
-                    jr_buyer['disabled']=False
-                    jr_buyer_df = pd.merge(jr_buyer_df,jr_buyer,how='left')
-                    jr_buyer_df['selected'] =jr_buyer_df['selected'].fillna(False)
-                    jr_buyer_df['disabled'] =jr_buyer_df['disabled'].fillna(True)
+                    jr_buyer['selected'] = False
+                    jr_buyer['disabled'] = False
+                    jr_buyer_df = pd.merge(jr_buyer_df, jr_buyer, how='left')
+                    jr_buyer_df['selected'] = jr_buyer_df['selected'].fillna(False)
+                    jr_buyer_df['disabled'] = jr_buyer_df['disabled'].fillna(True)
                     jr_buyer_df = jr_buyer_df.rename(columns={'junior_buyer': 'name'})
 
-                if len(psg)==1:
-                    psg['selected']=True
-                    psg['disabled']=False
-                    psg_df = pd.merge(psg_df,psg,how='left')
-                    psg_df['selected'] =psg_df['selected'].fillna(False)
-                    psg_df['disabled'] =psg_df['disabled'].fillna(True)
+                if len(psg) == 1:
+                    psg['selected'] = True
+                    psg['disabled'] = False
+                    psg_df = pd.merge(psg_df, psg, how='left')
+                    psg_df['selected'] = psg_df['selected'].fillna(False)
+                    psg_df['disabled'] = psg_df['disabled'].fillna(True)
                     psg_df = psg_df.rename(columns={'product_sub_group_description': 'name'})
                 else:
-                    psg['selected']=False
-                    psg['disabled']=False
-                    psg_df = pd.merge(psg_df,psg,how='left')
-                    psg_df['selected'] =psg_df['selected'].fillna(False)
-                    psg_df['disabled'] =psg_df['disabled'].fillna(True)
+                    psg['selected'] = False
+                    psg['disabled'] = False
+                    psg_df = pd.merge(psg_df, psg, how='left')
+                    psg_df['selected'] = psg_df['selected'].fillna(False)
+                    psg_df['disabled'] = psg_df['disabled'].fillna(True)
                     psg_df = psg_df.rename(columns={'product_sub_group_description': 'name'})
 
-
-
-                bc_df = bc_df.sort_values(by='name',ascending=True)
+                bc_df = bc_df.sort_values(by='name', ascending=True)
                 bc_final = bc_df.to_json(orient='records')
                 bc_final = json.loads(bc_final)
 
                 a = {}
-                a['name']='buying_controller'
-                a['items']=bc_final
+                a['name'] = 'buying_controller'
+                a['items'] = bc_final
 
-
-                buyer_df = buyer_df.sort_values(by='name',ascending=True)
+                buyer_df = buyer_df.sort_values(by='name', ascending=True)
                 buyer_final = buyer_df.to_json(orient='records')
                 buyer_final = json.loads(buyer_final)
 
                 b = {}
-                b['name']='buyer'
-                b['items']=buyer_final
+                b['name'] = 'buyer'
+                b['items'] = buyer_final
 
-                jr_buyer_df = jr_buyer_df.sort_values(by='name',ascending=True)
+                jr_buyer_df = jr_buyer_df.sort_values(by='name', ascending=True)
                 jr_buyer_final = jr_buyer_df.to_json(orient='records')
                 jr_buyer_final = json.loads(jr_buyer_final)
 
                 c = {}
-                c['name']='junior_buyer'
-                c['items']=jr_buyer_final
+                c['name'] = 'junior_buyer'
+                c['items'] = jr_buyer_final
 
-                psg_df = psg_df.sort_values(by='name',ascending=True)
+                psg_df = psg_df.sort_values(by='name', ascending=True)
                 psg_final = psg_df.to_json(orient='records')
                 psg_final = json.loads(psg_final)
 
-                
                 d = {}
-                d['name']='product_sub_group_description'
-                d['items']=psg_final
+                d['name'] = 'product_sub_group_description'
+                d['items'] = psg_final
 
                 final = []
                 final.append(a)
@@ -277,7 +264,6 @@ class npdpage_filterdata_new(APIView):
                 final.append(c)
                 final.append(d)
 
-        
         return JsonResponse(final, safe=False)
 
 
@@ -296,30 +282,32 @@ class npdpage_outperformance(APIView):
         print(args)
         args.pop('page__iexact', None)
         print("getting session details ")
-        x=request.session
+        x = request.session
         print(x)
-        args.pop('product_sub_group_description__iexact',None)
+        args.pop('product_sub_group_description__iexact', None)
         print(args)
 
-        week={}
-        week["week_flag__iexact"]=args.pop('week_flag__iexact',None)
+        week = {}
+        week["week_flag__iexact"] = args.pop('week_flag__iexact', None)
         print("calculating week")
         print(week)
-        if week["week_flag__iexact"]==None:
+        if week["week_flag__iexact"] == None:
             week = {
                 'week_flag__iexact': 'Latest 13 Weeks'
             }
-        elif week["week_flag__iexact"]=='Latest 26 Weeks': 
+        elif week["week_flag__iexact"] == 'Latest 26 Weeks':
             week = {
                 'week_flag__iexact': 'Latest 13 Weeks'
             }
-            
+
         print(week)
         if not args:
-            df = read_frame(outperformance.objects.filter(**kwargs).filter(**week).order_by('product_sub_group_description'))
+            df = read_frame(
+                outperformance.objects.filter(**kwargs).filter(**week).order_by('product_sub_group_description'))
 
         else:
-            df = read_frame(outperformance.objects.filter(**args).filter(**week).order_by('product_sub_group_description'))
+            df = read_frame(
+                outperformance.objects.filter(**args).filter(**week).order_by('product_sub_group_description'))
 
         df_required = df[['product_sub_group_description', 'tesco_outperformanc_percentage',
                           'tesco_outperformanc_unit_prcnt']]
@@ -356,6 +344,7 @@ class npdpage_outperformance(APIView):
 
         return JsonResponse(output, safe=False)
 
+
 # for pricebucket - chart
 class npdpage_pricebucket(APIView):
     def get(self, request, *args):
@@ -370,9 +359,9 @@ class npdpage_pricebucket(APIView):
         print(args)
         args.pop('page__iexact', None)
 
-        week={}
-        week["week_flag__iexact"]=args.pop('week_flag__iexact',None)
-        if week["week_flag__iexact"]==None:
+        week = {}
+        week["week_flag__iexact"] = args.pop('week_flag__iexact', None)
+        if week["week_flag__iexact"] == None:
             week = {
                 'week_flag__iexact': 'Latest 13 Weeks'
             }
@@ -384,26 +373,26 @@ class npdpage_pricebucket(APIView):
 
         df_required = df[['retailer', 'sku_gravity', 'price_gravity']]
         df_required['minvalue'] = df_required['price_gravity'].str.split('-').str[0]
-        df_required['minvalue']=df_required['minvalue'].astype('float')
+        df_required['minvalue'] = df_required['minvalue'].astype('float')
         df_required = df_required.sort_values(by='minvalue')
-        price_bucket=list(df_required['price_gravity'].unique())
+        price_bucket = list(df_required['price_gravity'].unique())
 
         print(df_required)
         df_required['sku_gravity'] = df_required['sku_gravity'].astype(float)
         comp_g = df_required['retailer'].unique()
-        arr=[]
-        color_comp=[]
-        arr_colors={}
-        arr_colors={
-            "Tesco" : '#F60909',
-            "Lidl" : '#C288D6',
-            "Aldi" : '#B2B2B2',
-            "Asda" : '#7FB256',
-            "Morrisons" : '#896219',
-            "JS" : '#0931F6',
-            "Waitrose" : '#E5F213'
-            }
-        data_dict={}
+        arr = []
+        color_comp = []
+        arr_colors = {}
+        arr_colors = {
+            "Tesco": '#F60909',
+            "Lidl": '#C288D6',
+            "Aldi": '#B2B2B2',
+            "Asda": '#7FB256',
+            "Morrisons": '#896219',
+            "JS": '#0931F6',
+            "Waitrose": '#E5F213'
+        }
+        data_dict = {}
         for i in range(0, len(comp_g)):
             competitor = comp_g[i]
             temp_g = df_required[df_required.retailer == comp_g[i]]
@@ -411,18 +400,19 @@ class npdpage_pricebucket(APIView):
             for j in range(0, len(temp_g)):
                 arr.append(
                     {
-                        
+
                         'sku_gravity': temp_g['sku_gravity'][j],
                         'price_gravity': temp_g['price_gravity'][j],
-                        'id':comp_g[i]
+                        'id': comp_g[i]
                     }
                 )
             color_comp.append(arr_colors[comp_g[i]])
-        data_dict["price_bucket"]=price_bucket
-        data_dict["data"]=arr
-        data_dict["colors"]=color_comp
+        data_dict["price_bucket"] = price_bucket
+        data_dict["data"] = arr
+        data_dict["colors"] = color_comp
 
         return JsonResponse(data_dict, safe=False)
+
 
 # for psgskudistribution - chart
 class npdpage_psgskudistribution(APIView):
@@ -436,19 +426,25 @@ class npdpage_psgskudistribution(APIView):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
         args.pop('page__iexact', None)
-        args.pop('product_sub_group_description__iexact',None)
-        week={}
-        week["week_flag__iexact"]=args.pop('week_flag__iexact',None)
-        if week["week_flag__iexact"]==None:
+        args.pop('product_sub_group_description__iexact', None)
+        week = {}
+        week["week_flag__iexact"] = args.pop('week_flag__iexact', None)
+        if week["week_flag__iexact"] == None:
             week = {
                 'week_flag__iexact': 'Latest 13 Weeks'
             }
 
         if not args:
-            queryset_df = read_frame(pricebucket.objects.filter(**kwargs).filter(**week).values('retailer', 'product_sub_group_description','sku').order_by('retailer','product_sub_group_description').distinct())
+            queryset_df = read_frame(
+                pricebucket.objects.filter(**kwargs).filter(**week).values('retailer', 'product_sub_group_description',
+                                                                           'sku').order_by('retailer',
+                                                                                           'product_sub_group_description').distinct())
 
         else:
-            queryset_df = read_frame(pricebucket.objects.filter(**args).filter(**week).values('retailer', 'product_sub_group_description', 'sku').order_by('retailer','product_sub_group_description').distinct())
+            queryset_df = read_frame(
+                pricebucket.objects.filter(**args).filter(**week).values('retailer', 'product_sub_group_description',
+                                                                         'sku').order_by('retailer',
+                                                                                         'product_sub_group_description').distinct())
 
         queryset_df['sku'] = queryset_df['sku'].astype('float')
         psg_distinct = queryset_df['product_sub_group_description'].unique()
@@ -471,17 +467,18 @@ class npdpage_psgskudistribution(APIView):
             final_data.append(dict_psg_data)
 
         retailers_distinct = list(queryset_df['retailer'].unique())
-        colors_list = ['#B2B2B2','#7FB256','#0931F6','#C288D6','#896219','#F60909','#E5F213']
+        colors_list = ['#B2B2B2', '#7FB256', '#0931F6', '#C288D6', '#896219', '#F60909', '#E5F213']
         label = {}
         label = {
             "labels": retailers_distinct
         }
         data = {"data": final_data}
-        colors={"colors":colors_list}
+        colors = {"colors": colors_list}
         label.update(data)
         label.update(colors)
 
         return JsonResponse(label, safe=False)
+
 
 # for unmatchedprod - table
 class npdpage_unmatchedprod(generic.TemplateView):
@@ -495,19 +492,19 @@ class npdpage_unmatchedprod(generic.TemplateView):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
 
-        week={}
-        week["week_flag__iexact"]=args.pop('week_flag__iexact',None)
-        if week["week_flag__iexact"]==None:
-                        week = {
-                                        'week_flag__iexact': 'Latest 13 Weeks'
-                        }
+        week = {}
+        week["week_flag__iexact"] = args.pop('week_flag__iexact', None)
+        if week["week_flag__iexact"] == None:
+            week = {
+                'week_flag__iexact': 'Latest 13 Weeks'
+            }
 
         #### To include pagination feature
         page = 1
         try:
-                        page = int(args.get('page__iexact'))
+            page = int(args.get('page__iexact'))
         except:
-                        page = 1
+            page = 1
 
         args.pop('page__iexact', None)
         # start_row = int(args.pop('startRow__iexact', 0))
@@ -517,27 +514,33 @@ class npdpage_unmatchedprod(generic.TemplateView):
         search = args.pop('search__iexact', '')
         print(args)
         if not args:
-                        queryset = unmatchedprod.objects.filter(**kwargs).filter(**week).filter(retailer__icontains=search)#[start_row:end_row]
+            queryset = unmatchedprod.objects.filter(**kwargs).filter(**week).filter(
+                retailer__icontains=search)  # [start_row:end_row]
         else:
-                        queryset = unmatchedprod.objects.filter(**args).filter(**week).filter(retailer__icontains=search)#[start_row:end_row]
+            queryset = unmatchedprod.objects.filter(**args).filter(**week).filter(
+                retailer__icontains=search)  # [start_row:end_row]
 
         p = Paginator(queryset, 5)
 
         serializer_class = unmatchedprodSerializer(p.page(page), many=True)
         # return JsonResponse(serializer_class.data, safe=False)
-        return JsonResponse({'pagination_count': p.num_pages,'page': page,'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
+        return JsonResponse(
+            {'pagination_count': p.num_pages, 'page': page, 'start_index': p.page(page).start_index(), 'count': p.count,
+             'end_index': p.page(page).end_index(), 'table': serializer_class.data}, safe=False)
 
 
 ## Negotiation Filters
-def col_distinct(kwargs, col_name):
+def col_distinct(kwargs, col_name, user_buyer):
+    kwargs['buyer'] = user_buyer
     queryset = nego_ads_drf.objects.filter(**kwargs).values(col_name).order_by(col_name).distinct()
     base_product_number_list = [k.get(col_name) for k in queryset]
     return base_product_number_list
 
 
-def make_json(sent_req):
+def make_json(sent_req, user_buyer):
+
     print('*********************\n       FILTERS2 \n*********************')
-    cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
+    cols = ['buying_controller', 'buyer', 'junior_buyer', 'product_sub_group_description', 'need_state', 'brand_name']
 
     # find lowest element of cols
     lowest = 0
@@ -572,14 +575,14 @@ def make_json(sent_req):
     for col_name in cols:
         print('\n********* \n' + col_name + '\n*********')
         # print('sent_req.get(col_name):', sent_req.get(col_name))
-        col_unique_list = col_distinct({}, col_name)
+        col_unique_list = col_distinct({}, col_name, user_buyer)
         col_unique_list_name.append({'name': col_name,
                                      'unique_elements': col_unique_list})
         col_unique_list_name_obj[col_name] = col_unique_list
         # args sent as url params
         kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
 
-        category_of_sent_obj_list = col_distinct(kwargs2, col_name)
+        category_of_sent_obj_list = col_distinct(kwargs2, col_name, user_buyer)
         print(len(category_of_sent_obj_list))
         sent_obj_category_list = []
 
@@ -661,8 +664,16 @@ def make_json(sent_req):
                             'id': i['id']})
     return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
 
+
 class filters_nego(APIView):
     def get(self, request):
+        regex = re.compile('^HTTP_')
+        auth_token = dict((regex.sub('', header), value) for (header, value)
+                          in request.META.items() if header.startswith('HTTP'))
+        headers_incoming = auth_token['AUTHORIZATION']
+        underscore_index = headers_incoming.index('___')
+        user_auth_token = headers_incoming[:40]
+        user_buyer = headers_incoming[43:]
         print(request.GET)
         obj = {}
         get_keys = request.GET.keys()
@@ -670,14 +681,14 @@ class filters_nego(APIView):
             # print(request.GET.getlist(i))
             obj[i] = request.GET.getlist(i)
         # print(obj)
-        return make_json(obj)
+        return make_json(obj, user_buyer)
+
 
 ##Negotiation
 
-#for bubble chart
+# for bubble chart
 class nego_bubble_chart(APIView):
     def get(self, request, *args):
-
 
         kwargs = {
             'store_type': 'Main Estate'
@@ -685,9 +696,9 @@ class nego_bubble_chart(APIView):
 
         args = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
         print(args)
-        args.pop('page__in',None)
-        w=args.pop('time_period__in',None)
-        week={}
+        args.pop('page__in', None)
+        w = args.pop('time_period__in', None)
+        week = {}
         if not w:
             week = {'time_period__iexact': 'Last 13 Weeks'}
         else:
@@ -696,17 +707,21 @@ class nego_bubble_chart(APIView):
         print(args)
 
         if not args:
-            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
+            df = read_frame(
+                nego_ads_drf.objects.filter(**week).filter(**kwargs).values('base_product_number', 'long_description',
+                                                                            'rate_of_sale', 'cps_quartile',
+                                                                            'pps_quartile', 'brand_indicator'))
 
         else:
-            df = read_frame(nego_ads_drf.objects.filter(**args).filter(**week).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
-
+            df = read_frame(
+                nego_ads_drf.objects.filter(**args).filter(**week).values('base_product_number', 'long_description',
+                                                                          'rate_of_sale', 'cps_quartile',
+                                                                          'pps_quartile', 'brand_indicator'))
 
         df["rate_of_sale"] = df["rate_of_sale"].astype('float')
         df["cps_quartile"] = df["cps_quartile"].astype('float')
         df["pps_quartile"] = df["pps_quartile"].astype('float')
         df["base_product_number"] = df["base_product_number"].astype('float')
-
 
         final_bubble_list = []
         final_bubble = []
@@ -716,15 +731,16 @@ class nego_bubble_chart(APIView):
                 "base_product_number": df["base_product_number"][i],
                 "long_description": df["long_description"][i],
                 "rate_of_sale": df["rate_of_sale"][i],
-                "cps" : df["cps_quartile"][i],
-                "pps" : df["pps_quartile"][i],
-                "brand_ind" : df["brand_indicator"][i]
+                "cps": df["cps_quartile"][i],
+                "pps": df["pps_quartile"][i],
+                "brand_ind": df["brand_indicator"][i]
 
             }
             final_bubble.append(bubble_list)
         return JsonResponse(final_bubble, safe=False)
 
-#for table 
+
+# for table
 class nego_bubble_table(APIView):
     def get(self, request, *args):
 
@@ -734,8 +750,8 @@ class nego_bubble_table(APIView):
         args = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
         print(args)
         ## for week tab
-        week={}
-        w=args.pop('time_period__in',None)
+        week = {}
+        w = args.pop('time_period__in', None)
         if not w:
             week = {'time_period__iexact': 'Last 13 Weeks'}
         else:
@@ -747,33 +763,34 @@ class nego_bubble_table(APIView):
         try:
             page = int(args.get('page__in')[0])
             print(page)
-                        
+
         except:
             page = 1
         print(page)
         args.pop('page__in', None)
 
         #### To include search feature. Applicable for only long desc
-        s = args.pop('search__in',[''])
+        s = args.pop('search__in', [''])
         search = s[0]
         print(search)
 
-        if not args :
+        if not args:
             queryset = nego_ads_drf.objects.filter(**week).filter(**kwargs).filter(long_description__icontains=search)
 
         else:
             queryset = nego_ads_drf.objects.filter(**args).filter(**week).filter(long_description__icontains=search)
         p = Paginator(queryset, 8)
-        
+
         serializer_class = negochartsSerializer(p.page(page), many=True)
-        return JsonResponse({'pagination_count': p.num_pages,'page': page, 'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
+        return JsonResponse(
+            {'pagination_count': p.num_pages, 'page': page, 'start_index': p.page(page).start_index(), 'count': p.count,
+             'end_index': p.page(page).end_index(), 'table': serializer_class.data}, safe=False)
 
 
-## NPD Second Half 
+## NPD Second Half
 ## NPD IMPACT FILTERS
 class npdimpactpage_filterdata(APIView):
     def get(self, request, format=None):
-
 
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
 
@@ -785,144 +802,127 @@ class npdimpactpage_filterdata(APIView):
         # print(brand_id)
         measure_id = args.get('measure_type__iexact')
         # print(measure_id)
-        till_roll_id= args.get('till_roll_description__iexact')
+        till_roll_id = args.get('till_roll_description__iexact')
         package_id = args.get('package_type__iexact')
         merch_name = args.get('merchandise_group_code_description__iexact')
         range_name = args.get('range_space_break_code__iexact')
         supplier_name = args.get('parent_supplier__iexact')
 
-
         kwargs = {
-                    'buying_controller__iexact': bc_name,
-                    'buyer__iexact' : buyer_name,
-                    'junior_buyer__iexact': jr_buyer_name,
-                    'product_sub_group_description__iexact': psg_name,
-                    }
+            'buying_controller__iexact': bc_name,
+            'buyer__iexact': buyer_name,
+            'junior_buyer__iexact': jr_buyer_name,
+            'product_sub_group_description__iexact': psg_name,
+        }
 
         kwargs = dict(filter(lambda item: item[1] is not None, kwargs.items()))
 
         kwargs_brand = {
-                        'buying_controller__iexact': bc_name,
-                        'brand_name__iexact' : brand_id,
+            'buying_controller__iexact': bc_name,
+            'brand_name__iexact': brand_id,
 
-                        }
+        }
 
         kwargs_brand = dict(filter(lambda item: item[1] is not None, kwargs_brand.items()))
 
         kwargs_measure = {
-                        'buying_controller__iexact': bc_name,
-                        'measure_type__iexact' : measure_id,
+            'buying_controller__iexact': bc_name,
+            'measure_type__iexact': measure_id,
 
-                        }
+        }
 
         kwargs_measure = dict(filter(lambda item: item[1] is not None, kwargs_measure.items()))
 
         kwargs_till_roll = {
-                            'buying_controller__iexact': bc_name,
-                            'till_roll_description__iexact' : till_roll_id,
+            'buying_controller__iexact': bc_name,
+            'till_roll_description__iexact': till_roll_id,
 
-                            }
+        }
 
         kwargs_till_roll = dict(filter(lambda item: item[1] is not None, kwargs_till_roll.items()))
         print(kwargs_till_roll)
 
         kwargs_package = {
-                        'buying_controller__iexact': bc_name,
-                        'package_type__iexact' : package_id,
-                        }
-
+            'buying_controller__iexact': bc_name,
+            'package_type__iexact': package_id,
+        }
 
         kwargs_package = dict(filter(lambda item: item[1] is not None, kwargs_package.items()))
 
         kwargs_temp = {
-                    'buying_controller__iexact': bc_name,
-                    'merchandise_group_code_description__iexact': merch_name,
-                    'range_space_break_code__iexact': range_name,
-                    }
+            'buying_controller__iexact': bc_name,
+            'merchandise_group_code_description__iexact': merch_name,
+            'range_space_break_code__iexact': range_name,
+        }
         kwargs_temp = dict(filter(lambda item: item[1] is not None, kwargs_temp.items()))
 
-
         kwargs_supplier = {
-                            'buying_controller__iexact': bc_name,
-                            'parent_supplier__iexact': supplier_name,
-            
-                            }
-        kwargs_supplier = dict(filter(lambda item: item[1] is not None, kwargs_supplier.items()))                            
+            'buying_controller__iexact': bc_name,
+            'parent_supplier__iexact': supplier_name,
 
-
-
-
-
+        }
+        kwargs_supplier = dict(filter(lambda item: item[1] is not None, kwargs_supplier.items()))
 
         if not args:
 
-            heirarchy = read_frame(input_npd.objects.filter(**kwargs).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
-                            'till_roll_description','measure_type'))
-
-
+            heirarchy = read_frame(
+                input_npd.objects.filter(**kwargs).values('buying_controller', 'buyer', 'junior_buyer',
+                                                          'product_sub_group_description', 'brand_name', 'package_type',
+                                                          'till_roll_description', 'measure_type'))
 
             bc_df = heirarchy[['buying_controller']].drop_duplicates()
             buyer_df = heirarchy[['buyer']].drop_duplicates()
             jr_buyer_df = heirarchy[['junior_buyer']].drop_duplicates()
             psg_df = heirarchy[['product_sub_group_description']].drop_duplicates()
 
-
-            bc_df['selected'] =False
-            bc_df['disabled'] =False
+            bc_df['selected'] = False
+            bc_df['disabled'] = False
             print(bc_df)
             bc_df = bc_df.rename(columns={'buying_controller': 'name'})
 
-            buyer_df['selected'] =False
-            buyer_df['disabled'] =False
+            buyer_df['selected'] = False
+            buyer_df['disabled'] = False
             buyer_df = buyer_df.rename(columns={'buyer': 'name'})
 
-
-
-            jr_buyer_df['selected'] =False
-            jr_buyer_df['disabled'] =False
+            jr_buyer_df['selected'] = False
+            jr_buyer_df['disabled'] = False
             jr_buyer_df = jr_buyer_df.rename(columns={'junior_buyer': 'name'})
 
-
-            psg_df['selected'] =False
-            psg_df['disabled'] =False
+            psg_df['selected'] = False
+            psg_df['disabled'] = False
             psg_df = psg_df.rename(columns={'product_sub_group_description': 'name'})
 
-
-
-            bc_df = bc_df.sort_values(by='name',ascending=True)
+            bc_df = bc_df.sort_values(by='name', ascending=True)
             bc_final = bc_df.to_json(orient='records')
             bc_final = json.loads(bc_final)
 
-
             a = {}
-            a['name']='buying_controller'
-            a['items']=bc_final
+            a['name'] = 'buying_controller'
+            a['items'] = bc_final
 
-            buyer_df = buyer_df.sort_values(by='name',ascending=True)
+            buyer_df = buyer_df.sort_values(by='name', ascending=True)
             buyer_final = buyer_df.to_json(orient='records')
             buyer_final = json.loads(buyer_final)
 
             b = {}
-            b['name']='buyer'
-            b['items']=buyer_final
+            b['name'] = 'buyer'
+            b['items'] = buyer_final
 
-            jr_buyer_df = jr_buyer_df.sort_values(by='name',ascending=True)
+            jr_buyer_df = jr_buyer_df.sort_values(by='name', ascending=True)
             jr_buyer_final = jr_buyer_df.to_json(orient='records')
             jr_buyer_final = json.loads(jr_buyer_final)
 
             c = {}
-            c['name']='junior_buyer'
-            c['items']=jr_buyer_final
+            c['name'] = 'junior_buyer'
+            c['items'] = jr_buyer_final
 
-            psg_df = psg_df.sort_values(by='name',ascending=True)
+            psg_df = psg_df.sort_values(by='name', ascending=True)
             psg_final = psg_df.to_json(orient='records')
             psg_final = json.loads(psg_final)
 
-            
             d = {}
-            d['name']='product_sub_group_description'
-            d['items']=psg_final
-
+            d['name'] = 'product_sub_group_description'
+            d['items'] = psg_final
 
             final_ph = []
             final_ph.append(a)
@@ -930,22 +930,25 @@ class npdimpactpage_filterdata(APIView):
             final_ph.append(c)
             final_ph.append(d)
             final = {}
-            final["product_hierarchy"] = final_ph                            
+            final["product_hierarchy"] = final_ph
         else:
 
             df = read_frame(input_npd.objects.filter(**kwargs))
 
-            hh = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
-                            'till_roll_description','measure_type'))
+            hh = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()).values(
+                'buying_controller', 'buyer', 'junior_buyer', 'product_sub_group_description', 'brand_name',
+                'package_type',
+                'till_roll_description', 'measure_type'))
 
             # heirarchy = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
             #             'till_roll_description','measure_type'))
             merch_range_df = read_frame(merch_range.objects.filter(buying_controller__in=df.buying_controller.unique()))
 
-            supplier_df = read_frame(npd_supplier_ads.objects.filter(buying_controller__in=df.buying_controller.unique()))
-            #print(df.buying_controller.unique())
+            supplier_df = read_frame(
+                npd_supplier_ads.objects.filter(buying_controller__in=df.buying_controller.unique()))
+            # print(df.buying_controller.unique())
             print(len(supplier_df))
-            #merch_range = pd.read_csv('merch_range.csv'
+            # merch_range = pd.read_csv('merch_range.csv'
 
 
             bc_df = hh[['buying_controller']].drop_duplicates()
@@ -960,381 +963,326 @@ class npdimpactpage_filterdata(APIView):
             range_class_df = merch_range_df[['range_space_break_code']].drop_duplicates()
             supplier_df = supplier_df[['parent_supplier']].drop_duplicates()
 
-            
             df_temp = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()))
 
             df_brand_id = read_frame(input_npd.objects.filter(**kwargs_brand).values('brand_name'))
 
             df_measure_id = read_frame(input_npd.objects.filter(**kwargs_measure).values('measure_type'))
-            
-            df_till_roll_id = read_frame(input_npd.objects.filter(**kwargs_till_roll).values('till_roll_description'))
-      
 
+            df_till_roll_id = read_frame(input_npd.objects.filter(**kwargs_till_roll).values('till_roll_description'))
 
             df_package_id = read_frame(input_npd.objects.filter(**kwargs_package).values('package_type'))
 
-            df_merch_range =read_frame(merch_range.objects.filter(**kwargs_temp).values('buying_controller','merchandise_group_code_description','range_space_break_code'))
-            
-            df_supplier_id = read_frame(npd_supplier_ads.objects.filter(**kwargs_supplier).values('parent_supplier'))
+            df_merch_range = read_frame(merch_range.objects.filter(**kwargs_temp).values('buying_controller',
+                                                                                         'merchandise_group_code_description',
+                                                                                         'range_space_break_code'))
 
+            df_supplier_id = read_frame(npd_supplier_ads.objects.filter(**kwargs_supplier).values('parent_supplier'))
 
             print("######################")
             print(len(df_merch_range))
 
             print("BC ")
-            data ={'buying_controller' : df.buying_controller.unique()}
+            data = {'buying_controller': df.buying_controller.unique()}
             bc = pd.DataFrame(data)
             print(len(bc))
-            
+
             print("Buyer ")
-            data ={'buyer' : df.buyer.unique()}
+            data = {'buyer': df.buyer.unique()}
             buyer = pd.DataFrame(data)
             print(len(buyer))
 
             print("Jr Buyer ")
-            data ={'junior_buyer' : df.junior_buyer.unique()}
+            data = {'junior_buyer': df.junior_buyer.unique()}
             jr_buyer = pd.DataFrame(data)
             print(len(jr_buyer))
 
-
             print("PSG ")
-            data ={'product_sub_group_description' : df.product_sub_group_description.unique()}
+            data = {'product_sub_group_description': df.product_sub_group_description.unique()}
             psg = pd.DataFrame(data)
             print(len(psg))
 
             print("Supplier ")
-            data ={'parent_supplier' : df_supplier_id.parent_supplier.unique()}
+            data = {'parent_supplier': df_supplier_id.parent_supplier.unique()}
             supplier = pd.DataFrame(data)
             print(len(supplier))
 
-
-
-
             print("Brand NaME ")
-            data ={'brand_name' : df_brand_id.brand_name.unique()}
+            data = {'brand_name': df_brand_id.brand_name.unique()}
             brand = pd.DataFrame(data)
             print(len(brand))
 
-
             print("package type ")
-            data ={'package_type' : df_package_id.package_type.unique()}
+            data = {'package_type': df_package_id.package_type.unique()}
             package = pd.DataFrame(data)
             print(len(package))
 
-
             print("measure type ")
-            data ={'measure_type' : df_measure_id.measure_type.unique()}
+            data = {'measure_type': df_measure_id.measure_type.unique()}
             measure = pd.DataFrame(data)
             print(len(measure))
 
-
             print("till roll ")
-            data ={'till_roll_description' : df_till_roll_id.till_roll_description.unique()}
+            data = {'till_roll_description': df_till_roll_id.till_roll_description.unique()}
             till_roll = pd.DataFrame(data)
             print(len(till_roll))
 
-
-
             print("merch_grp ")
-            data ={'merchandise_group_code_description' : df_merch_range.merchandise_group_code_description.unique()}
+            data = {'merchandise_group_code_description': df_merch_range.merchandise_group_code_description.unique()}
             merch_grp = pd.DataFrame(data)
             print(len(merch_grp))
 
-
-
             print("range_class")
-            data ={'range_space_break_code' : df_merch_range.range_space_break_code.unique()}
+            data = {'range_space_break_code': df_merch_range.range_space_break_code.unique()}
             range_class = pd.DataFrame(data)
             print(len(range_class))
 
-
-
-            bc['selected']=True
-            bc['disabled']=False
-            bc_df = pd.merge(bc_df,bc,how='left')
-            bc_df['selected'] =bc_df['selected'].fillna(False)
-            bc_df['disabled'] =bc_df['disabled'].fillna(True)
+            bc['selected'] = True
+            bc['disabled'] = False
+            bc_df = pd.merge(bc_df, bc, how='left')
+            bc_df['selected'] = bc_df['selected'].fillna(False)
+            bc_df['disabled'] = bc_df['disabled'].fillna(True)
             print(bc_df)
             bc_df = bc_df.rename(columns={'buying_controller': 'name'})
 
-            if len(buyer)==1:
-                buyer['selected']=True
-                buyer['disabled']=False
-                buyer_df = pd.merge(buyer_df,buyer,how='left')
-                buyer_df['selected'] =buyer_df['selected'].fillna(False)
-                buyer_df['disabled'] =buyer_df['disabled'].fillna(True)
+            if len(buyer) == 1:
+                buyer['selected'] = True
+                buyer['disabled'] = False
+                buyer_df = pd.merge(buyer_df, buyer, how='left')
+                buyer_df['selected'] = buyer_df['selected'].fillna(False)
+                buyer_df['disabled'] = buyer_df['disabled'].fillna(True)
                 buyer_df = buyer_df.rename(columns={'buyer': 'name'})
             else:
-                buyer['selected']=False
-                buyer['disabled']=False
-                buyer_df = pd.merge(buyer_df,buyer,how='left')
-                buyer_df['selected'] =buyer_df['selected'].fillna(False)
-                buyer_df['disabled'] =buyer_df['disabled'].fillna(True)
+                buyer['selected'] = False
+                buyer['disabled'] = False
+                buyer_df = pd.merge(buyer_df, buyer, how='left')
+                buyer_df['selected'] = buyer_df['selected'].fillna(False)
+                buyer_df['disabled'] = buyer_df['disabled'].fillna(True)
                 buyer_df = buyer_df.rename(columns={'buyer': 'name'})
 
-
-            if len(jr_buyer)==1:
-                jr_buyer['selected']=True
-                jr_buyer['disabled']=False
-                jr_buyer_df = pd.merge(jr_buyer_df,jr_buyer,how='left')
-                jr_buyer_df['selected'] =jr_buyer_df['selected'].fillna(False)
-                jr_buyer_df['disabled'] =jr_buyer_df['disabled'].fillna(True)
+            if len(jr_buyer) == 1:
+                jr_buyer['selected'] = True
+                jr_buyer['disabled'] = False
+                jr_buyer_df = pd.merge(jr_buyer_df, jr_buyer, how='left')
+                jr_buyer_df['selected'] = jr_buyer_df['selected'].fillna(False)
+                jr_buyer_df['disabled'] = jr_buyer_df['disabled'].fillna(True)
                 jr_buyer_df = jr_buyer_df.rename(columns={'junior_buyer': 'name'})
             else:
-                jr_buyer['selected']=False
-                jr_buyer['disabled']=False
-                jr_buyer_df = pd.merge(jr_buyer_df,jr_buyer,how='left')
-                jr_buyer_df['selected'] =jr_buyer_df['selected'].fillna(False)
-                jr_buyer_df['disabled'] =jr_buyer_df['disabled'].fillna(True)
+                jr_buyer['selected'] = False
+                jr_buyer['disabled'] = False
+                jr_buyer_df = pd.merge(jr_buyer_df, jr_buyer, how='left')
+                jr_buyer_df['selected'] = jr_buyer_df['selected'].fillna(False)
+                jr_buyer_df['disabled'] = jr_buyer_df['disabled'].fillna(True)
                 jr_buyer_df = jr_buyer_df.rename(columns={'junior_buyer': 'name'})
 
-
-
-            if len(psg)==1:
-                psg['selected']=True
-                psg['disabled']=False
-                psg_df = pd.merge(psg_df,psg,how='left')
-                psg_df['selected'] =psg_df['selected'].fillna(False)
-                psg_df['disabled'] =psg_df['disabled'].fillna(True)
+            if len(psg) == 1:
+                psg['selected'] = True
+                psg['disabled'] = False
+                psg_df = pd.merge(psg_df, psg, how='left')
+                psg_df['selected'] = psg_df['selected'].fillna(False)
+                psg_df['disabled'] = psg_df['disabled'].fillna(True)
                 psg_df = psg_df.rename(columns={'product_sub_group_description': 'name'})
             else:
-                psg['selected']=False
-                psg['disabled']=False
-                psg_df = pd.merge(psg_df,psg,how='left')
-                psg_df['selected'] =psg_df['selected'].fillna(False)
-                psg_df['disabled'] =psg_df['disabled'].fillna(True)
+                psg['selected'] = False
+                psg['disabled'] = False
+                psg_df = pd.merge(psg_df, psg, how='left')
+                psg_df['selected'] = psg_df['selected'].fillna(False)
+                psg_df['disabled'] = psg_df['disabled'].fillna(True)
                 psg_df = psg_df.rename(columns={'product_sub_group_description': 'name'})
 
-
-
-            if len(supplier)==1:
-                supplier['selected']=True
-                supplier['disabled']=False
-                supplier_df = pd.merge(supplier_df,supplier,how='left')
-                supplier_df['selected'] =supplier_df['selected'].fillna(False)
-                supplier_df['disabled'] =supplier_df['disabled'].fillna(True)
+            if len(supplier) == 1:
+                supplier['selected'] = True
+                supplier['disabled'] = False
+                supplier_df = pd.merge(supplier_df, supplier, how='left')
+                supplier_df['selected'] = supplier_df['selected'].fillna(False)
+                supplier_df['disabled'] = supplier_df['disabled'].fillna(True)
                 supplier_df = supplier_df.rename(columns={'parent_supplier': 'name'})
             else:
-                supplier['selected']=False
-                supplier['disabled']=False
-                supplier_df = pd.merge(supplier_df,supplier,how='left')
-                supplier_df['selected'] =supplier_df['selected'].fillna(False)
-                supplier_df['disabled'] =supplier_df['disabled'].fillna(True)
+                supplier['selected'] = False
+                supplier['disabled'] = False
+                supplier_df = pd.merge(supplier_df, supplier, how='left')
+                supplier_df['selected'] = supplier_df['selected'].fillna(False)
+                supplier_df['disabled'] = supplier_df['disabled'].fillna(True)
                 supplier_df = supplier_df.rename(columns={'parent_supplier': 'name'})
 
-
-
-            if len(brand)==1:
-                brand['selected']=True
-                brand['disabled']=False
-                brand_df = pd.merge(brand_df,brand,how='left')
-                brand_df['selected'] =brand_df['selected'].fillna(False)
-                brand_df['disabled'] =brand_df['disabled'].fillna(True)
+            if len(brand) == 1:
+                brand['selected'] = True
+                brand['disabled'] = False
+                brand_df = pd.merge(brand_df, brand, how='left')
+                brand_df['selected'] = brand_df['selected'].fillna(False)
+                brand_df['disabled'] = brand_df['disabled'].fillna(True)
                 brand_df = brand_df.rename(columns={'brand_name': 'name'})
             else:
-                brand['selected']=False
-                brand['disabled']=False
-                brand_df = pd.merge(brand_df,brand,how='left')
-                brand_df['selected'] =brand_df['selected'].fillna(False)
-                brand_df['disabled'] =brand_df['disabled'].fillna(True)
+                brand['selected'] = False
+                brand['disabled'] = False
+                brand_df = pd.merge(brand_df, brand, how='left')
+                brand_df['selected'] = brand_df['selected'].fillna(False)
+                brand_df['disabled'] = brand_df['disabled'].fillna(True)
                 brand_df = brand_df.rename(columns={'brand_name': 'name'})
 
-            if len(package)==1:
-                package['selected']=True
-                package['disabled']=False
-                package_df = pd.merge(package_df,package,how='left')
-                package_df['selected'] =package_df['selected'].fillna(False)
-                package_df['disabled'] =package_df['disabled'].fillna(True)
+            if len(package) == 1:
+                package['selected'] = True
+                package['disabled'] = False
+                package_df = pd.merge(package_df, package, how='left')
+                package_df['selected'] = package_df['selected'].fillna(False)
+                package_df['disabled'] = package_df['disabled'].fillna(True)
                 package_df = package_df.rename(columns={'package_type': 'name'})
             else:
-                package['selected']=False
-                package['disabled']=False
-                package_df = pd.merge(package_df,package,how='left')
-                package_df['selected'] =package_df['selected'].fillna(False)
-                package_df['disabled'] =package_df['disabled'].fillna(True)
+                package['selected'] = False
+                package['disabled'] = False
+                package_df = pd.merge(package_df, package, how='left')
+                package_df['selected'] = package_df['selected'].fillna(False)
+                package_df['disabled'] = package_df['disabled'].fillna(True)
                 package_df = package_df.rename(columns={'package_type': 'name'})
 
-
-
-            if len(measure)==1:
+            if len(measure) == 1:
                 print('yes')
-                measure['selected']=True
-                measure['disabled']=False
-                measure_df = pd.merge(measure_df,measure,how='left')
-                measure_df['selected'] =measure_df['selected'].fillna(False)
-                measure_df['disabled'] =measure_df['disabled'].fillna(True)
+                measure['selected'] = True
+                measure['disabled'] = False
+                measure_df = pd.merge(measure_df, measure, how='left')
+                measure_df['selected'] = measure_df['selected'].fillna(False)
+                measure_df['disabled'] = measure_df['disabled'].fillna(True)
                 measure_df = measure_df.rename(columns={'measure_type': 'name'})
             else:
-                measure['selected']=False
-                measure['disabled']=False
-                measure_df = pd.merge(measure_df,measure,how='left')
-                measure_df['selected'] =measure_df['selected'].fillna(False)
-                measure_df['disabled'] =measure_df['disabled'].fillna(True)
+                measure['selected'] = False
+                measure['disabled'] = False
+                measure_df = pd.merge(measure_df, measure, how='left')
+                measure_df['selected'] = measure_df['selected'].fillna(False)
+                measure_df['disabled'] = measure_df['disabled'].fillna(True)
                 measure_df = measure_df.rename(columns={'measure_type': 'name'})
 
-
-            if len(till_roll)==1:
-                till_roll['selected']=True
-                till_roll['disabled']=False
-                till_roll_df = pd.merge(till_roll_df,till_roll,how='left')
-                till_roll_df['selected'] =till_roll_df['selected'].fillna(False)
-                till_roll_df['disabled'] =till_roll_df['disabled'].fillna(True)
+            if len(till_roll) == 1:
+                till_roll['selected'] = True
+                till_roll['disabled'] = False
+                till_roll_df = pd.merge(till_roll_df, till_roll, how='left')
+                till_roll_df['selected'] = till_roll_df['selected'].fillna(False)
+                till_roll_df['disabled'] = till_roll_df['disabled'].fillna(True)
                 till_roll_df = till_roll_df.rename(columns={'till_roll_description': 'name'})
             else:
-                till_roll['selected']=False
-                till_roll['disabled']=False
-                till_roll_df = pd.merge(till_roll_df,till_roll,how='left')
-                till_roll_df['selected'] =till_roll_df['selected'].fillna(False)
-                till_roll_df['disabled'] =till_roll_df['disabled'].fillna(True)
+                till_roll['selected'] = False
+                till_roll['disabled'] = False
+                till_roll_df = pd.merge(till_roll_df, till_roll, how='left')
+                till_roll_df['selected'] = till_roll_df['selected'].fillna(False)
+                till_roll_df['disabled'] = till_roll_df['disabled'].fillna(True)
                 till_roll_df = till_roll_df.rename(columns={'till_roll_description': 'name'})
 
-
-            if len(merch_grp)==1:
-                merch_grp['selected']=True
-                merch_grp['disabled']=False
-                merch_grp_df = pd.merge(merch_grp_df,merch_grp,how='left')
-                merch_grp_df['selected'] =merch_grp_df['selected'].fillna(False)
-                merch_grp_df['disabled'] =merch_grp_df['disabled'].fillna(True)
+            if len(merch_grp) == 1:
+                merch_grp['selected'] = True
+                merch_grp['disabled'] = False
+                merch_grp_df = pd.merge(merch_grp_df, merch_grp, how='left')
+                merch_grp_df['selected'] = merch_grp_df['selected'].fillna(False)
+                merch_grp_df['disabled'] = merch_grp_df['disabled'].fillna(True)
                 merch_grp_df = merch_grp_df.rename(columns={'merchandise_group_code_description': 'name'})
             else:
-                merch_grp['selected']=False
-                merch_grp['disabled']=False
-                merch_grp_df = pd.merge(merch_grp_df,merch_grp,how='left')
-                merch_grp_df['selected'] =merch_grp_df['selected'].fillna(False)
-                merch_grp_df['disabled'] =merch_grp_df['disabled'].fillna(True)
+                merch_grp['selected'] = False
+                merch_grp['disabled'] = False
+                merch_grp_df = pd.merge(merch_grp_df, merch_grp, how='left')
+                merch_grp_df['selected'] = merch_grp_df['selected'].fillna(False)
+                merch_grp_df['disabled'] = merch_grp_df['disabled'].fillna(True)
                 merch_grp_df = merch_grp_df.rename(columns={'merchandise_group_code_description': 'name'})
 
-
-
-            if len(range_class)==1:
-                range_class['selected']=True
-                range_class['disabled']=False
-                range_class_df = pd.merge(range_class_df,range_class,how='left')
-                range_class_df['selected'] =range_class_df['selected'].fillna(False)
-                range_class_df['disabled'] =range_class_df['disabled'].fillna(True)
+            if len(range_class) == 1:
+                range_class['selected'] = True
+                range_class['disabled'] = False
+                range_class_df = pd.merge(range_class_df, range_class, how='left')
+                range_class_df['selected'] = range_class_df['selected'].fillna(False)
+                range_class_df['disabled'] = range_class_df['disabled'].fillna(True)
                 range_class_df = range_class_df.rename(columns={'range_space_break_code': 'name'})
             else:
-                range_class['selected']=False
-                range_class['disabled']=False
-                range_class_df = pd.merge(range_class_df,range_class,how='left')
-                range_class_df['selected'] =range_class_df['selected'].fillna(False)
-                range_class_df['disabled'] =range_class_df['disabled'].fillna(True)
+                range_class['selected'] = False
+                range_class['disabled'] = False
+                range_class_df = pd.merge(range_class_df, range_class, how='left')
+                range_class_df['selected'] = range_class_df['selected'].fillna(False)
+                range_class_df['disabled'] = range_class_df['disabled'].fillna(True)
                 range_class_df = range_class_df.rename(columns={'range_space_break_code': 'name'})
 
-
-
-
-            bc_df = bc_df.sort_values(by='name',ascending=True)
+            bc_df = bc_df.sort_values(by='name', ascending=True)
             bc_final = bc_df.to_json(orient='records')
             bc_final = json.loads(bc_final)
 
-
             a = {}
-            a['name']='buying_controller'
-            a['items']=bc_final
+            a['name'] = 'buying_controller'
+            a['items'] = bc_final
 
-            buyer_df = buyer_df.sort_values(by='name',ascending=True)
+            buyer_df = buyer_df.sort_values(by='name', ascending=True)
             buyer_final = buyer_df.to_json(orient='records')
             buyer_final = json.loads(buyer_final)
 
             b = {}
-            b['name']='buyer'
-            b['items']=buyer_final
+            b['name'] = 'buyer'
+            b['items'] = buyer_final
 
-
-            jr_buyer_df = jr_buyer_df.sort_values(by='name',ascending=True)
+            jr_buyer_df = jr_buyer_df.sort_values(by='name', ascending=True)
             jr_buyer_final = jr_buyer_df.to_json(orient='records')
             jr_buyer_final = json.loads(jr_buyer_final)
 
             c = {}
-            c['name']='junior_buyer'
-            c['items']=jr_buyer_final
+            c['name'] = 'junior_buyer'
+            c['items'] = jr_buyer_final
 
-
-            psg_df = psg_df.sort_values(by='name',ascending=True)
+            psg_df = psg_df.sort_values(by='name', ascending=True)
             psg_final = psg_df.to_json(orient='records')
             psg_final = json.loads(psg_final)
 
-            
             d = {}
-            d['name']='product_sub_group_description'
-            d['items']=psg_final
+            d['name'] = 'product_sub_group_description'
+            d['items'] = psg_final
 
-
-
-            supplier_df = supplier_df.sort_values(by='name',ascending=True)
+            supplier_df = supplier_df.sort_values(by='name', ascending=True)
             supplier_final = supplier_df.to_json(orient='records')
             supplier_final = json.loads(supplier_final)
 
-            
             e = {}
-            e['name']='parent_supplier'
-            e['items']=supplier_final
+            e['name'] = 'parent_supplier'
+            e['items'] = supplier_final
 
-
-
-            brand_df = brand_df.sort_values(by='name',ascending=True)
+            brand_df = brand_df.sort_values(by='name', ascending=True)
             brand_final = brand_df.to_json(orient='records')
             brand_final = json.loads(brand_final)
-            
-
 
             f = {}
-            f['name']='brand_name'
-            f['items']=brand_final
+            f['name'] = 'brand_name'
+            f['items'] = brand_final
 
-
-
-            package_df = package_df.sort_values(by='name',ascending=True)
+            package_df = package_df.sort_values(by='name', ascending=True)
             package_final = package_df.to_json(orient='records')
             package_final = json.loads(package_final)
-            
-
 
             g = {}
-            g['name']='package_type'
-            g['items']=package_final
+            g['name'] = 'package_type'
+            g['items'] = package_final
 
-            measure_df = measure_df.sort_values(by='name',ascending=True)
+            measure_df = measure_df.sort_values(by='name', ascending=True)
             measure_final = measure_df.to_json(orient='records')
             measure_final = json.loads(measure_final)
 
-            
             h = {}
-            h['name']='measure_type'
-            h['items']=measure_final
+            h['name'] = 'measure_type'
+            h['items'] = measure_final
 
-            till_roll_df = till_roll_df.sort_values(by='name',ascending=True)
+            till_roll_df = till_roll_df.sort_values(by='name', ascending=True)
             tillroll_final = till_roll_df.to_json(orient='records')
             tillroll_final = json.loads(tillroll_final)
 
-            
             i = {}
-            i['name']='till_roll_description'
-            i['items']=tillroll_final
+            i['name'] = 'till_roll_description'
+            i['items'] = tillroll_final
 
-
-
-            merch_grp_df = merch_grp_df.sort_values(by='name',ascending=True)
+            merch_grp_df = merch_grp_df.sort_values(by='name', ascending=True)
             merch_final = merch_grp_df.to_json(orient='records')
             merch_final = json.loads(merch_final)
 
-            
             j = {}
-            j['name']='merchandise_group_code_description'
-            j['items']=merch_final
+            j['name'] = 'merchandise_group_code_description'
+            j['items'] = merch_final
 
-
-            range_class_df = range_class_df.sort_values(by='name',ascending=True)
+            range_class_df = range_class_df.sort_values(by='name', ascending=True)
             range_class_final = range_class_df.to_json(orient='records')
             range_class_final = json.loads(range_class_final)
 
-            
             k = {}
-            k['name']='range_space_break_code'
-            k['items']=range_class_final
-
-
+            k['name'] = 'range_space_break_code'
+            k['items'] = range_class_final
 
             final_ph = []
             final_ph.append(a)
@@ -1353,12 +1301,11 @@ class npdimpactpage_filterdata(APIView):
             final = {}
             final["product_hierarchy"] = final_ph
             final["product_information"] = final_pi
-        
+
         return JsonResponse(final, safe=False)
 
 
-
-#NPD IMPACT VIEW
+# NPD IMPACT VIEW
 # for bubble chart
 class npdpage_impact_bubble_chart(APIView):
     def get(self, request, *args):
@@ -1368,57 +1315,58 @@ class npdpage_impact_bubble_chart(APIView):
         par_supp = args.get('parent_supplier__iexact')
         bc_name = args.get('buying_controller__iexact')
 
-        #pop edit forecast variables
+        # pop edit forecast variables
         args.pop('modified_flag', 0)
-        args.pop('modified_forecast__iexact',0)
-        args.pop('Cannibalization_perc__iexact',0)
+        args.pop('modified_forecast__iexact', 0)
+        args.pop('Cannibalization_perc__iexact', 0)
 
         args.pop('page__iexact', None)
-        week={}
-        week["time_period__iexact"]=args.pop('week_flag__iexact',None)
+        week = {}
+        week["time_period__iexact"] = args.pop('week_flag__iexact', None)
         print("calculating week")
         print(week)
-        if week["time_period__iexact"]==None:
-                        week = {
-                                        'time_period__iexact': 'Last 13 Weeks'
-                        }
-        if week["time_period__iexact"]=="Latest 13 Weeks":
-                        week = {
-                                        'time_period__iexact': 'Last 13 Weeks'
-                        }
-        if week["time_period__iexact"]=="Latest 26 Weeks":
-                        week = {
-                                        'time_period__iexact': 'Last 26 Weeks'
-                        }
+        if week["time_period__iexact"] == None:
+            week = {
+                'time_period__iexact': 'Last 13 Weeks'
+            }
+        if week["time_period__iexact"] == "Latest 13 Weeks":
+            week = {
+                'time_period__iexact': 'Last 13 Weeks'
+            }
+        if week["time_period__iexact"] == "Latest 26 Weeks":
+            week = {
+                'time_period__iexact': 'Last 26 Weeks'
+            }
 
-        if week["time_period__iexact"]=="Latest 52 Weeks":
-                        week = {
-                                        'time_period__iexact': 'Last 52 Weeks'
-                        }
+        if week["time_period__iexact"] == "Latest 52 Weeks":
+            week = {
+                'time_period__iexact': 'Last 52 Weeks'
+            }
 
         args.pop('search__iexact', '')
 
-
         kwargs = {
-            'buying_controller': bc_name ,
+            'buying_controller': bc_name,
             'parent_supplier': par_supp
-                    }
+        }
         kwargs = dict(filter(lambda item: item[1] is not None, kwargs.items()))
 
         print(args)
         print(week)
 
         data = read_frame(
-            npd_supplier_ads.objects.filter(**kwargs).filter(**week).values('long_description', 'cps_quartile', 'pps_quartile',
-                                                           'rate_of_sale','performance_quartile','cps'))
-                                                           # ))
+            npd_supplier_ads.objects.filter(**kwargs).filter(**week).values('long_description', 'cps_quartile',
+                                                                            'pps_quartile',
+                                                                            'rate_of_sale', 'performance_quartile',
+                                                                            'cps'))
+        # ))
 
         ######Should be taken care in the ads
-        data = data[data["rate_of_sale"]>0].reset_index(drop=True)
+        data = data[data["rate_of_sale"] > 0].reset_index(drop=True)
         # data["rate_of_sale"] = data["rate_of_sale"].astype('float')
         data["cps_quartile"] = data["cps_quartile"].astype('float')
         data["pps_quartile"] = data["pps_quartile"].astype('float')
-        data = data[data["cps"]>0].reset_index(drop=True)
+        data = data[data["cps"] > 0].reset_index(drop=True)
 
         final_bubble_list = []
         final_bubble = []
@@ -1436,7 +1384,7 @@ class npdpage_impact_bubble_chart(APIView):
         return JsonResponse(final_bubble, safe=False)
 
 
-# for table 
+# for table
 class npdpage_impact_bubble_table(generic.TemplateView):
     def get(self, request, *args):
 
@@ -1445,32 +1393,32 @@ class npdpage_impact_bubble_table(generic.TemplateView):
         par_supp = args.get('parent_supplier__iexact')
         bc_name = args.get('buying_controller__iexact')
 
-        #pop edit forecast variables
+        # pop edit forecast variables
         args.pop('modified_flag', 0)
-        args.pop('modified_forecast__iexact',0)
-        args.pop('Cannibalization_perc__iexact',0)
-        
-        ## week tab
-        week={}
-        week["time_period__iexact"]=args.pop('week_flag__iexact',None)
-        print()
-        if week["time_period__iexact"]==None:
-                        week = {
-                                        'time_period__iexact': 'Last 13 Weeks'
-                        }
-        if week["time_period__iexact"]=="Latest 13 Weeks":
-                        week = {
-                                        'time_period__iexact': 'Last 13 Weeks'
-                        }
-        if week["time_period__iexact"]=="Latest 26 Weeks":
-                        week = {
-                                        'time_period__iexact': 'Last 26 Weeks'
-                        }
+        args.pop('modified_forecast__iexact', 0)
+        args.pop('Cannibalization_perc__iexact', 0)
 
-        if week["time_period__iexact"]=="Latest 52 Weeks":
-                        week = {
-                                        'time_period__iexact': 'Last 52 Weeks'
-                        }
+        ## week tab
+        week = {}
+        week["time_period__iexact"] = args.pop('week_flag__iexact', None)
+        print()
+        if week["time_period__iexact"] == None:
+            week = {
+                'time_period__iexact': 'Last 13 Weeks'
+            }
+        if week["time_period__iexact"] == "Latest 13 Weeks":
+            week = {
+                'time_period__iexact': 'Last 13 Weeks'
+            }
+        if week["time_period__iexact"] == "Latest 26 Weeks":
+            week = {
+                'time_period__iexact': 'Last 26 Weeks'
+            }
+
+        if week["time_period__iexact"] == "Latest 52 Weeks":
+            week = {
+                'time_period__iexact': 'Last 52 Weeks'
+            }
 
         #### To include pagination feature
         page = 1
@@ -1488,45 +1436,48 @@ class npdpage_impact_bubble_table(generic.TemplateView):
         print(week)
 
         kwargs = {
-            'buying_controller': bc_name ,
+            'buying_controller': bc_name,
             'parent_supplier': par_supp
-                    }
+        }
         kwargs = dict(filter(lambda item: item[1] is not None, kwargs.items()))
 
         queryset = npd_supplier_ads.objects.filter(**kwargs).filter(**week).filter(long_description__icontains=search)
 
         p = Paginator(queryset, 5)
         serializer_class = npd_impact_tableSerializer(p.page(page), many=True)
-        return JsonResponse({'pagination_count': p.num_pages,'page': page,'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
+        return JsonResponse(
+            {'pagination_count': p.num_pages, 'page': page, 'start_index': p.page(page).start_index(), 'count': p.count,
+             'end_index': p.page(page).end_index(), 'table': serializer_class.data}, safe=False)
+
 
 # for forecast and waterfall chart
 
 class npdpage_impact_forecast(APIView):
     def get(self, request, *args):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        
+
         print(args)
-        week=args.pop('week_flag__iexact',None)
+        week = args.pop('week_flag__iexact', None)
         week_flag = week
         print("calculating week")
         ## default week tab
-        if week==None:
+        if week == None:
             week = 'Latest 13 Weeks'
-        #define variables 
+        # define variables
         print("creating variables for npd impact")
-        
+
         Buying_controller = args.pop('buying_controller__iexact', '')
         Buyer = args.pop('buyer__iexact', '')
         Junior_Buyer = args.pop('junior_buyer__iexact', '')
         Package_Type = args.pop('package_type__iexact', '')
         Product_Sub_Group_Description = args.pop('product_sub_group_description__iexact', '')
-        measure_type =  args.pop('measure_type__iexact', '')
+        measure_type = args.pop('measure_type__iexact', '')
 
         asp = float(args.pop('asp__iexact', 0))
         acp = float(args.pop('acp__iexact', 0))
         Size = float(args.pop('size__iexact', 0))
         Brand_Name = args.pop('brand_name__iexact', '')
-        Till_Roll_Description =args.pop('till_roll_description__iexact', '')
+        Till_Roll_Description = args.pop('till_roll_description__iexact', '')
         Merchandise_Group_Description = args.pop('merchandise_group_code_description__iexact', '')
         Range_class = args.pop('range_class__iexact', '')
 
@@ -1535,47 +1486,47 @@ class npdpage_impact_forecast(APIView):
 
         print("modified_flag")
         print(modified_flag)
-        total_forecasted_volume = float(args.pop('modified_forecast__iexact',0))
-        Cannibalization_perc = float(args.pop('Cannibalization_perc__iexact',0)) 
-        #variables defined
-        #read all files 
+        total_forecasted_volume = float(args.pop('modified_forecast__iexact', 0))
+        Cannibalization_perc = float(args.pop('Cannibalization_perc__iexact', 0))
+        # variables defined
+        # read all files
         All_attribute = read_frame(bc_allprod_attributes.objects.all())
-        #global All_attribute
+        # global All_attribute
         attribute_score = read_frame(attribute_score_allbc.objects.all())
-        #global attribute_score
+        # global attribute_score
         bc_cannibilization = read_frame(consolidated_calculated_cannibalization.objects.all())
-        #global bc_cannibilization
+        # global bc_cannibilization
         input_dataset = read_frame(input_npd.objects.all())
-        #global input_dataset
+        # global input_dataset
         dataset = read_frame(features_allbc.objects.all())
-        #global dataset
+        # global dataset
         uk_holidays_df = read_frame(uk_holidays.objects.all())
-        #global uk_holidays_df
+        # global uk_holidays_df
         consolidated_buckets_df = read_frame(consolidated_buckets.objects.all())
-        #global consolidated_buckets_df
+        # global consolidated_buckets_df
         range_space_store = read_frame(range_space_store_future.objects.all())
-        #global range_space_store
+        # global range_space_store
         store_details_df = read_frame(store_details.objects.all())
-        #global store_details_df
+        # global store_details_df
 
         SI = read_frame(seasonality_index.objects.all())
-        #global SI
-        
+        # global SI
+
         product_contri_df = read_frame(product_contri.objects.all())
-        #global product_contri_df
+        # global product_contri_df
         product_price_df = read_frame(product_price.objects.all())
-        #global product_price_df
+        # global product_price_df
         week_mapping = read_frame(npd_calendar.objects.all())
-        #global week_mapping
+        # global week_mapping
 
         merch_range_df = read_frame(merch_range.objects.all())
-        #global merch_range_df
+        # global merch_range_df
 
         product_desc_df = read_frame(product_desc.objects.all())
-        #global product_desc_df
+        # global product_desc_df
         brand_grp_mapping_df = read_frame(brand_grp_mapping.objects.all())
-        #global brand_grp_mapping_df
-        #files read
+        # global brand_grp_mapping_df
+        # files read
         search = args.pop('search__iexact', "")
         page = 1
         try:
@@ -1583,8 +1534,8 @@ class npdpage_impact_forecast(APIView):
         except:
             page = 1
         args.pop('page__iexact', None)
-        start_row = (page-1)*5
-        end_row = start_row + 5       
+        start_row = (page - 1) * 5
+        end_row = start_row + 5
 
         ### To get the priceband , psg code and merch code
 
@@ -1592,153 +1543,162 @@ class npdpage_impact_forecast(APIView):
 
             ###Getting a price band based on user selection
 
-            if((Buying_controller == 'Frozen Impulse') | (Buying_controller == 'Meat Fish and Veg') |(Buying_controller == 'Grocery Cereals')):
-                
-                if(0 < asp <= 2):
-                    price_band = '0 to 2'
-                if(2 < asp <= 4):
-                    price_band = '2 to 4'
-                if(4 < asp <= 6):
-                    price_band = '4 to 6'
-                if(6 < asp <= 8):
-                    price_band = '6 to 8'
-                if(8 < asp <= 10):
-                    price_band = '8 to 10'
-                if(10 < asp <= 12):
-                    price_band = '10 to 12'
-                if(12 < asp <= 14):
-                    price_band = '12 to 14'
-                if(14 < asp <= 16):
-                    price_band = '14 to 16'
-                if(16 < asp <= 18):
-                    price_band = '16 to 18'
-                if(18 < asp <= 20):
-                    price_band = '18 to 20'
-                if(20 < asp <= 23):
-                    price_band = '20 to 23'
-                if(23 < asp <= 26):
-                    price_band = '23 to 29'
-                if(26 < asp <= 29):
-                    price_band = '26 to 29'
-                if(29 < asp ):
-                    price_band = 'GRTR 29'
+            if ((Buying_controller == 'Frozen Impulse') | (Buying_controller == 'Meat Fish and Veg') | (
+                Buying_controller == 'Grocery Cereals')):
 
+                if (0 < asp <= 2):
+                    price_band = '0 to 2'
+                if (2 < asp <= 4):
+                    price_band = '2 to 4'
+                if (4 < asp <= 6):
+                    price_band = '4 to 6'
+                if (6 < asp <= 8):
+                    price_band = '6 to 8'
+                if (8 < asp <= 10):
+                    price_band = '8 to 10'
+                if (10 < asp <= 12):
+                    price_band = '10 to 12'
+                if (12 < asp <= 14):
+                    price_band = '12 to 14'
+                if (14 < asp <= 16):
+                    price_band = '14 to 16'
+                if (16 < asp <= 18):
+                    price_band = '16 to 18'
+                if (18 < asp <= 20):
+                    price_band = '18 to 20'
+                if (20 < asp <= 23):
+                    price_band = '20 to 23'
+                if (23 < asp <= 26):
+                    price_band = '23 to 29'
+                if (26 < asp <= 29):
+                    price_band = '26 to 29'
+                if (29 < asp):
+                    price_band = 'GRTR 29'
 
             #####Getting a psg code based on psg desc
             print('Product_Sub_Group_Description')
             print(Product_Sub_Group_Description)
-            psg_code = input_dataset[input_dataset['product_sub_group_description'] == Product_Sub_Group_Description].iloc[0]['product_sub_group_code']
+            psg_code = \
+            input_dataset[input_dataset['product_sub_group_description'] == Product_Sub_Group_Description].iloc[0][
+                'product_sub_group_code']
 
-            merch_code = merch_range_df[merch_range_df['merchandise_group_code_description']==Merchandise_Group_Description].iloc[0]['merchandise_group_code']
-         
-            psg_priceband_merch = {'psg_code' : psg_code, 'price_band' : price_band ,'merch_code' : merch_code}
+            merch_code = \
+            merch_range_df[merch_range_df['merchandise_group_code_description'] == Merchandise_Group_Description].iloc[
+                0]['merchandise_group_code']
+
+            psg_priceband_merch = {'psg_code': psg_code, 'price_band': price_band, 'merch_code': merch_code}
 
             return psg_priceband_merch
 
-        #### Making structure with 52 rows 
+        #### Making structure with 52 rows
         def get_ads_structure():
 
-            #Taking Parameters
-            #global week_mapping 
-            #global current_week 
-            #global  dataset1 
+            # Taking Parameters
+            # global week_mapping
+            # global current_week
+            # global  dataset1
 
-            df =dataset1.iloc[0:51,]
+            df = dataset1.iloc[0:51, ]
 
-            week_mapping_subset = week_mapping.loc[week_mapping.year_week_number>=201631]
+            week_mapping_subset = week_mapping.loc[week_mapping.year_week_number >= 201631]
 
             ### To get the list of all 52 weeks
             weeks_list = pd.DataFrame(week_mapping_subset['year_week_number'].unique())
             weeks_list.columns = ['year_week_number']
-            weeks_list.sort_values(by= ['year_week_number'],ascending=False)
+            weeks_list.sort_values(by=['year_week_number'], ascending=False)
             weeks_list = weeks_list.iloc[0:52]
             df = pd.concat([df.reset_index(drop=True), weeks_list], axis=1)
-            df= df.fillna(0)
+            df = df.fillna(0)
             return df
+
         ###On column added which is the year week number
 
-        #### Have incorporated margin_percent and acp 
+        #### Have incorporated margin_percent and acp
         def fill_ads_structure(dataset):
-            
+
             ####Brand to ind and grp mapping
- 
+
             brand_grp_mapping = All_attribute
 
-            ### Adding new feature as abs 
-            margin_percent = abs((asp-acp)/acp)
+            ### Adding new feature as abs
+            margin_percent = abs((asp - acp) / acp)
 
             #### Assigning the value of '1' for the collected inputs (Categorical Variables)
-            dataset.loc[:,"buyer_" + Buyer] = 1
-            dataset.loc[:,"junior_buyer_" + Junior_Buyer] = 1
-            dataset.loc[:,"package_type_" + Package_Type] = 1
-            dataset.loc[:,"product_sub_group_description_" + Product_Sub_Group_Description] = 1
-            dataset.loc[:,"measure_type_" + measure_type] = 1
-            dataset.loc[:,"price_band_" + price_band] = 1
+            dataset.loc[:, "buyer_" + Buyer] = 1
+            dataset.loc[:, "junior_buyer_" + Junior_Buyer] = 1
+            dataset.loc[:, "package_type_" + Package_Type] = 1
+            dataset.loc[:, "product_sub_group_description_" + Product_Sub_Group_Description] = 1
+            dataset.loc[:, "measure_type_" + measure_type] = 1
+            dataset.loc[:, "price_band_" + price_band] = 1
 
             #### Directly input from the users
-            dataset.loc[:,"asp"] = asp
-            dataset.loc[:,"acp"] = acp
-            dataset.loc[:,"margin_percent"] = margin_percent
-            dataset.loc[:,"size"] = Size
+            dataset.loc[:, "asp"] = asp
+            dataset.loc[:, "acp"] = acp
+            dataset.loc[:, "margin_percent"] = margin_percent
+            dataset.loc[:, "size"] = Size
 
             #### Mapping Brand name to brand grp (Getting the rank of the brand selected)
 
             ##### Reading a mapping file
-            brand_group = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_grp20']
+            brand_group = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0][
+                'brand_grp20']
 
             #### Assigning the rank of the group in our ADS
-            dataset.loc[:,"brand_grp20"] = brand_group
+            dataset.loc[:, "brand_grp20"] = brand_group
 
-            ####Getting the brand indicator 
-            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
+            ####Getting the brand indicator
+            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0][
+                'brand_ind']
 
             # Need to QC this
-            if (brand_ind=='T'):
+            if (brand_ind == 'T'):
                 brand_indicator = 1
             if (brand_ind == 'B'):
                 brand_indicator = 0
-            dataset.loc[:,"brand_ind"] = brand_indicator
-            ### Filling all columns related to week number 
+            dataset.loc[:, "brand_ind"] = brand_indicator
+            ### Filling all columns related to week number
             #### Looping for all the weeks
 
-            dataset.loc[:,"weeks_since_launch"] = 0
+            dataset.loc[:, "weeks_since_launch"] = 0
             #### Arranging week in ascending order
             week_mapping_subset = week_mapping.sort_values('year_week_number')
-            #Converting date to the date format
-            week_mapping_subset['calendar_date'] = pd.to_datetime(week_mapping_subset['calendar_date'], format= '%Y-%m-%d')
-                    
-            date_map = week_mapping_subset[['year_week_number', 'quarter_number', 'period_number', 'week_number',
-               'period_week_number']].drop_duplicates()
-            date_map.columns = ['year_week_number', 'quarter_number', 'period_number', 'curr_week_number',
-               'period_week_number']
-            date_sparse = pd.get_dummies(date_map, prefix = ['quarter_number', 'period_number', 'curr_week_number',
-               'period_week_number'], columns = ['quarter_number', 'period_number', 'curr_week_number',
-               'period_week_number'])
-            date_sparse.drop('curr_week_number_53', 1, inplace= True)
-            date_sparse.drop('period_number_13', 1, inplace= True)
-            print(dataset.columns)
-            dataset.drop(date_sparse.columns[1:], 1, inplace =True)
-            print(len(dataset.columns))
-            dataset = pd.merge(dataset, date_sparse, on = ['year_week_number'], how = 'left')
-            
-            dataset.drop('weeks_since_launch', 1, inplace =True)
-            dataset['weeks_since_launch'] = df.year_week_number.rank(method = 'dense').astype(int)
+            # Converting date to the date format
+            week_mapping_subset['calendar_date'] = pd.to_datetime(week_mapping_subset['calendar_date'],
+                                                                  format='%Y-%m-%d')
 
-            #### Weeks since launch will be incremental 
-            #Taking weeks from launch as 1 for the first week
-                
+            date_map = week_mapping_subset[['year_week_number', 'quarter_number', 'period_number', 'week_number',
+                                            'period_week_number']].drop_duplicates()
+            date_map.columns = ['year_week_number', 'quarter_number', 'period_number', 'curr_week_number',
+                                'period_week_number']
+            date_sparse = pd.get_dummies(date_map, prefix=['quarter_number', 'period_number', 'curr_week_number',
+                                                           'period_week_number'],
+                                         columns=['quarter_number', 'period_number', 'curr_week_number',
+                                                  'period_week_number'])
+            date_sparse.drop('curr_week_number_53', 1, inplace=True)
+            date_sparse.drop('period_number_13', 1, inplace=True)
+            print(dataset.columns)
+            dataset.drop(date_sparse.columns[1:], 1, inplace=True)
+            print(len(dataset.columns))
+            dataset = pd.merge(dataset, date_sparse, on=['year_week_number'], how='left')
+
+            dataset.drop('weeks_since_launch', 1, inplace=True)
+            dataset['weeks_since_launch'] = df.year_week_number.rank(method='dense').astype(int)
+
+            #### Weeks since launch will be incremental
+            # Taking weeks from launch as 1 for the first week
+
 
             #### Reading a mapping file
             SI_psg = SI.loc[(SI['psg'] == psg_code)]
-            SI_psg['adjusted_index']=SI_psg['adjusted_index'].astype(float)
-            SI_psg = SI_psg[['weeks','adjusted_index']]
+            SI_psg['adjusted_index'] = SI_psg['adjusted_index'].astype(float)
+            SI_psg = SI_psg[['weeks', 'adjusted_index']]
             ####Getting a week column to get the seasonality index
-            dataset['weeks'] = dataset['year_week_number']%100
-            dataset = pd.merge(dataset, SI_psg, left_on=['weeks'], right_on=['weeks'], how='left' )
-            del(dataset['si'])
+            dataset['weeks'] = dataset['year_week_number'] % 100
+            dataset = pd.merge(dataset, SI_psg, left_on=['weeks'], right_on=['weeks'], how='left')
+            del (dataset['si'])
 
-            dataset = dataset.rename(columns={'adjusted_index':'si'})
-            del(dataset['weeks'])
+            dataset = dataset.rename(columns={'adjusted_index': 'si'})
+            del (dataset['weeks'])
             dataset['si'] = dataset['si'].astype(float)
 
             return dataset
@@ -1747,28 +1707,31 @@ class npdpage_impact_forecast(APIView):
 
             #### Getting number of subs same and different brand
             All_attribute_treated = All_attribute.dropna()
-            All_attribute_treated = All_attribute_treated.loc[(All_attribute_treated['product_sub_group_description']== Product_Sub_Group_Description)]
+            All_attribute_treated = All_attribute_treated.loc[
+                (All_attribute_treated['product_sub_group_description'] == Product_Sub_Group_Description)]
 
             ###Creating a empty data frame of attributes to compare. Will fill the values based on user selection
 
-            match_df = pd.DataFrame(0, index = [0],  columns = [ "brand_name", "package_type", "till_roll_description", "size", "measure_type", "price_band"] )
+            match_df = pd.DataFrame(0, index=[0],
+                                    columns=["brand_name", "package_type", "till_roll_description", "size",
+                                             "measure_type", "price_band"])
 
             ##### As we need price band we need to convert the asp (user input) into price bands based on BC and asp
 
             #### Filling the empty data frames with values as now we have the price band
 
-            match_df.loc[:,"brand_name"] = Brand_Name
-            match_df.loc[:,"package_type"] = Package_Type
-            match_df.loc[:,"till_roll_description"] = Till_Roll_Description
-            match_df.loc[:,"size"] = Size
-            match_df.loc[:,"measure_type"] = measure_type
-            match_df.loc[:,"price_band"] = price_band
-            
+            match_df.loc[:, "brand_name"] = Brand_Name
+            match_df.loc[:, "package_type"] = Package_Type
+            match_df.loc[:, "till_roll_description"] = Till_Roll_Description
+            match_df.loc[:, "size"] = Size
+            match_df.loc[:, "measure_type"] = measure_type
+            match_df.loc[:, "price_band"] = price_band
+
             #### To compare with all attributes we need to merge all attributes to user selection. For that we will map it on a common key
             All_attribute_treated['key'] = 1
             match_df['key'] = 1
-            match_all_prod = pd.merge(match_df, All_attribute_treated, on = 'key')
-    
+            match_all_prod = pd.merge(match_df, All_attribute_treated, on='key')
+
             match_all_prod['size_x'] = match_all_prod['size_x'].astype('float')
             match_all_prod['size_y'] = match_all_prod['size_y'].astype('float')
 
@@ -1776,45 +1739,52 @@ class npdpage_impact_forecast(APIView):
             ### Measure and size are related we will be given commom flag based on some condition
 
 
-            match_all_prod['brand_flag'] = np.where(match_all_prod.loc[:,"brand_name_x"] == match_all_prod.loc[:,"brand_name_y"], 1, 0)
+            match_all_prod['brand_flag'] = np.where(
+                match_all_prod.loc[:, "brand_name_x"] == match_all_prod.loc[:, "brand_name_y"], 1, 0)
 
-            match_all_prod['package_flag'] = np.where(match_all_prod.loc[:,"package_type_x"] == match_all_prod.loc[:,"package_type_y"], 1, 0)
+            match_all_prod['package_flag'] = np.where(
+                match_all_prod.loc[:, "package_type_x"] == match_all_prod.loc[:, "package_type_y"], 1, 0)
 
-            match_all_prod['Size_flag'] = np.where((match_all_prod.loc[:,"measure_type_x"] == match_all_prod.loc[:,"measure_type_y"]) & 
-                                                   ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
-                                                    ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
+            match_all_prod['Size_flag'] = np.where(
+                (match_all_prod.loc[:, "measure_type_x"] == match_all_prod.loc[:, "measure_type_y"]) &
+                ((match_all_prod.loc[:, "measure_type_y"] == 'G') &
+                 ((match_all_prod.loc[:, "size_x"] - match_all_prod.loc[:, "size_y"]) <= 200)) |
+                ((match_all_prod.loc[:, "measure_type_y"] == 'SNGL') &
+                 ((match_all_prod.loc[:, "size_x"] - match_all_prod.loc[:, "size_y"]) <= 2)), 1, 0)
 
-            match_all_prod['price_flag'] = np.where(match_all_prod.loc[:,"price_band_x"] == match_all_prod.loc[:,"price_band_y"], 1, 0)
+            match_all_prod['price_flag'] = np.where(
+                match_all_prod.loc[:, "price_band_x"] == match_all_prod.loc[:, "price_band_y"], 1, 0)
 
-            match_all_prod['till_roll_flag'] = np.where(match_all_prod.loc[:,"till_roll_description_x"] == match_all_prod.loc[:,"till_roll_description_y"], 1, 0)
+            match_all_prod['till_roll_flag'] = np.where(
+                match_all_prod.loc[:, "till_roll_description_x"] == match_all_prod.loc[:, "till_roll_description_y"], 1,
+                0)
 
             ### Subsetting score importance based on PSG
             score = attribute_score[attribute_score.loc[:, 'product_sub_group_code'] == psg_code]
 
             ###Getting the percentage score based on flag*individual score
 
-            match_all_prod['brand_score'] = match_all_prod.loc[:,"brand_flag"]*score['avg_brand'].values
-            match_all_prod['package_score'] = match_all_prod.loc[:,"package_flag"]*score['avg_pkg'].values
-            match_all_prod['Size_score'] = match_all_prod.loc[:,"Size_flag"]*score['avg_size'].values
-            match_all_prod['price_score'] = match_all_prod.loc[:,"price_flag"]*score['avg_price'].values
-            match_all_prod['till_roll_score'] = match_all_prod.loc[:,"till_roll_flag"]*score['avg_tillroll'].values
+            match_all_prod['brand_score'] = match_all_prod.loc[:, "brand_flag"] * score['avg_brand'].values
+            match_all_prod['package_score'] = match_all_prod.loc[:, "package_flag"] * score['avg_pkg'].values
+            match_all_prod['Size_score'] = match_all_prod.loc[:, "Size_flag"] * score['avg_size'].values
+            match_all_prod['price_score'] = match_all_prod.loc[:, "price_flag"] * score['avg_price'].values
+            match_all_prod['till_roll_score'] = match_all_prod.loc[:, "till_roll_flag"] * score['avg_tillroll'].values
 
             ####Getting the final score for every row based on summation of individual attribute score
-            match_all_prod['final_score'] = match_all_prod['brand_score'] + match_all_prod['package_score'] + match_all_prod['Size_score'] + match_all_prod['price_score'] + match_all_prod['till_roll_score']
+            match_all_prod['final_score'] = match_all_prod['brand_score'] + match_all_prod['package_score'] + \
+                                            match_all_prod['Size_score'] + match_all_prod['price_score'] + \
+                                            match_all_prod['till_roll_score']
 
             #### Subsetting for score greater than 0.7 (threshold)
 
             sim_prod = match_all_prod[match_all_prod['final_score'] > 0.7]
 
-
             return sim_prod
 
         def subs_same_different(dataset):
             ###Getting data
-            #global df 
-            #global sim_prod 
+            # global df
+            # global sim_prod
             ####Total products left after putting a threshold of 0.7
 
             tot_prod = sim_prod.shape[0]
@@ -1835,7 +1805,8 @@ class npdpage_impact_forecast(APIView):
 
             #### To get the psg prod count and price band count
             ###### Subsetting all attribute data for the selected psg
-            All_attribute_psg = All_attribute.loc[(All_attribute['product_sub_group_description'] == Product_Sub_Group_Description)]
+            All_attribute_psg = All_attribute.loc[
+                (All_attribute['product_sub_group_description'] == Product_Sub_Group_Description)]
 
             #### Counting the distinct products in the selected psg
             count_psg_prod = len(All_attribute_psg['base_product_number'].unique())
@@ -1843,197 +1814,207 @@ class npdpage_impact_forecast(APIView):
             ### Counting the distinct products in the price band
             ### Price band we have calculated before based on if else conditions
             ## Subsetting for the selected price band
-            All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+            All_attribute_pb = All_attribute.loc[(All_attribute['price_band'] == price_band)]
 
             count_pb_prod = len(All_attribute_pb['base_product_number'].unique())
-            #### Filling values for the count psg prod and price band 
+            #### Filling values for the count psg prod and price band
             dataset.loc[:, 'psg_prod_count'] = count_psg_prod
             dataset.loc[:, 'price_band_prod_count'] = count_pb_prod
             return dataset
+
         ### To incorporate merch grp and range class
 
         def no_of_stores_holidays(dataset):
 
-            stores = pd.DataFrame(range_space_store[(range_space_store['merchandise_group_code'] == merch_code) & 
-                                   (range_space_store['range_space_break_code'] >= Range_class)]['retail_outlet_number'])
+            stores = pd.DataFrame(range_space_store[(range_space_store['merchandise_group_code'] == merch_code) &
+                                                    (range_space_store['range_space_break_code'] >= Range_class)][
+                                      'retail_outlet_number'])
 
-            stores_size = pd.merge(stores, store_details_df, on = 'retail_outlet_number', how = 'left')
-            APC_stores = stores_size.groupby(['area_price_code'], as_index = False).aggregate({'retail_outlet_number': lambda x: x.nunique(),
-                            'pfs_store': lambda x: x.nunique(), 'store_5k': lambda x: x.nunique(),
-                            'store_20k': lambda x: x.nunique(), 'store_50k': lambda x: x.nunique(),
-                            'store_100k': lambda x: x.nunique(), 'store_100kplus': lambda x: x.nunique()})
-            APC_stores = APC_stores.loc[:,['area_price_code', 'retail_outlet_number', 'pfs_store', 'store_5k', 'store_20k', 'store_50k', 'store_100k', 'store_100kplus']]
+            stores_size = pd.merge(stores, store_details_df, on='retail_outlet_number', how='left')
+            APC_stores = stores_size.groupby(['area_price_code'], as_index=False).aggregate(
+                {'retail_outlet_number': lambda x: x.nunique(),
+                 'pfs_store': lambda x: x.nunique(), 'store_5k': lambda x: x.nunique(),
+                 'store_20k': lambda x: x.nunique(), 'store_50k': lambda x: x.nunique(),
+                 'store_100k': lambda x: x.nunique(), 'store_100kplus': lambda x: x.nunique()})
+            APC_stores = APC_stores.loc[:,
+                         ['area_price_code', 'retail_outlet_number', 'pfs_store', 'store_5k', 'store_20k', 'store_50k',
+                          'store_100k', 'store_100kplus']]
 
             APC_stores.columns = ['area_price_code', 'no_stores', 'no_pfs_Stores', 'no_5k_stores',
-               'no_20k_stores', 'no_50k_stores', 'no_100k_stores', 'no_100kplus_stores']
+                                  'no_20k_stores', 'no_50k_stores', 'no_100k_stores', 'no_100kplus_stores']
             APC_stores.columns = map(str.lower, APC_stores.columns)
             df_final = pd.DataFrame()
-            for i in range(0,len(APC_stores)):
+            for i in range(0, len(APC_stores)):
                 df_temp = dataset.copy()
 
                 ####### To update the no of stores based on store type
-                df_temp.loc[:,"area_price_code_" + str(APC_stores['area_price_code'][i])] = 1
-                df_temp.loc[:,"no_stores"] = APC_stores['no_stores'][i]
-                df_temp.loc[:,"no_pfs_stores"] = APC_stores['no_pfs_stores'][i]
-                df_temp.loc[:,"no_5k_stores"] = APC_stores['no_5k_stores'][i]
-                df_temp.loc[:,"no_20k_stores"] = APC_stores['no_20k_stores'][i]
-                df_temp.loc[:,"no_50k_stores"] = APC_stores['no_50k_stores'][i]
-                df_temp.loc[:,"no_100k_stores"] = APC_stores['no_100k_stores'][i]
-                df_temp.loc[:,"no_100kplus_stores"] = APC_stores['no_100kplus_stores'][i]
-
+                df_temp.loc[:, "area_price_code_" + str(APC_stores['area_price_code'][i])] = 1
+                df_temp.loc[:, "no_stores"] = APC_stores['no_stores'][i]
+                df_temp.loc[:, "no_pfs_stores"] = APC_stores['no_pfs_stores'][i]
+                df_temp.loc[:, "no_5k_stores"] = APC_stores['no_5k_stores'][i]
+                df_temp.loc[:, "no_20k_stores"] = APC_stores['no_20k_stores'][i]
+                df_temp.loc[:, "no_50k_stores"] = APC_stores['no_50k_stores'][i]
+                df_temp.loc[:, "no_100k_stores"] = APC_stores['no_100k_stores'][i]
+                df_temp.loc[:, "no_100kplus_stores"] = APC_stores['no_100kplus_stores'][i]
 
                 #### To get the holidays count based on store type
-                uk_holidays_df_store = uk_holidays_df[['year_week_number','holiday_flag','area_price_code']]
-                uk_holidays_df_store = uk_holidays_df_store.loc[uk_holidays_df['area_price_code']==APC_stores['area_price_code'][i]]
-                uk_holidays_df_store = uk_holidays_df_store[['year_week_number','holiday_flag']]
+                uk_holidays_df_store = uk_holidays_df[['year_week_number', 'holiday_flag', 'area_price_code']]
+                uk_holidays_df_store = uk_holidays_df_store.loc[
+                    uk_holidays_df['area_price_code'] == APC_stores['area_price_code'][i]]
+                uk_holidays_df_store = uk_holidays_df_store[['year_week_number', 'holiday_flag']]
 
                 #### To get the count of holidays in a week. Sme week will repeat for n number of holidays n times
-                holiday_count_week = uk_holidays_df_store.groupby(['year_week_number'], as_index=False).agg({'holiday_flag': sum})
+                holiday_count_week = uk_holidays_df_store.groupby(['year_week_number'], as_index=False).agg(
+                    {'holiday_flag': sum})
 
-                ####Doing a left join on our ADS to get the holiday count. Wherever it is NA it will be given 0 as our holiday table has only ####those weeks which has atleast 1 holiday 
-                df_temp = pd.merge(df_temp,holiday_count_week, left_on=['year_week_number'], right_on=['year_week_number'], how='left' )
+                ####Doing a left join on our ADS to get the holiday count. Wherever it is NA it will be given 0 as our holiday table has only ####those weeks which has atleast 1 holiday
+                df_temp = pd.merge(df_temp, holiday_count_week, left_on=['year_week_number'],
+                                   right_on=['year_week_number'], how='left')
 
-                df_temp= df_temp.fillna(0)
+                df_temp = df_temp.fillna(0)
 
                 ###Removing a holidays_count columns
-                del(df_temp['holiday_count'])
+                del (df_temp['holiday_count'])
 
-                df_temp = df_temp.rename(columns={'holiday_flag':'holiday_count'})
+                df_temp = df_temp.rename(columns={'holiday_flag': 'holiday_count'})
                 df_final = df_final.append(df_temp)
 
             Period_Number = (week_mapping.loc[week_mapping['year_week_number'] == 201631]).iloc[0]['period_number']
             df_final_new = df_final
-            df_final_new.loc[:,'launch_month'] = Period_Number
+            df_final_new.loc[:, 'launch_month'] = Period_Number
             return df_final_new
 
-        def run_cannibilization_model(input_test_dataset,week_flag,time_frame):
-            Cannibalization_perc = 0 
+        def run_cannibilization_model(input_test_dataset, week_flag, time_frame):
+            Cannibalization_perc = 0
 
-            week_flag =week_flag
+            week_flag = week_flag
             time_frame = time_frame
             ####Xg boost model pickled
-            #global xg_model
+            # global xg_model
 
             input_test_dataset
-
-
 
             #### Have to be inside function which takes test datasets as a argument
             #### For xg boost to run we need to have our test dataset in matrix form. Converting our test dataframe to required matrix
 
-            testdmat = xgb.DMatrix(input_test_dataset.loc[:,xg_model.feature_names])
+            testdmat = xgb.DMatrix(input_test_dataset.loc[:, xg_model.feature_names])
             #### Predicting the volume for the futute weeks (13,26,51)
             Volume = xg_model.predict(testdmat)
             test = pd.DataFrame(Volume)
-
 
             ##### Summing all the volumes for the weeks in 13,26,and 52 window
             total_forecasted_volume = sum(Volume)
 
             #### As now we are aware of the total volume forecasted we can multiply with asp (user selection) to get total sales
-            total_forecasted_sales = total_forecasted_volume*asp
+            total_forecasted_sales = total_forecasted_volume * asp
 
-            #### To check if any sister products are available. If len(sim_prod)=0 after merge it means no sister product available or no ##similar products passed the threshod of 0.8 
-            sim_prod_new = pd.merge(sim_prod, bc_cannibilization, left_on=['base_product_number'], right_on=['base_product_number'], how='inner')
+            #### To check if any sister products are available. If len(sim_prod)=0 after merge it means no sister product available or no ##similar products passed the threshod of 0.8
+            sim_prod_new = pd.merge(sim_prod, bc_cannibilization, left_on=['base_product_number'],
+                                    right_on=['base_product_number'], how='inner')
 
-            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
-            #### Cannibalization percentage 
+            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0][
+                'brand_ind']
+            #### Cannibalization percentage
             print("llllllllllllllllllllllll")
             print(len(sim_prod))
-            if len(sim_prod)==0:
-                if Buying_controller=='Frozen Impulse':
-                    if week_flag =='Latest 13 Weeks':
-                        high_volume_cutoff = (45100/21)*13
-                        low_volume_cutoff = (15300/21)*13
-                    if week_flag =='Latest 26 Weeks':
-                        high_volume_cutoff = (45100/21)*26
-                        low_volume_flag_upper_cutoff = (15300/21)*26
-                    if week_flag =='Latest 52 Weeks':
-                        high_volume_cutoff = (45100/21)*52
-                        low_volume_cutoff = (15300/21)*52
+            if len(sim_prod) == 0:
+                if Buying_controller == 'Frozen Impulse':
+                    if week_flag == 'Latest 13 Weeks':
+                        high_volume_cutoff = (45100 / 21) * 13
+                        low_volume_cutoff = (15300 / 21) * 13
+                    if week_flag == 'Latest 26 Weeks':
+                        high_volume_cutoff = (45100 / 21) * 26
+                        low_volume_flag_upper_cutoff = (15300 / 21) * 26
+                    if week_flag == 'Latest 52 Weeks':
+                        high_volume_cutoff = (45100 / 21) * 52
+                        low_volume_cutoff = (15300 / 21) * 52
 
-                if Buying_controller=='Grocery Cereals':
-                    if week_flag =='Latest 13 Weeks':
-                        high_volume_cutoff = (44510/21)*13
-                        low_volume_cutoff = (37700/21)*13
-                    if week_flag =='Latest 26 Weeks':
-                        high_volume_cutoff = (44510/21)*26
-                        low_volume_cutoff = (37700/21)*26
-                    if week_flag =='Latest 52 Weeks':
-                        high_volume_cutoff = (44510/21)*52
-                        low_volume_cutoff = (37700/21)*52
+                if Buying_controller == 'Grocery Cereals':
+                    if week_flag == 'Latest 13 Weeks':
+                        high_volume_cutoff = (44510 / 21) * 13
+                        low_volume_cutoff = (37700 / 21) * 13
+                    if week_flag == 'Latest 26 Weeks':
+                        high_volume_cutoff = (44510 / 21) * 26
+                        low_volume_cutoff = (37700 / 21) * 26
+                    if week_flag == 'Latest 52 Weeks':
+                        high_volume_cutoff = (44510 / 21) * 52
+                        low_volume_cutoff = (37700 / 21) * 52
 
-                if Buying_controller=='Meat Fish and Veg':
-                    if week_flag =='Latest 13 Weeks':
-                        high_volume_cutoff = (58000/21)*13
-                        low_volume_cutoff = (24700/21)*13
-                    if week_flag =='Latest 26 Weeks':
-                        high_volume_cutoff = (58000/21)*26
-                        low_volume_cutoff = (24700/21)*26
-                    if week_flag =='Latest 52 Weeks':
-                        high_volume_cutoff = (58000/21)*52
-                        low_volume_cutoff = (24700/21)*52
+                if Buying_controller == 'Meat Fish and Veg':
+                    if week_flag == 'Latest 13 Weeks':
+                        high_volume_cutoff = (58000 / 21) * 13
+                        low_volume_cutoff = (24700 / 21) * 13
+                    if week_flag == 'Latest 26 Weeks':
+                        high_volume_cutoff = (58000 / 21) * 26
+                        low_volume_cutoff = (24700 / 21) * 26
+                    if week_flag == 'Latest 52 Weeks':
+                        high_volume_cutoff = (58000 / 21) * 52
+                        low_volume_cutoff = (24700 / 21) * 52
 
-                if (total_forecasted_volume>high_volume_cutoff):
-                    Volume_flag= 'High'
-                elif (total_forecasted_volume<low_volume_cutoff):
+                if (total_forecasted_volume > high_volume_cutoff):
+                    Volume_flag = 'High'
+                elif (total_forecasted_volume < low_volume_cutoff):
                     Volume_flag = 'Low'
-                else :
+                else:
                     Volume_flag = 'Medium'
                 ####Need to import psg code to desc mapping
 
-                if (psg_code+Volume_flag+brand_ind  in list(PSGVolBrandBuckets['bucket_value'])):
+                if (psg_code + Volume_flag + brand_ind in list(PSGVolBrandBuckets['bucket_value'])):
                     print("puuuuuuuuuuurrrrrrrrrrrrrrrraaaaaaaaaaaaaaaaa")
-                    Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets['bucket_value'] == psg_code+Volume_flag+brand_ind]).iloc[0]['cannibalization']
-                    #Cannibalization_perc = Cannibalization_perc.round(2)
+                    Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets[
+                                                                       'bucket_value'] == psg_code + Volume_flag + brand_ind]).iloc[
+                        0]['cannibalization']
+                    # Cannibalization_perc = Cannibalization_perc.round(2)
 
-                elif (psg_code+Volume_flag  in list(PSGVolBuckets['bucket_value'])):
+                elif (psg_code + Volume_flag in list(PSGVolBuckets['bucket_value'])):
                     print("kkkkkkkkkkkkkkkkkkkaaaaaaaaaaaaaaaaaammmmmmmmmmmmmmmmmmm")
-                    Cannibalization_perc = (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code+Volume_flag]).iloc[0]['cannibalization']
-                    #Cannibalization_perc = Cannibalization_perc.round(2)
+                    Cannibalization_perc = \
+                    (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code + Volume_flag]).iloc[0][
+                        'cannibalization']
+                    # Cannibalization_perc = Cannibalization_perc.round(2)
 
-                elif (psg_code  in list(PSGBuckets['bucket_value'])):
+                elif (psg_code in list(PSGBuckets['bucket_value'])):
                     print("ekdummmmmmmmmmmmmmmmmmm thodaaaaaaaaaaaaaaaaaaaa")
-                    Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
-                    #Cannibalization_perc = Cannibalization_perc.round(2)
+                    Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0][
+                        'cannibalization']
+                    # Cannibalization_perc = Cannibalization_perc.round(2)
 
-                else :
+                else:
                     print("naiiiiiiiiiiiiiiiiiiiiiii")
                     Cannibalization_perc = 0
 
-            sim_prod_subset = sim_prod_new[sim_prod_new['final_score']>0.8]
-
+            sim_prod_subset = sim_prod_new[sim_prod_new['final_score'] > 0.8]
 
             #### Applying sim prod with threshold as 0.8
 
-            if len(sim_prod_subset)>0:
-                if (brand_ind=='T'):
-                    sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[False,False, False])
-                elif (brand_ind=='B'):
-                    sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[True,False, False])
+            if len(sim_prod_subset) > 0:
+                if (brand_ind == 'T'):
+                    sim_prod_subset = sim_prod_subset.sort_values(['brand_ind', 'final_score', 'launch_tesco_week'],
+                                                                  ascending=[False, False, False])
+                elif (brand_ind == 'B'):
+                    sim_prod_subset = sim_prod_subset.sort_values(['brand_ind', 'final_score', 'launch_tesco_week'],
+                                                                  ascending=[True, False, False])
 
-                Cannibalization_perc = sim_prod_subset.iloc[0,:]['cannibalization']
+                Cannibalization_perc = sim_prod_subset.iloc[0, :]['cannibalization']
 
-
-
-            #     ##### To get the cannibilized volume 
+            # ##### To get the cannibilized volume
 
             total_forecasted_volume = float(total_forecasted_volume)
             # if not Cannibalization_perc:
             #   print("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
             #   Cannibalization_perc=0
             Cannibalization_perc = float(Cannibalization_perc)
-            #global Cannibalization_perc
+            # global Cannibalization_perc
 
-            forecasted_cannibilization_volume = Cannibalization_perc*total_forecasted_volume
+            forecasted_cannibilization_volume = Cannibalization_perc * total_forecasted_volume
 
             ##### To get the cannibilized sales
             forecasted_cannibilization_volume = float(forecasted_cannibilization_volume)
 
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+            forecasted_cannibilization_sales = forecasted_cannibilization_volume * asp
+            # forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+            Cannibalization_perc_sales = (forecasted_cannibilization_sales / total_forecasted_sales)
 
             ##### To get the net mpact in volume
             forecasted_net_impact_volume = total_forecasted_volume - forecasted_cannibilization_volume
@@ -2042,43 +2023,43 @@ class npdpage_impact_forecast(APIView):
             forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
             All_attribute_subset = All_attribute.dropna()
-            All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute_subset[['base_product_number', 'product_sub_group_description']]
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            ## rolling volume at psg bpn level
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-
-
-
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
 
             # #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == time_frame]
 
             # ###### Getting the total volume for the selected psg and time period
             total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
 
-
-
-
-
             # ##### Getting the asp for all the bpn in product contri
             product_price_df_new = product_price_df
             product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
-            #print(product_price_df_new.head())
-            product_price_df_new = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+            # print(product_price_df_new.head())
+            product_price_df_new = product_price_df.groupby(['base_product_number'], as_index=False).agg(
+                {'asp': 'mean'})
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new,
+                                             left_on=['base_product_number'], right_on=['base_product_number'],
+                                             how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
 
             ###Total would be sum of all the product sales
             total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
@@ -2086,34 +2067,39 @@ class npdpage_impact_forecast(APIView):
             #### Getting the change in % psg volume
             total_psg_forecasted_volume = float(total_psg_forecasted_volume)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+            try:
+                psg_perc_volume = (forecasted_net_impact_volume / total_psg_forecasted_volume)
             except:
                 psg_perc_volume = 0
 
             #### Gettig the change in % psg sales
 
             total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+            psg_perc_sales = (forecasted_net_impact_sales / total_psg_forecasted_sales)
 
-            data_volume = [{'forecast': total_forecasted_volume,'modified_forecast': total_forecasted_volume,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc*100,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag ,'price_band' : price_band}]
+            data_volume = [{'forecast': total_forecasted_volume, 'modified_forecast': total_forecasted_volume,
+                            'cannibilization_value': forecasted_cannibilization_volume,
+                            'cannibilization_perc': Cannibalization_perc * 100,
+                            'net_impact_value': forecasted_net_impact_volume,
+                            'perc_change_in_psg': psg_perc_volume * 100, 'buying_controller':
+                                Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                            'psg': Product_Sub_Group_Description, 'asp':
+                                asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                            'till_roll_desc': Till_Roll_Description, 'week_flag': week_flag, 'price_band': price_band}]
 
-            data_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales*100,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag,'price_band' : price_band }]
+            data_sales = [{'forecast': total_forecasted_sales, 'modified_forecast': total_forecasted_sales,
+                           'cannibilization_value': forecasted_cannibilization_sales,
+                           'cannibilization_perc': Cannibalization_perc_sales * 100,
+                           'net_impact_value': forecasted_net_impact_sales, 'perc_change_in_psg': psg_perc_sales * 100,
+                           'buying_controller':
+                               Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                           'psg': Product_Sub_Group_Description, 'asp':
+                               asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                           'till_roll_desc': Till_Roll_Description, 'week_flag': week_flag, 'price_band': price_band}]
 
-
-
-            model_output = [{'data_volume': data_volume , 'data_sales' : data_sales }]
+            model_output = [{'data_volume': data_volume, 'data_sales': data_sales}]
 
             return model_output
-
 
         def similar_product_cannabilized(time_frame):
             sim_prod_product = sim_prod[['base_product_number']]
@@ -2121,54 +2107,63 @@ class npdpage_impact_forecast(APIView):
             time_frame = time_frame
             #### GETTING ONLY THOSE bpn WHICH WERE THERE IN SIM PROD (THRESHOLD OF 0.8)
 
-            product_contri_df_new = pd.merge(product_contri_df,sim_prod_product,left_on=['base_product_number'], right_on=['base_product_number'],how='inner')
+            product_contri_df_new = pd.merge(product_contri_df, sim_prod_product, left_on=['base_product_number'],
+                                             right_on=['base_product_number'], how='inner')
 
             All_attribute_subset = All_attribute.dropna()
-            All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute_subset[['base_product_number', 'product_sub_group_description']]
 
-
-            product_psg_mapping =pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
             ### rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-        
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
+
             # #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == time_frame]
 
             product_price_df_new = product_price_df
             product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
-            product_price_df_new = product_price_df_new.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+            product_price_df_new = product_price_df_new.groupby(['base_product_number'], as_index=False).agg(
+                {'asp': 'mean'})
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new,
+                                             left_on=['base_product_number'], right_on=['base_product_number'],
+                                             how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype(int)
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
             psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
-    
-            product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-      
-            product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales']]
-            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T','Own Label')
-            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B','Branded')
+
+            product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'],
+                                            right_on=['base_product_number'], how='left')
+
+            product_desc_branded = product_desc_branded[
+                ['long_description', 'brand_indicator', 'predicted_volume', 'predicted_sales']]
+            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T', 'Own Label')
+            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B', 'Branded')
 
             return product_desc_branded
-
 
         ### for calculating forecast
         # if (total_forecasted_volume ==0) & (Cannibalization_perc ==0):
 
-        if (modified_flag==0):
+        if (modified_flag == 0):
             print("inside forecast")
 
             similar_product = pd.DataFrame()
             if week == 'Latest 13 Weeks':
-                # call function for priceband and psg code 
+                # call function for priceband and psg code
                 print('function 1')
                 psg_priceband_merch = get_priceband_psg_merch_code()
                 psg_code = psg_priceband_merch['psg_code']
@@ -2179,27 +2174,27 @@ class npdpage_impact_forecast(APIView):
                 week_mapping['calendar_date'] = pd.to_datetime(week_mapping['calendar_date'], format='%Y-%m-%d')
                 today = datetime.datetime.today().strftime('%Y-%m-%d')
                 current_week = (week_mapping.loc[week_mapping['calendar_date'] == today]).iloc[0]['year_week_number']
-   
+
                 ### Taking Columns to spread
-                ### Converting buying controller to lower case and concating the name 
+                ### Converting buying controller to lower case and concating the name
                 bc_name = (Buying_controller.replace(" ", "").lower())
 
                 dataset1 = dataset[[bc_name]]
                 dataset1.dropna(inplace=True)
-                dataset1 =pd.DataFrame(columns=dataset1[bc_name].values)
-             
+                dataset1 = pd.DataFrame(columns=dataset1[bc_name].values)
+
                 # call function for creating ads structure
                 print('function 2')
                 df = get_ads_structure()
-             
+
                 # call function for filling ads structure
                 print('function 3')
                 df1 = fill_ads_structure(df)
-              
+
                 # call function for finding similar products
                 print('function 4')
                 sim_prod = similar_products()
-                #call function for substitute calculation 
+                # call function for substitute calculation
                 if (len(sim_prod)) > 0:
                     df2 = subs_same_different(df1)
 
@@ -2208,7 +2203,7 @@ class npdpage_impact_forecast(APIView):
                     df2.loc[:, 'no_of_subs_same_brand'] = 0
                     df2.loc[:, 'no_of_subs_diff_brand'] = 0
 
-                All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+                All_attribute_pb = All_attribute.loc[(All_attribute['price_band'] == price_band)]
 
                 # call function for product count with same psg and price band
                 print('function 5')
@@ -2218,17 +2213,17 @@ class npdpage_impact_forecast(APIView):
                 df_final_new = no_of_stores_holidays(df3)
 
                 week_index = df_final_new[['year_week_number']].drop_duplicates().reset_index()
-                week_index = week_index.rename(columns={'index':'rank'})
+                week_index = week_index.rename(columns={'index': 'rank'})
                 # Creating a index for the week number
-                df_final_new = pd.merge(df_final_new,week_index,on=['year_week_number'],how='left')
+                df_final_new = pd.merge(df_final_new, week_index, on=['year_week_number'], how='left')
                 # global df_final_new
 
-                # Subsetting for 13 weeks 
+                # Subsetting for 13 weeks
                 df_test_52weeks = df_final_new
-                df_test = df_test_52weeks[df_test_52weeks['rank']<=12]
+                df_test = df_test_52weeks[df_test_52weeks['rank'] <= 12]
 
-                del(df_test['year_week_number'])
-                del(df_test['rank'])
+                del (df_test['year_week_number'])
+                del (df_test['rank'])
 
                 gzip_pickle = gzip.open("api/pickle/xg_model_MEATFISHANDVEG.pkl", "rb")
 
@@ -2239,54 +2234,55 @@ class npdpage_impact_forecast(APIView):
                 ## To get the base product number and launch tesco week mapping
                 BPN_launch_week = All_attribute[['base_product_number', 'launch_tesco_week']]
                 ##Consolidated buckets subsetting only for the bc and making three datasets for calculating cannibilization percent
-                consolidated_buckets_df = consolidated_buckets_df[consolidated_buckets_df['buying_controller']==Buying_controller]
+                consolidated_buckets_df = consolidated_buckets_df[
+                    consolidated_buckets_df['buying_controller'] == Buying_controller]
 
-                PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
-                PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
-                PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
-                # Cannibalization_perc = 0 
-                output_cannib = run_cannibilization_model(df_test,"Latest 13 Weeks","3_months")
+                PSGVolBrandBuckets = consolidated_buckets_df[
+                    consolidated_buckets_df['bucket_flag'] == 'PSGVolBrandBuckets']
+                PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGVolBuckets']
+                PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGBuckets']
+                # Cannibalization_perc = 0
+                output_cannib = run_cannibilization_model(df_test, "Latest 13 Weeks", "3_months")
 
                 output_cannib_volume = pd.DataFrame(output_cannib[0]['data_volume'])  ##Output 1 volume
                 output_cannib_sales = pd.DataFrame(output_cannib[0]['data_sales'])  ## Output 1 Sales
-                
-                data_dict_volume={}
+
+                data_dict_volume = {}
                 data = [{
-                           "name":"NPD Volume","value":int(output_cannib_volume['forecast'][0])
-                           },
-                        {
-                            "name":"Cannibalized Volume","value":-int(output_cannib_volume['cannibilization_value'][0])
-                            }]
+                    "name": "NPD Volume", "value": int(output_cannib_volume['forecast'][0])
+                },
+                    {
+                        "name": "Cannibalized Volume", "value": -int(output_cannib_volume['cannibilization_value'][0])
+                    }]
 
-                volume={}
-                volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
-                                   }
-                data_dict_volume["data"]=data
-                data_dict_volume["impact"]=volume
+                volume = {}
+                volume = {"Cannibilization_perc": output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
+                          "perc_impact_psg": output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                          }
+                data_dict_volume["data"] = data
+                data_dict_volume["impact"] = volume
 
-                data_dict_sales={}
+                data_dict_sales = {}
                 data = [{
-                                "name":"NPD Value","value":int(output_cannib_sales['forecast'][0])
-                                },
-                                {
-                                                "name":"Cannibalized Sales",
-                                                "value":-int(output_cannib_sales['cannibilization_value'][0])
-                                }]
-                sales={}
-                sales={
-                                                "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
-                                   }
-                data_dict_sales["data"]=data
-                data_dict_sales["impact"]=sales
-
+                    "name": "NPD Value", "value": int(output_cannib_sales['forecast'][0])
+                },
+                    {
+                        "name": "Cannibalized Sales",
+                        "value": -int(output_cannib_sales['cannibilization_value'][0])
+                    }]
+                sales = {}
+                sales = {
+                    "Cannibilization_perc": output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
+                    "perc_impact_psg": (output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                }
+                data_dict_sales["data"] = data
+                data_dict_sales["impact"] = sales
 
                 similar_product = similar_product_cannabilized('3_months')
-                
+
 
             elif week == 'Latest 26 Weeks':
-                # call function for priceband and psg code 
+                # call function for priceband and psg code
                 print('function 1')
                 psg_priceband_merch = get_priceband_psg_merch_code()
                 psg_code = psg_priceband_merch['psg_code']
@@ -2297,22 +2293,22 @@ class npdpage_impact_forecast(APIView):
                 today = datetime.datetime.today().strftime('%Y-%m-%d')
                 current_week = (week_mapping.loc[week_mapping['calendar_date'] == today]).iloc[0]['year_week_number']
                 ### Taking Columns to spread
-                ### Converting buying controller to lower case and concating the name 
+                ### Converting buying controller to lower case and concating the name
                 bc_name = (Buying_controller.replace(" ", "").lower())
 
                 dataset1 = dataset[[bc_name]]
                 dataset1.dropna(inplace=True)
-                dataset1 =pd.DataFrame(columns=dataset1[bc_name].values)
+                dataset1 = pd.DataFrame(columns=dataset1[bc_name].values)
                 # call function for creating ads structure
                 print('function 2')
                 df = get_ads_structure()
-                 # call function for filling ads structure
+                # call function for filling ads structure
                 print('function 3')
                 df1 = fill_ads_structure(df)
                 # call function for finding similar products
                 print('function 4')
                 sim_prod = similar_products()
-                #call function for substitute calculation 
+                # call function for substitute calculation
                 if (len(sim_prod)) > 0:
                     df2 = subs_same_different(df1)
 
@@ -2320,7 +2316,7 @@ class npdpage_impact_forecast(APIView):
                     df2 = df1
                     df2.loc[:, 'no_of_subs_same_brand'] = 0
                     df2.loc[:, 'no_of_subs_diff_brand'] = 0
-                All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+                All_attribute_pb = All_attribute.loc[(All_attribute['price_band'] == price_band)]
 
                 # call function for product count with same psg and price band
                 print('function 5')
@@ -2330,94 +2326,95 @@ class npdpage_impact_forecast(APIView):
                 df_final_new = no_of_stores_holidays(df3)
 
                 week_index = df_final_new[['year_week_number']].drop_duplicates().reset_index()
-                week_index = week_index.rename(columns={'index':'rank'})
+                week_index = week_index.rename(columns={'index': 'rank'})
                 # Creating a index for the week number
-                df_final_new = pd.merge(df_final_new,week_index,on=['year_week_number'],how='left')
-       
-                # Subsetting for 26 weeks 
-                df_test_52weeks = df_final_new
-                df_test = df_test_52weeks[df_test_52weeks['rank']<=25]
+                df_final_new = pd.merge(df_final_new, week_index, on=['year_week_number'], how='left')
 
-                del(df_test['year_week_number'])
-                del(df_test['rank'])
+                # Subsetting for 26 weeks
+                df_test_52weeks = df_final_new
+                df_test = df_test_52weeks[df_test_52weeks['rank'] <= 25]
+
+                del (df_test['year_week_number'])
+                del (df_test['rank'])
 
                 gzip_pickle = gzip.open("api/pickle/xg_model_MEATFISHANDVEG.pkl", "rb")
 
                 xg_model = pickle.load(gzip_pickle)
-                #global xg_model
+                # global xg_model
                 #### Similar product matching
                 ###Getting base product number and their respective cannibilization
                 bc_cannibilization = bc_cannibilization[['base_product_number', 'cannibalization']]
                 ## To get the base product number and launch tesco week mapping
                 BPN_launch_week = All_attribute[['base_product_number', 'launch_tesco_week']]
                 ##Consolidated buckets subsetting only for the bc and making three datasets for calculating cannibilization percent
-                consolidated_buckets_df = consolidated_buckets_df[consolidated_buckets_df['buying_controller']==Buying_controller]
+                consolidated_buckets_df = consolidated_buckets_df[
+                    consolidated_buckets_df['buying_controller'] == Buying_controller]
 
-                PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
-                PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
-                PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
-                # Cannibalization_perc = 0 
-                output_cannib = run_cannibilization_model(df_test,"Latest 26 Weeks","6_months")
+                PSGVolBrandBuckets = consolidated_buckets_df[
+                    consolidated_buckets_df['bucket_flag'] == 'PSGVolBrandBuckets']
+                PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGVolBuckets']
+                PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGBuckets']
+                # Cannibalization_perc = 0
+                output_cannib = run_cannibilization_model(df_test, "Latest 26 Weeks", "6_months")
 
                 output_cannib_volume = pd.DataFrame(output_cannib[0]['data_volume'])  ##Output 1 volume
                 output_cannib_sales = pd.DataFrame(output_cannib[0]['data_sales'])  ## Output 1 Sales
-                
-                data_dict_volume={}
-                data = [{
-                           "name":"NPD Volume","value":int(output_cannib_volume['forecast'][0])
-                           },
-                        {
-                            "name":"Cannibalized Volume","value":-int(output_cannib_volume['cannibilization_value'][0])
-                            }]
 
-                volume={}
-                volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
-                                   }
-                data_dict_volume["data"]=data
-                data_dict_volume["impact"]=volume
-
-                data_dict_sales={}
+                data_dict_volume = {}
                 data = [{
-                        "name":"NPD Value","value":int(output_cannib_sales['forecast'][0])
-                        },
-                        {
-                                        "name":"Cannibalized sales",
-                                        "value":-int(output_cannib_sales['cannibilization_value'][0])
-                        }]
-                sales={}
-                sales={
-                        "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
-                        "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
-                       }
-                data_dict_sales["data"]=data
-                data_dict_sales["impact"]=sales
+                    "name": "NPD Volume", "value": int(output_cannib_volume['forecast'][0])
+                },
+                    {
+                        "name": "Cannibalized Volume", "value": -int(output_cannib_volume['cannibilization_value'][0])
+                    }]
+
+                volume = {}
+                volume = {"Cannibilization_perc": output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
+                          "perc_impact_psg": output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                          }
+                data_dict_volume["data"] = data
+                data_dict_volume["impact"] = volume
+
+                data_dict_sales = {}
+                data = [{
+                    "name": "NPD Value", "value": int(output_cannib_sales['forecast'][0])
+                },
+                    {
+                        "name": "Cannibalized sales",
+                        "value": -int(output_cannib_sales['cannibilization_value'][0])
+                    }]
+                sales = {}
+                sales = {
+                    "Cannibilization_perc": output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
+                    "perc_impact_psg": (output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                }
+                data_dict_sales["data"] = data
+                data_dict_sales["impact"] = sales
 
                 similar_product = similar_product_cannabilized('6_months')
 
-            
+
             elif week == 'Latest 52 Weeks':
-                
-                            
+
                 print('function 1')
                 psg_priceband_merch = get_priceband_psg_merch_code()
                 psg_code = psg_priceband_merch['psg_code']
-                
+
                 price_band = psg_priceband_merch['price_band']
-                
+
                 merch_code = psg_priceband_merch['merch_code']
-                
+
                 week_mapping = week_mapping.sort_values('year_week_number')
                 week_mapping['calendar_date'] = pd.to_datetime(week_mapping['calendar_date'], format='%Y-%m-%d')
                 today = datetime.datetime.today().strftime('%Y-%m-%d')
                 current_week = (week_mapping.loc[week_mapping['calendar_date'] == today]).iloc[0]['year_week_number']
                 ### Taking Columns to spread
-                ### Converting buying controller to lower case and concating the name 
+                ### Converting buying controller to lower case and concating the name
                 bc_name = (Buying_controller.replace(" ", "").lower())
 
                 dataset1 = dataset[[bc_name]]
                 dataset1.dropna(inplace=True)
-                dataset1 =pd.DataFrame(columns=dataset1[bc_name].values)
+                dataset1 = pd.DataFrame(columns=dataset1[bc_name].values)
                 # call function for creating ads structure
                 print('function 2')
                 df = get_ads_structure()
@@ -2427,8 +2424,8 @@ class npdpage_impact_forecast(APIView):
                 # call function for finding similar products
                 print('function 4')
                 sim_prod = similar_products()
-                #global sim_prod
-                #call function for substitute calculation 
+                # global sim_prod
+                # call function for substitute calculation
                 if (len(sim_prod)) > 0:
                     df2 = subs_same_different(df1)
                 else:
@@ -2436,7 +2433,7 @@ class npdpage_impact_forecast(APIView):
                     df2.loc[:, 'no_of_subs_same_brand'] = 0
                     df2.loc[:, 'no_of_subs_diff_brand'] = 0
 
-                All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+                All_attribute_pb = All_attribute.loc[(All_attribute['price_band'] == price_band)]
 
                 # call function for product count with same psg and price band
                 print('function 5')
@@ -2446,15 +2443,15 @@ class npdpage_impact_forecast(APIView):
                 df_final_new = no_of_stores_holidays(df3)
 
                 week_index = df_final_new[['year_week_number']].drop_duplicates().reset_index()
-                week_index = week_index.rename(columns={'index':'rank'})
+                week_index = week_index.rename(columns={'index': 'rank'})
                 # Creating a index for the week number
-                df_final_new = pd.merge(df_final_new,week_index,on=['year_week_number'],how='left')
-              
-                # Subsetting for 13 weeks 
+                df_final_new = pd.merge(df_final_new, week_index, on=['year_week_number'], how='left')
+
+                # Subsetting for 13 weeks
                 df_test = df_final_new
-        
-                del(df_test['year_week_number'])
-                del(df_test['rank'])
+
+                del (df_test['year_week_number'])
+                del (df_test['rank'])
 
                 gzip_pickle = gzip.open("api/pickle/xg_model_MEATFISHANDVEG.pkl", "rb")
 
@@ -2465,66 +2462,68 @@ class npdpage_impact_forecast(APIView):
                 ## To get the base product number and launch tesco week mapping
                 BPN_launch_week = All_attribute[['base_product_number', 'launch_tesco_week']]
                 ##Consolidated buckets subsetting only for the bc and making three datasets for calculating cannibilization percent
-                consolidated_buckets_df = consolidated_buckets_df[consolidated_buckets_df['buying_controller']==Buying_controller]
+                consolidated_buckets_df = consolidated_buckets_df[
+                    consolidated_buckets_df['buying_controller'] == Buying_controller]
 
-                PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
-                PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
-                PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
-                Cannibalization_perc = 0 
-                output_cannib = run_cannibilization_model(df_test,"Latest 52 Weeks","12_months")
+                PSGVolBrandBuckets = consolidated_buckets_df[
+                    consolidated_buckets_df['bucket_flag'] == 'PSGVolBrandBuckets']
+                PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGVolBuckets']
+                PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGBuckets']
+                Cannibalization_perc = 0
+                output_cannib = run_cannibilization_model(df_test, "Latest 52 Weeks", "12_months")
 
                 output_cannib_volume = pd.DataFrame(output_cannib[0]['data_volume'])  ##Output 1 volume
                 output_cannib_sales = pd.DataFrame(output_cannib[0]['data_sales'])  ## Output 1 Sales
-                
-                data_dict_volume={}
+
+                data_dict_volume = {}
                 data = [{
-                           "name":"NPD Volume","value":int(output_cannib_volume['forecast'][0])
-                           },
-                        {
-                            "name":"Cannibalized Volume","value":-int(output_cannib_volume['cannibilization_value'][0])
-                            }]
+                    "name": "NPD Volume", "value": int(output_cannib_volume['forecast'][0])
+                },
+                    {
+                        "name": "Cannibalized Volume", "value": -int(output_cannib_volume['cannibilization_value'][0])
+                    }]
 
-                volume={}
-                volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
-                                   }
-                data_dict_volume["data"]=data
-                data_dict_volume["impact"]=volume
+                volume = {}
+                volume = {"Cannibilization_perc": output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
+                          "perc_impact_psg": output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                          }
+                data_dict_volume["data"] = data
+                data_dict_volume["impact"] = volume
 
-                data_dict_sales={}
+                data_dict_sales = {}
                 data = [{
-                        "name":"NPD Value","value":int(output_cannib_sales['forecast'][0])
-                        },
-                        {
-                        "name":"Cannibalized Sales",
-                        "value":-int(output_cannib_sales['cannibilization_value'][0])
-                        }]
-                sales={}
-                sales={
-                        "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
-                        "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
-                       }
-                data_dict_sales["data"]=data
-                data_dict_sales["impact"]=sales
-
+                    "name": "NPD Value", "value": int(output_cannib_sales['forecast'][0])
+                },
+                    {
+                        "name": "Cannibalized Sales",
+                        "value": -int(output_cannib_sales['cannibilization_value'][0])
+                    }]
+                sales = {}
+                sales = {
+                    "Cannibilization_perc": output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
+                    "perc_impact_psg": (output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                }
+                data_dict_sales["data"] = data
+                data_dict_sales["impact"] = sales
 
                 similar_product = similar_product_cannabilized('12_months')
 
-            similar_product_final = similar_product[similar_product['long_description'].str.contains(search,case=False)]
+            similar_product_final = similar_product[
+                similar_product['long_description'].str.contains(search, case=False)]
 
-            num_pages = math.ceil((len(similar_product_final)/5))
-            start_index = (page-1)*5+1
+            num_pages = math.ceil((len(similar_product_final) / 5))
+            start_index = (page - 1) * 5 + 1
             count = len(similar_product)
-            end_index = page*5
-            similar_product_final = similar_product_final.reset_index() 
-            df_new=similar_product_final.loc[start_row:end_row,]
+            end_index = page * 5
+            similar_product_final = similar_product_final.reset_index()
+            df_new = similar_product_final.loc[start_row:end_row, ]
             data_table = {
-                    'df': df_new.to_dict(orient='records'),
-                    'pagination_count': num_pages,
-                    'page': page,
-                    'start_index': start_index,
-                    'count': count,
-                    'end_index': end_index,
+                'df': df_new.to_dict(orient='records'),
+                'pagination_count': num_pages,
+                'page': page,
+                'start_index': start_index,
+                'count': count,
+                'end_index': end_index,
             }
 
         # for edit forecast pop-up
@@ -2532,15 +2531,14 @@ class npdpage_impact_forecast(APIView):
 
             print("inside edit forecast")
 
-            if week_flag=="Latest 13 Weeks":
+            if week_flag == "Latest 13 Weeks":
                 time_frame = "3_months"
-            elif week_flag=="Latest 26 Weeks":
+            elif week_flag == "Latest 26 Weeks":
                 time_frame = "6_months"
-            elif week_flag=="Latest 52 Weeks":
+            elif week_flag == "Latest 52 Weeks":
                 time_frame = "12_months"
 
-
-            #### for calculating data table 
+            #### for calculating data table
             psg_priceband_merch = get_priceband_psg_merch_code()
 
             price_band = psg_priceband_merch['price_band']
@@ -2550,32 +2548,32 @@ class npdpage_impact_forecast(APIView):
 
             similar_product = similar_product_cannabilized(time_frame)
 
-            similar_product_final = similar_product[similar_product['long_description'].str.contains(search,case=False)]
+            similar_product_final = similar_product[
+                similar_product['long_description'].str.contains(search, case=False)]
 
-            num_pages = math.ceil((len(similar_product_final)/5))
-            start_index = (page-1)*5+1
+            num_pages = math.ceil((len(similar_product_final) / 5))
+            start_index = (page - 1) * 5 + 1
             count = len(similar_product)
-            end_index = page*5
-            similar_product_final = similar_product_final.reset_index() 
-            df_new=similar_product_final.loc[start_row:end_row,]
+            end_index = page * 5
+            similar_product_final = similar_product_final.reset_index()
+            df_new = similar_product_final.loc[start_row:end_row, ]
             data_table = {
-                    'df': df_new.to_dict(orient='records'),
-                    'pagination_count': num_pages,
-                    'page': page,
-                    'start_index': start_index,
-                    'count': count,
-                    'end_index': end_index,
+                'df': df_new.to_dict(orient='records'),
+                'pagination_count': num_pages,
+                'page': page,
+                'start_index': start_index,
+                'count': count,
+                'end_index': end_index,
             }
-
 
             forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume)
 
             ##### To get the cannibilized sales
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
-            total_forecasted_sales = float(total_forecasted_volume)*float(asp)
+            forecasted_cannibilization_sales = forecasted_cannibilization_volume * asp
+            # forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+            total_forecasted_sales = float(total_forecasted_volume) * float(asp)
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+            Cannibalization_perc_sales = (forecasted_cannibilization_sales / total_forecasted_sales)
 
             ##### To get the net mpact in volume
             forecasted_net_impact_volume = total_forecasted_volume - forecasted_cannibilization_volume
@@ -2584,21 +2582,22 @@ class npdpage_impact_forecast(APIView):
             forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
             All_attribute = All_attribute.dropna()
-            All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute[['base_product_number', 'product_sub_group_description']]
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            ## rolling volume at psg bpn level
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-
-
-
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
 
             #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == time_frame]
 
             ###### Getting the total volume for the selected psg and time period
             total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
@@ -2610,12 +2609,13 @@ class npdpage_impact_forecast(APIView):
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'],
+                                             right_on=['base_product_number'], how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
 
             ###Total would be sum of all the product sales
             total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
@@ -2623,123 +2623,132 @@ class npdpage_impact_forecast(APIView):
             #### Getting the change in % psg volume
             total_psg_forecasted_volume = float(total_psg_forecasted_volume)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+            try:
+                psg_perc_volume = (forecasted_net_impact_volume / total_psg_forecasted_volume)
             except:
                 psg_perc_volume = 0
 
             #### Gettig the change in % psg sales
 
             total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+            psg_perc_sales = (forecasted_net_impact_sales / total_psg_forecasted_sales)
 
-            data_volume = [{'forecast': total_forecasted_volume,'modified_forecast': total_forecasted_volume,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag ,'price_band' : price_band}]
+            data_volume = [{'forecast': total_forecasted_volume, 'modified_forecast': total_forecasted_volume,
+                            'cannibilization_value': forecasted_cannibilization_volume,
+                            'cannibilization_perc': Cannibalization_perc,
+                            'net_impact_value': forecasted_net_impact_volume,
+                            'perc_change_in_psg': psg_perc_volume * 100, 'buying_controller':
+                                Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                            'psg': Product_Sub_Group_Description, 'asp':
+                                asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                            'till_roll_desc': Till_Roll_Description, 'week_flag': week_flag, 'price_band': price_band}]
 
-            data_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag,'price_band' : price_band }]
+            data_sales = [{'forecast': total_forecasted_sales, 'modified_forecast': total_forecasted_sales,
+                           'cannibilization_value': forecasted_cannibilization_sales,
+                           'cannibilization_perc': Cannibalization_perc_sales,
+                           'net_impact_value': forecasted_net_impact_sales, 'perc_change_in_psg': psg_perc_sales * 100,
+                           'buying_controller':
+                               Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                           'psg': Product_Sub_Group_Description, 'asp':
+                               asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                           'till_roll_desc': Till_Roll_Description, 'week_flag': week_flag, 'price_band': price_band}]
 
             output_cannib_volume = pd.DataFrame(data_volume)  ##Output 1 volume
             output_cannib_sales = pd.DataFrame(data_sales)  ## Output 1 Sales
 
-            data_dict_volume={}
+            data_dict_volume = {}
             data = [{
-                       "name":"NPD Volume","value":output_cannib_volume['forecast'][0]
-                       },
-                    {
-                        "name":"Cannibalized Volume","value":output_cannib_volume['cannibilization_value'][0]
-                        }]
+                "name": "NPD Volume", "value": output_cannib_volume['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Volume", "value": output_cannib_volume['cannibilization_value'][0]
+                }]
 
-            volume={}
-            volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
-                               }
-            data_dict_volume["data"]=data
-            data_dict_volume["impact"]=volume
-            data_dict_sales={}
+            volume = {}
+            volume = {"Cannibilization_perc": output_cannib_volume['cannibilization_perc'][0],
+                      "perc_impact_psg": output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                      }
+            data_dict_volume["data"] = data
+            data_dict_volume["impact"] = volume
+            data_dict_sales = {}
             data = [{
-                    "name":"NPD Value","value":output_cannib_sales['forecast'][0]
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":output_cannib_sales['cannibilization_value'][0]
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
-                   }
-            data_dict_sales["data"]=data
-            data_dict_sales["impact"]=sales
+                "name": "NPD Value", "value": output_cannib_sales['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Sales",
+                    "value": output_cannib_sales['cannibilization_value'][0]
+                }]
+            sales = {}
+            sales = {
+                "Cannibilization_perc": output_cannib_sales['cannibilization_perc'][0],
+                "perc_impact_psg": (output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+            }
+            data_dict_sales["data"] = data
+            data_dict_sales["impact"] = sales
+
+        return JsonResponse(
+            {'sales_chart': data_dict_sales, 'volume_chart': data_dict_volume, 'similar_product_table': data_table},
+            safe=False)
 
 
-        return JsonResponse({'sales_chart':data_dict_sales,'volume_chart':data_dict_volume,'similar_product_table':data_table},safe=False)
+# Save Scenario for NPD IMPACT
 
-
-#Save Scenario for NPD IMPACT
-
-class npdpage_impact_save_scenario(APIView): 
+class npdpage_impact_save_scenario(APIView):
     def get(self, request, *args):
-        args = {reqobj : request.GET.get(reqobj) for reqobj in request.GET.keys()}
-                
-        #remove format arg
-        args.pop('format', None)   
+        args = {reqobj: request.GET.get(reqobj) for reqobj in request.GET.keys()}
+
+        # remove format arg
+        args.pop('format', None)
 
         # print(args)
         # pop week tab
-        week_selected = args.pop('week_flag',None)
+        week_selected = args.pop('week_flag', None)
 
-        # page and search not used 
+        # page and search not used
         args.pop('search', "")
-        args.pop('page',None)         
+        args.pop('page', None)
 
         # check if forecast is modified
         modified_flag = int(args.pop('modified_flag', 0))
-        total_forecasted_volume = float(args.pop('modified_forecast',0))
-        Cannibalization_perc = float(args.pop('Cannibalization_perc',0))      
+        total_forecasted_volume = float(args.pop('modified_forecast', 0))
+        Cannibalization_perc = float(args.pop('Cannibalization_perc', 0))
 
-        scenario_name = args.pop('scenario_name',None)
-        designation = args.pop('designation',None)
-        user_id = args.pop('user_id',None)
-        session_id = args.pop('session_id',None)
+        scenario_name = args.pop('scenario_name', None)
+        designation = args.pop('designation', None)
+        user_id = args.pop('user_id', None)
+        session_id = args.pop('session_id', None)
 
         print(args)
         user_attributes_args = args.copy()
         user_attributes = user_attributes_args
 
-        system_time = strftime("%Y-%m-%d %H:%M:%S" ,gmtime())
+        system_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
         print("system time")
         print(system_time)
-        #define variables 
+        # define variables
         print("creating variables for npd impact")
-        
+
         Buying_controller = args.pop('buying_controller', '')
         par_supp = args.pop('parent_supplier')
         Buyer = args.pop('buyer', '')
         Junior_Buyer = args.pop('junior_buyer', '')
         Package_Type = args.pop('package_type', '')
         Product_Sub_Group_Description = args.pop('product_sub_group_description', '')
-        measure_type =  args.pop('measure_type', '')
+        measure_type = args.pop('measure_type', '')
 
         asp = float(args.pop('asp', 0))
         acp = float(args.pop('acp', 0))
         Size = float(args.pop('size', 0))
         Brand_Name = args.pop('brand_name', '')
-        Till_Roll_Description =args.pop('till_roll_description', '')
+        Till_Roll_Description = args.pop('till_roll_description', '')
         Merchandise_Group_Description = args.pop('merchandise_group_code_description', '')
         Range_class = args.pop('range_class', '')
-        #variables defined
+        # variables defined
 
-        #to check if the scenario name exists already
-        
+        # to check if the scenario name exists already
+
         # scenario = scenario_name
-        # check_value = str(user_id) + '_' + scenario 
+        # check_value = str(user_id) + '_' + scenario
 
         # print("check_value")
         # print(check_value)
@@ -2747,7 +2756,7 @@ class npdpage_impact_save_scenario(APIView):
         # x= list(SaveScenario.objects.values_list('user_id','scenario_name').distinct())
         # x_df = pd.DataFrame(x,columns=["user_id","scenario_name"])
         # check_list=[]
-        # x_df['check_list'] = x_df['user_id'] + '_' + x_df['scenario_name'] 
+        # x_df['check_list'] = x_df['user_id'] + '_' + x_df['scenario_name']
         # print("xx")
         # print(x_df)
 
@@ -2756,18 +2765,18 @@ class npdpage_impact_save_scenario(APIView):
         # if check_value in check_list_data:
         #     result = "FAILURE"
         # else:
-        #     result = "SUCCESS" 
+        #     result = "SUCCESS"
 
 
         # if result == "SUCCESS":
         #     print("inside success")
-            #read all files 
+        # read all files
         All_attribute = read_frame(bc_allprod_attributes.objects.all())
-  
+
         attribute_score = read_frame(attribute_score_allbc.objects.all())
- 
+
         bc_cannibilization = read_frame(consolidated_calculated_cannibalization.objects.all())
- 
+
         input_dataset = read_frame(input_npd.objects.all())
 
         dataset = read_frame(features_allbc.objects.all())
@@ -2779,24 +2788,22 @@ class npdpage_impact_save_scenario(APIView):
         range_space_store = read_frame(range_space_store_future.objects.all())
 
         store_details_df = read_frame(store_details.objects.all())
- 
 
         SI = read_frame(seasonality_index.objects.all())
 
-        
         product_contri_df = read_frame(product_contri.objects.all())
 
         product_price_df = read_frame(product_price.objects.all())
-     
+
         week_mapping = read_frame(npd_calendar.objects.all())
-      
+
         merch_range_df = read_frame(merch_range.objects.all())
-   
+
         product_desc_df = read_frame(product_desc.objects.all())
-    
+
         brand_grp_mapping_df = read_frame(brand_grp_mapping.objects.all())
-   
-        #files read
+
+        # files read
 
         ### To get the priceband , psg code and merch code
 
@@ -2804,144 +2811,153 @@ class npdpage_impact_save_scenario(APIView):
 
             ###Getting a price band based on user selection
 
-            if((Buying_controller == 'Frozen Impulse') | (Buying_controller == 'Meat Fish and Veg') |(Buying_controller == 'Grocery Cereals')):
-                
-                if(0 < asp <= 2):
-                    price_band = '0 to 2'
-                if(2 < asp <= 4):
-                    price_band = '2 to 4'
-                if(4 < asp <= 6):
-                    price_band = '4 to 6'
-                if(6 < asp <= 8):
-                    price_band = '6 to 8'
-                if(8 < asp <= 10):
-                    price_band = '8 to 10'
-                if(10 < asp <= 12):
-                    price_band = '10 to 12'
-                if(12 < asp <= 14):
-                    price_band = '12 to 14'
-                if(14 < asp <= 16):
-                    price_band = '14 to 16'
-                if(16 < asp <= 18):
-                    price_band = '16 to 18'
-                if(18 < asp <= 20):
-                    price_band = '18 to 20'
-                if(20 < asp <= 23):
-                    price_band = '20 to 23'
-                if(23 < asp <= 26):
-                    price_band = '23 to 29'
-                if(26 < asp <= 29):
-                    price_band = '26 to 29'
-                if(29 < asp ):
-                    price_band = 'GRTR 29'
+            if ((Buying_controller == 'Frozen Impulse') | (Buying_controller == 'Meat Fish and Veg') | (
+                Buying_controller == 'Grocery Cereals')):
 
+                if (0 < asp <= 2):
+                    price_band = '0 to 2'
+                if (2 < asp <= 4):
+                    price_band = '2 to 4'
+                if (4 < asp <= 6):
+                    price_band = '4 to 6'
+                if (6 < asp <= 8):
+                    price_band = '6 to 8'
+                if (8 < asp <= 10):
+                    price_band = '8 to 10'
+                if (10 < asp <= 12):
+                    price_band = '10 to 12'
+                if (12 < asp <= 14):
+                    price_band = '12 to 14'
+                if (14 < asp <= 16):
+                    price_band = '14 to 16'
+                if (16 < asp <= 18):
+                    price_band = '16 to 18'
+                if (18 < asp <= 20):
+                    price_band = '18 to 20'
+                if (20 < asp <= 23):
+                    price_band = '20 to 23'
+                if (23 < asp <= 26):
+                    price_band = '23 to 29'
+                if (26 < asp <= 29):
+                    price_band = '26 to 29'
+                if (29 < asp):
+                    price_band = 'GRTR 29'
 
             #####Getting a psg code based on psg desc
             print('Product_Sub_Group_Description')
             print(Product_Sub_Group_Description)
-            psg_code = input_dataset[input_dataset['product_sub_group_description'] == Product_Sub_Group_Description].iloc[0]['product_sub_group_code']
+            psg_code = \
+            input_dataset[input_dataset['product_sub_group_description'] == Product_Sub_Group_Description].iloc[0][
+                'product_sub_group_code']
 
-            merch_code = merch_range_df[merch_range_df['merchandise_group_code_description']==Merchandise_Group_Description].iloc[0]['merchandise_group_code']
-         
-            psg_priceband_merch = {'psg_code' : psg_code, 'price_band' : price_band ,'merch_code' : merch_code}
+            merch_code = \
+            merch_range_df[merch_range_df['merchandise_group_code_description'] == Merchandise_Group_Description].iloc[
+                0]['merchandise_group_code']
+
+            psg_priceband_merch = {'psg_code': psg_code, 'price_band': price_band, 'merch_code': merch_code}
 
             return psg_priceband_merch
 
-        #### Making structure with 52 rows 
+        #### Making structure with 52 rows
         def get_ads_structure():
 
-            #Taking Parameters
-            df =dataset1.iloc[0:51,]
-            week_mapping_subset = week_mapping.loc[week_mapping.year_week_number>=201631]
+            # Taking Parameters
+            df = dataset1.iloc[0:51, ]
+            week_mapping_subset = week_mapping.loc[week_mapping.year_week_number >= 201631]
 
             ### To get the list of all 52 weeks
             weeks_list = pd.DataFrame(week_mapping_subset['year_week_number'].unique())
             weeks_list.columns = ['year_week_number']
-            weeks_list.sort_values(by= ['year_week_number'],ascending=False)
+            weeks_list.sort_values(by=['year_week_number'], ascending=False)
             weeks_list = weeks_list.iloc[0:52]
             df = pd.concat([df.reset_index(drop=True), weeks_list], axis=1)
-            df= df.fillna(0)
+            df = df.fillna(0)
             return df
+
         ###On column added which is the year week number
 
-        #### Have incorporated margin_percent and acp 
+        #### Have incorporated margin_percent and acp
         def fill_ads_structure(dataset):
-            
+
             ####Brand to ind and grp mapping
- 
+
             brand_grp_mapping = All_attribute
 
-            ### Adding new feature as abs 
-            margin_percent = abs((asp-acp)/acp)
+            ### Adding new feature as abs
+            margin_percent = abs((asp - acp) / acp)
 
             #### Assigning the value of '1' for the collected inputs (Categorical Variables)
-            dataset.loc[:,"buyer_" + Buyer] = 1
-            dataset.loc[:,"junior_buyer_" + Junior_Buyer] = 1
-            dataset.loc[:,"package_type_" + Package_Type] = 1
-            dataset.loc[:,"product_sub_group_description_" + Product_Sub_Group_Description] = 1
-            dataset.loc[:,"measure_type_" + measure_type] = 1
-            dataset.loc[:,"price_band_" + price_band] = 1
+            dataset.loc[:, "buyer_" + Buyer] = 1
+            dataset.loc[:, "junior_buyer_" + Junior_Buyer] = 1
+            dataset.loc[:, "package_type_" + Package_Type] = 1
+            dataset.loc[:, "product_sub_group_description_" + Product_Sub_Group_Description] = 1
+            dataset.loc[:, "measure_type_" + measure_type] = 1
+            dataset.loc[:, "price_band_" + price_band] = 1
 
             #### Directly input from the users
-            dataset.loc[:,"asp"] = asp
-            dataset.loc[:,"acp"] = acp
-            dataset.loc[:,"margin_percent"] = margin_percent
-            dataset.loc[:,"size"] = Size
+            dataset.loc[:, "asp"] = asp
+            dataset.loc[:, "acp"] = acp
+            dataset.loc[:, "margin_percent"] = margin_percent
+            dataset.loc[:, "size"] = Size
 
             #### Mapping Brand name to brand grp (Getting the rank of the brand selected)
 
             ##### Reading a mapping file
-            brand_group = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_grp20']
+            brand_group = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0][
+                'brand_grp20']
 
             #### Assigning the rank of the group in our ADS
-            dataset.loc[:,"brand_grp20"] = brand_group
+            dataset.loc[:, "brand_grp20"] = brand_group
 
-            ####Getting the brand indicator 
-            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
+            ####Getting the brand indicator
+            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0][
+                'brand_ind']
 
-            if (brand_ind=='T'):
+            if (brand_ind == 'T'):
                 brand_indicator = 1
             if (brand_ind == 'B'):
                 brand_indicator = 0
-            dataset.loc[:,"brand_ind"] = brand_indicator
-            ### Filling all columns related to week number 
+            dataset.loc[:, "brand_ind"] = brand_indicator
+            ### Filling all columns related to week number
             #### Looping for all the weeks
 
-            dataset.loc[:,"weeks_since_launch"] = 0
+            dataset.loc[:, "weeks_since_launch"] = 0
             #### Arranging week in ascending order
             week_mapping_subset = week_mapping.sort_values('year_week_number')
-            #Converting date to the date format
-            week_mapping_subset['calendar_date'] = pd.to_datetime(week_mapping_subset['calendar_date'], format= '%Y-%m-%d')
-                    
-            date_map = week_mapping_subset[['year_week_number', 'quarter_number', 'period_number', 'week_number',
-               'period_week_number']].drop_duplicates()
-            date_map.columns = ['year_week_number', 'quarter_number', 'period_number', 'curr_week_number',
-               'period_week_number']
-            date_sparse = pd.get_dummies(date_map, prefix = ['quarter_number', 'period_number', 'curr_week_number',
-               'period_week_number'], columns = ['quarter_number', 'period_number', 'curr_week_number',
-               'period_week_number'])
-            date_sparse.drop('curr_week_number_53', 1, inplace= True)
-            date_sparse.drop('period_number_13', 1, inplace= True)
-            dataset.drop(date_sparse.columns[1:], 1, inplace =True)
-            dataset = pd.merge(dataset, date_sparse, on = ['year_week_number'], how = 'left')
-            
-            dataset.drop('weeks_since_launch', 1, inplace =True)
-            dataset['weeks_since_launch'] = df.year_week_number.rank(method = 'dense').astype(int)
+            # Converting date to the date format
+            week_mapping_subset['calendar_date'] = pd.to_datetime(week_mapping_subset['calendar_date'],
+                                                                  format='%Y-%m-%d')
 
-            #### Weeks since launch will be incremental 
-            #Taking weeks from launch as 1 for the first week
+            date_map = week_mapping_subset[['year_week_number', 'quarter_number', 'period_number', 'week_number',
+                                            'period_week_number']].drop_duplicates()
+            date_map.columns = ['year_week_number', 'quarter_number', 'period_number', 'curr_week_number',
+                                'period_week_number']
+            date_sparse = pd.get_dummies(date_map, prefix=['quarter_number', 'period_number', 'curr_week_number',
+                                                           'period_week_number'],
+                                         columns=['quarter_number', 'period_number', 'curr_week_number',
+                                                  'period_week_number'])
+            date_sparse.drop('curr_week_number_53', 1, inplace=True)
+            date_sparse.drop('period_number_13', 1, inplace=True)
+            dataset.drop(date_sparse.columns[1:], 1, inplace=True)
+            dataset = pd.merge(dataset, date_sparse, on=['year_week_number'], how='left')
+
+            dataset.drop('weeks_since_launch', 1, inplace=True)
+            dataset['weeks_since_launch'] = df.year_week_number.rank(method='dense').astype(int)
+
+            #### Weeks since launch will be incremental
+            # Taking weeks from launch as 1 for the first week
 
             #### Reading a mapping file
             SI_psg = SI.loc[(SI['psg'] == psg_code)]
-            SI_psg['adjusted_index']=SI_psg['adjusted_index'].astype(float)
-            SI_psg = SI_psg[['weeks','adjusted_index']]
+            SI_psg['adjusted_index'] = SI_psg['adjusted_index'].astype(float)
+            SI_psg = SI_psg[['weeks', 'adjusted_index']]
             ####Getting a week column to get the seasonality index
-            dataset['weeks'] = dataset['year_week_number']%100
-            dataset = pd.merge(dataset, SI_psg, left_on=['weeks'], right_on=['weeks'], how='left' )
-            del(dataset['si'])
+            dataset['weeks'] = dataset['year_week_number'] % 100
+            dataset = pd.merge(dataset, SI_psg, left_on=['weeks'], right_on=['weeks'], how='left')
+            del (dataset['si'])
 
-            dataset = dataset.rename(columns={'adjusted_index':'si'})
-            del(dataset['weeks'])
+            dataset = dataset.rename(columns={'adjusted_index': 'si'})
+            del (dataset['weeks'])
             dataset['si'] = dataset['si'].astype(float)
 
             return dataset
@@ -2950,28 +2966,31 @@ class npdpage_impact_save_scenario(APIView):
 
             #### Getting number of subs same and different brand
             All_attribute_treated = All_attribute.dropna()
-            All_attribute_treated = All_attribute_treated.loc[(All_attribute_treated['product_sub_group_description']== Product_Sub_Group_Description)]
+            All_attribute_treated = All_attribute_treated.loc[
+                (All_attribute_treated['product_sub_group_description'] == Product_Sub_Group_Description)]
 
             ###Creating a empty data frame of attributes to compare. Will fill the values based on user selection
 
-            match_df = pd.DataFrame(0, index = [0],  columns = [ "brand_name", "package_type", "till_roll_description", "size", "measure_type", "price_band"] )
+            match_df = pd.DataFrame(0, index=[0],
+                                    columns=["brand_name", "package_type", "till_roll_description", "size",
+                                             "measure_type", "price_band"])
 
             ##### As we need price band we need to convert the asp (user input) into price bands based on BC and asp
 
             #### Filling the empty data frames with values as now we have the price band
 
-            match_df.loc[:,"brand_name"] = Brand_Name
-            match_df.loc[:,"package_type"] = Package_Type
-            match_df.loc[:,"till_roll_description"] = Till_Roll_Description
-            match_df.loc[:,"size"] = Size
-            match_df.loc[:,"measure_type"] = measure_type
-            match_df.loc[:,"price_band"] = price_band
-            
+            match_df.loc[:, "brand_name"] = Brand_Name
+            match_df.loc[:, "package_type"] = Package_Type
+            match_df.loc[:, "till_roll_description"] = Till_Roll_Description
+            match_df.loc[:, "size"] = Size
+            match_df.loc[:, "measure_type"] = measure_type
+            match_df.loc[:, "price_band"] = price_band
+
             #### To compare with all attributes we need to merge all attributes to user selection. For that we will map it on a common key
             All_attribute_treated['key'] = 1
             match_df['key'] = 1
-            match_all_prod = pd.merge(match_df, All_attribute_treated, on = 'key')
-    
+            match_all_prod = pd.merge(match_df, All_attribute_treated, on='key')
+
             match_all_prod['size_x'] = match_all_prod['size_x'].astype('float')
             match_all_prod['size_y'] = match_all_prod['size_y'].astype('float')
 
@@ -2979,38 +2998,45 @@ class npdpage_impact_save_scenario(APIView):
             ### Measure and size are related we will be given commom flag based on some condition
 
 
-            match_all_prod['brand_flag'] = np.where(match_all_prod.loc[:,"brand_name_x"] == match_all_prod.loc[:,"brand_name_y"], 1, 0)
+            match_all_prod['brand_flag'] = np.where(
+                match_all_prod.loc[:, "brand_name_x"] == match_all_prod.loc[:, "brand_name_y"], 1, 0)
 
-            match_all_prod['package_flag'] = np.where(match_all_prod.loc[:,"package_type_x"] == match_all_prod.loc[:,"package_type_y"], 1, 0)
+            match_all_prod['package_flag'] = np.where(
+                match_all_prod.loc[:, "package_type_x"] == match_all_prod.loc[:, "package_type_y"], 1, 0)
 
-            match_all_prod['Size_flag'] = np.where((match_all_prod.loc[:,"measure_type_x"] == match_all_prod.loc[:,"measure_type_y"]) & 
-                                                   ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
-                                                    ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
+            match_all_prod['Size_flag'] = np.where(
+                (match_all_prod.loc[:, "measure_type_x"] == match_all_prod.loc[:, "measure_type_y"]) &
+                ((match_all_prod.loc[:, "measure_type_y"] == 'G') &
+                 ((match_all_prod.loc[:, "size_x"] - match_all_prod.loc[:, "size_y"]) <= 200)) |
+                ((match_all_prod.loc[:, "measure_type_y"] == 'SNGL') &
+                 ((match_all_prod.loc[:, "size_x"] - match_all_prod.loc[:, "size_y"]) <= 2)), 1, 0)
 
-            match_all_prod['price_flag'] = np.where(match_all_prod.loc[:,"price_band_x"] == match_all_prod.loc[:,"price_band_y"], 1, 0)
+            match_all_prod['price_flag'] = np.where(
+                match_all_prod.loc[:, "price_band_x"] == match_all_prod.loc[:, "price_band_y"], 1, 0)
 
-            match_all_prod['till_roll_flag'] = np.where(match_all_prod.loc[:,"till_roll_description_x"] == match_all_prod.loc[:,"till_roll_description_y"], 1, 0)
+            match_all_prod['till_roll_flag'] = np.where(
+                match_all_prod.loc[:, "till_roll_description_x"] == match_all_prod.loc[:, "till_roll_description_y"], 1,
+                0)
 
             ### Subsetting score importance based on PSG
             score = attribute_score[attribute_score.loc[:, 'product_sub_group_code'] == psg_code]
 
             ###Getting the percentage score based on flag*individual score
 
-            match_all_prod['brand_score'] = match_all_prod.loc[:,"brand_flag"]*score['avg_brand'].values
-            match_all_prod['package_score'] = match_all_prod.loc[:,"package_flag"]*score['avg_pkg'].values
-            match_all_prod['Size_score'] = match_all_prod.loc[:,"Size_flag"]*score['avg_size'].values
-            match_all_prod['price_score'] = match_all_prod.loc[:,"price_flag"]*score['avg_price'].values
-            match_all_prod['till_roll_score'] = match_all_prod.loc[:,"till_roll_flag"]*score['avg_tillroll'].values
+            match_all_prod['brand_score'] = match_all_prod.loc[:, "brand_flag"] * score['avg_brand'].values
+            match_all_prod['package_score'] = match_all_prod.loc[:, "package_flag"] * score['avg_pkg'].values
+            match_all_prod['Size_score'] = match_all_prod.loc[:, "Size_flag"] * score['avg_size'].values
+            match_all_prod['price_score'] = match_all_prod.loc[:, "price_flag"] * score['avg_price'].values
+            match_all_prod['till_roll_score'] = match_all_prod.loc[:, "till_roll_flag"] * score['avg_tillroll'].values
 
             ####Getting the final score for every row based on summation of individual attribute score
-            match_all_prod['final_score'] = match_all_prod['brand_score'] + match_all_prod['package_score'] + match_all_prod['Size_score'] + match_all_prod['price_score'] + match_all_prod['till_roll_score']
+            match_all_prod['final_score'] = match_all_prod['brand_score'] + match_all_prod['package_score'] + \
+                                            match_all_prod['Size_score'] + match_all_prod['price_score'] + \
+                                            match_all_prod['till_roll_score']
 
             #### Subsetting for score greater than 0.7 (threshold)
 
             sim_prod = match_all_prod[match_all_prod['final_score'] > 0.7]
-
 
             return sim_prod
 
@@ -3036,7 +3062,8 @@ class npdpage_impact_save_scenario(APIView):
 
             #### To get the psg prod count and price band count
             ###### Subsetting all attribute data for the selected psg
-            All_attribute_psg = All_attribute.loc[(All_attribute['product_sub_group_description'] == Product_Sub_Group_Description)]
+            All_attribute_psg = All_attribute.loc[
+                (All_attribute['product_sub_group_description'] == Product_Sub_Group_Description)]
 
             #### Counting the distinct products in the selected psg
             count_psg_prod = len(All_attribute_psg['base_product_number'].unique())
@@ -3044,195 +3071,205 @@ class npdpage_impact_save_scenario(APIView):
             ### Counting the distinct products in the price band
             ### Price band we have calculated before based on if else conditions
             ## Subsetting for the selected price band
-            All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+            All_attribute_pb = All_attribute.loc[(All_attribute['price_band'] == price_band)]
 
             count_pb_prod = len(All_attribute_pb['base_product_number'].unique())
-            #### Filling values for the count psg prod and price band 
+            #### Filling values for the count psg prod and price band
             dataset.loc[:, 'psg_prod_count'] = count_psg_prod
             dataset.loc[:, 'price_band_prod_count'] = count_pb_prod
             return dataset
+
         ### To incorporate merch grp and range class
 
         def no_of_stores_holidays(dataset):
 
-            stores = pd.DataFrame(range_space_store[(range_space_store['merchandise_group_code'] == merch_code) & 
-                                   (range_space_store['range_space_break_code'] >= Range_class)]['retail_outlet_number'])
+            stores = pd.DataFrame(range_space_store[(range_space_store['merchandise_group_code'] == merch_code) &
+                                                    (range_space_store['range_space_break_code'] >= Range_class)][
+                                      'retail_outlet_number'])
 
-            stores_size = pd.merge(stores, store_details_df, on = 'retail_outlet_number', how = 'left')
-            APC_stores = stores_size.groupby(['area_price_code'], as_index = False).aggregate({'retail_outlet_number': lambda x: x.nunique(),
-                            'pfs_store': lambda x: x.nunique(), 'store_5k': lambda x: x.nunique(),
-                            'store_20k': lambda x: x.nunique(), 'store_50k': lambda x: x.nunique(),
-                            'store_100k': lambda x: x.nunique(), 'store_100kplus': lambda x: x.nunique()})
-            APC_stores = APC_stores.loc[:,['area_price_code', 'retail_outlet_number', 'pfs_store', 'store_5k', 'store_20k', 'store_50k', 'store_100k', 'store_100kplus']]
+            stores_size = pd.merge(stores, store_details_df, on='retail_outlet_number', how='left')
+            APC_stores = stores_size.groupby(['area_price_code'], as_index=False).aggregate(
+                {'retail_outlet_number': lambda x: x.nunique(),
+                 'pfs_store': lambda x: x.nunique(), 'store_5k': lambda x: x.nunique(),
+                 'store_20k': lambda x: x.nunique(), 'store_50k': lambda x: x.nunique(),
+                 'store_100k': lambda x: x.nunique(), 'store_100kplus': lambda x: x.nunique()})
+            APC_stores = APC_stores.loc[:,
+                         ['area_price_code', 'retail_outlet_number', 'pfs_store', 'store_5k', 'store_20k', 'store_50k',
+                          'store_100k', 'store_100kplus']]
 
             APC_stores.columns = ['area_price_code', 'no_stores', 'no_pfs_Stores', 'no_5k_stores',
-               'no_20k_stores', 'no_50k_stores', 'no_100k_stores', 'no_100kplus_stores']
+                                  'no_20k_stores', 'no_50k_stores', 'no_100k_stores', 'no_100kplus_stores']
             APC_stores.columns = map(str.lower, APC_stores.columns)
             df_final = pd.DataFrame()
-            for i in range(0,len(APC_stores)):
+            for i in range(0, len(APC_stores)):
                 df_temp = dataset.copy()
 
                 ####### To update the no of stores based on store type
-                df_temp.loc[:,"area_price_code_" + str(APC_stores['area_price_code'][i])] = 1
-                df_temp.loc[:,"no_stores"] = APC_stores['no_stores'][i]
-                df_temp.loc[:,"no_pfs_stores"] = APC_stores['no_pfs_stores'][i]
-                df_temp.loc[:,"no_5k_stores"] = APC_stores['no_5k_stores'][i]
-                df_temp.loc[:,"no_20k_stores"] = APC_stores['no_20k_stores'][i]
-                df_temp.loc[:,"no_50k_stores"] = APC_stores['no_50k_stores'][i]
-                df_temp.loc[:,"no_100k_stores"] = APC_stores['no_100k_stores'][i]
-                df_temp.loc[:,"no_100kplus_stores"] = APC_stores['no_100kplus_stores'][i]
-
+                df_temp.loc[:, "area_price_code_" + str(APC_stores['area_price_code'][i])] = 1
+                df_temp.loc[:, "no_stores"] = APC_stores['no_stores'][i]
+                df_temp.loc[:, "no_pfs_stores"] = APC_stores['no_pfs_stores'][i]
+                df_temp.loc[:, "no_5k_stores"] = APC_stores['no_5k_stores'][i]
+                df_temp.loc[:, "no_20k_stores"] = APC_stores['no_20k_stores'][i]
+                df_temp.loc[:, "no_50k_stores"] = APC_stores['no_50k_stores'][i]
+                df_temp.loc[:, "no_100k_stores"] = APC_stores['no_100k_stores'][i]
+                df_temp.loc[:, "no_100kplus_stores"] = APC_stores['no_100kplus_stores'][i]
 
                 #### To get the holidays count based on store type
-                uk_holidays_df_store = uk_holidays_df[['year_week_number','holiday_flag','area_price_code']]
-                uk_holidays_df_store = uk_holidays_df_store.loc[uk_holidays_df['area_price_code']==APC_stores['area_price_code'][i]]
-                uk_holidays_df_store = uk_holidays_df_store[['year_week_number','holiday_flag']]
+                uk_holidays_df_store = uk_holidays_df[['year_week_number', 'holiday_flag', 'area_price_code']]
+                uk_holidays_df_store = uk_holidays_df_store.loc[
+                    uk_holidays_df['area_price_code'] == APC_stores['area_price_code'][i]]
+                uk_holidays_df_store = uk_holidays_df_store[['year_week_number', 'holiday_flag']]
 
                 #### To get the count of holidays in a week. Sme week will repeat for n number of holidays n times
-                holiday_count_week = uk_holidays_df_store.groupby(['year_week_number'], as_index=False).agg({'holiday_flag': sum})
+                holiday_count_week = uk_holidays_df_store.groupby(['year_week_number'], as_index=False).agg(
+                    {'holiday_flag': sum})
 
-                ####Doing a left join on our ADS to get the holiday count. Wherever it is NA it will be given 0 as our holiday table has only ####those weeks which has atleast 1 holiday 
-                df_temp = pd.merge(df_temp,holiday_count_week, left_on=['year_week_number'], right_on=['year_week_number'], how='left' )
+                ####Doing a left join on our ADS to get the holiday count. Wherever it is NA it will be given 0 as our holiday table has only ####those weeks which has atleast 1 holiday
+                df_temp = pd.merge(df_temp, holiday_count_week, left_on=['year_week_number'],
+                                   right_on=['year_week_number'], how='left')
 
-                df_temp= df_temp.fillna(0)
+                df_temp = df_temp.fillna(0)
 
                 ###Removing a holidays_count columns
-                del(df_temp['holiday_count'])
+                del (df_temp['holiday_count'])
 
-                df_temp = df_temp.rename(columns={'holiday_flag':'holiday_count'})
+                df_temp = df_temp.rename(columns={'holiday_flag': 'holiday_count'})
                 df_final = df_final.append(df_temp)
 
             Period_Number = (week_mapping.loc[week_mapping['year_week_number'] == 201631]).iloc[0]['period_number']
             df_final_new = df_final
-            df_final_new.loc[:,'launch_month'] = Period_Number
+            df_final_new.loc[:, 'launch_month'] = Period_Number
             return df_final_new
 
-        def run_cannibilization_model(input_test_dataset,week_flag,time_frame):
-            Cannibalization_perc = 0 
+        def run_cannibilization_model(input_test_dataset, week_flag, time_frame):
+            Cannibalization_perc = 0
 
-            week_flag =week_flag
+            week_flag = week_flag
             time_frame = time_frame
             ####Xg boost model pickled
-            #global xg_model
+            # global xg_model
 
             input_test_dataset
-
-
 
             #### Have to be inside function which takes test datasets as a argument
             #### For xg boost to run we need to have our test dataset in matrix form. Converting our test dataframe to required matrix
 
-            testdmat = xgb.DMatrix(input_test_dataset.loc[:,xg_model.feature_names])
+            testdmat = xgb.DMatrix(input_test_dataset.loc[:, xg_model.feature_names])
             #### Predicting the volume for the futute weeks (13,26,51)
             Volume = xg_model.predict(testdmat)
             test = pd.DataFrame(Volume)
-
 
             ##### Summing all the volumes for the weeks in 13,26,and 52 window
             total_forecasted_volume = sum(Volume)
 
             #### As now we are aware of the total volume forecasted we can multiply with asp (user selection) to get total sales
-            total_forecasted_sales = total_forecasted_volume*asp
+            total_forecasted_sales = total_forecasted_volume * asp
 
-            #### To check if any sister products are available. If len(sim_prod)=0 after merge it means no sister product available or no ##similar products passed the threshod of 0.8 
-            sim_prod_new = pd.merge(sim_prod, bc_cannibilization, left_on=['base_product_number'], right_on=['base_product_number'], how='inner')
+            #### To check if any sister products are available. If len(sim_prod)=0 after merge it means no sister product available or no ##similar products passed the threshod of 0.8
+            sim_prod_new = pd.merge(sim_prod, bc_cannibilization, left_on=['base_product_number'],
+                                    right_on=['base_product_number'], how='inner')
 
-            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
-            #### Cannibalization percentage 
+            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0][
+                'brand_ind']
+            #### Cannibalization percentage
             print("llllllllllllllllllllllll")
             print(len(sim_prod))
-            if len(sim_prod)==0:
-                if Buying_controller=='Frozen Impulse':
-                    if week_flag =='Latest 13 Weeks':
-                        high_volume_cutoff = (45100/21)*13
-                        low_volume_cutoff = (15300/21)*13
-                    if week_flag =='Latest 26 Weeks':
-                        high_volume_cutoff = (45100/21)*26
-                        low_volume_flag_upper_cutoff = (15300/21)*26
-                    if week_flag =='Latest 52 Weeks':
-                        high_volume_cutoff = (45100/21)*52
-                        low_volume_cutoff = (15300/21)*52
+            if len(sim_prod) == 0:
+                if Buying_controller == 'Frozen Impulse':
+                    if week_flag == 'Latest 13 Weeks':
+                        high_volume_cutoff = (45100 / 21) * 13
+                        low_volume_cutoff = (15300 / 21) * 13
+                    if week_flag == 'Latest 26 Weeks':
+                        high_volume_cutoff = (45100 / 21) * 26
+                        low_volume_flag_upper_cutoff = (15300 / 21) * 26
+                    if week_flag == 'Latest 52 Weeks':
+                        high_volume_cutoff = (45100 / 21) * 52
+                        low_volume_cutoff = (15300 / 21) * 52
 
-                if Buying_controller=='Grocery Cereals':
-                    if week_flag =='Latest 13 Weeks':
-                        high_volume_cutoff = (44510/21)*13
-                        low_volume_cutoff = (37700/21)*13
-                    if week_flag =='Latest 26 Weeks':
-                        high_volume_cutoff = (44510/21)*26
-                        low_volume_cutoff = (37700/21)*26
-                    if week_flag =='Latest 52 Weeks':
-                        high_volume_cutoff = (44510/21)*52
-                        low_volume_cutoff = (37700/21)*52
+                if Buying_controller == 'Grocery Cereals':
+                    if week_flag == 'Latest 13 Weeks':
+                        high_volume_cutoff = (44510 / 21) * 13
+                        low_volume_cutoff = (37700 / 21) * 13
+                    if week_flag == 'Latest 26 Weeks':
+                        high_volume_cutoff = (44510 / 21) * 26
+                        low_volume_cutoff = (37700 / 21) * 26
+                    if week_flag == 'Latest 52 Weeks':
+                        high_volume_cutoff = (44510 / 21) * 52
+                        low_volume_cutoff = (37700 / 21) * 52
 
-                if Buying_controller=='Meat Fish and Veg':
-                    if week_flag =='Latest 13 Weeks':
-                        high_volume_cutoff = (58000/21)*13
-                        low_volume_cutoff = (24700/21)*13
-                    if week_flag =='Latest 26 Weeks':
-                        high_volume_cutoff = (58000/21)*26
-                        low_volume_cutoff = (24700/21)*26
-                    if week_flag =='Latest 52 Weeks':
-                        high_volume_cutoff = (58000/21)*52
-                        low_volume_cutoff = (24700/21)*52
+                if Buying_controller == 'Meat Fish and Veg':
+                    if week_flag == 'Latest 13 Weeks':
+                        high_volume_cutoff = (58000 / 21) * 13
+                        low_volume_cutoff = (24700 / 21) * 13
+                    if week_flag == 'Latest 26 Weeks':
+                        high_volume_cutoff = (58000 / 21) * 26
+                        low_volume_cutoff = (24700 / 21) * 26
+                    if week_flag == 'Latest 52 Weeks':
+                        high_volume_cutoff = (58000 / 21) * 52
+                        low_volume_cutoff = (24700 / 21) * 52
 
-                if (total_forecasted_volume>high_volume_cutoff):
-                    Volume_flag= 'High'
-                elif (total_forecasted_volume<low_volume_cutoff):
+                if (total_forecasted_volume > high_volume_cutoff):
+                    Volume_flag = 'High'
+                elif (total_forecasted_volume < low_volume_cutoff):
                     Volume_flag = 'Low'
-                else :
+                else:
                     Volume_flag = 'Medium'
                 ####Need to import psg code to desc mapping
 
-                if (psg_code+Volume_flag+brand_ind  in list(PSGVolBrandBuckets['bucket_value'])):
+                if (psg_code + Volume_flag + brand_ind in list(PSGVolBrandBuckets['bucket_value'])):
                     print("puuuuuuuuuuurrrrrrrrrrrrrrrraaaaaaaaaaaaaaaaa")
-                    Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets['bucket_value'] == psg_code+Volume_flag+brand_ind]).iloc[0]['cannibalization']
-                    #Cannibalization_perc = Cannibalization_perc.round(2)
+                    Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets[
+                                                                       'bucket_value'] == psg_code + Volume_flag + brand_ind]).iloc[
+                        0]['cannibalization']
+                    # Cannibalization_perc = Cannibalization_perc.round(2)
 
-                elif (psg_code+Volume_flag  in list(PSGVolBuckets['bucket_value'])):
+                elif (psg_code + Volume_flag in list(PSGVolBuckets['bucket_value'])):
                     print("kkkkkkkkkkkkkkkkkkkaaaaaaaaaaaaaaaaaammmmmmmmmmmmmmmmmmm")
-                    Cannibalization_perc = (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code+Volume_flag]).iloc[0]['cannibalization']
-                    #Cannibalization_perc = Cannibalization_perc.round(2)
+                    Cannibalization_perc = \
+                    (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code + Volume_flag]).iloc[0][
+                        'cannibalization']
+                    # Cannibalization_perc = Cannibalization_perc.round(2)
 
-                elif (psg_code  in list(PSGBuckets['bucket_value'])):
+                elif (psg_code in list(PSGBuckets['bucket_value'])):
                     print("ekdummmmmmmmmmmmmmmmmmm thodaaaaaaaaaaaaaaaaaaaa")
-                    Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
-                    #Cannibalization_perc = Cannibalization_perc.round(2)
+                    Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0][
+                        'cannibalization']
+                    # Cannibalization_perc = Cannibalization_perc.round(2)
 
-                else :
+                else:
                     print("naiiiiiiiiiiiiiiiiiiiiiii")
                     Cannibalization_perc = 0
 
-            sim_prod_subset = sim_prod_new[sim_prod_new['final_score']>0.8]
-
+            sim_prod_subset = sim_prod_new[sim_prod_new['final_score'] > 0.8]
 
             #### Applying sim prod with threshold as 0.8
 
-            if len(sim_prod_subset)>0:
-                if (brand_ind=='T'):
-                    sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[False,False, False])
-                elif (brand_ind=='B'):
-                    sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[True,False, False])
+            if len(sim_prod_subset) > 0:
+                if (brand_ind == 'T'):
+                    sim_prod_subset = sim_prod_subset.sort_values(['brand_ind', 'final_score', 'launch_tesco_week'],
+                                                                  ascending=[False, False, False])
+                elif (brand_ind == 'B'):
+                    sim_prod_subset = sim_prod_subset.sort_values(['brand_ind', 'final_score', 'launch_tesco_week'],
+                                                                  ascending=[True, False, False])
 
-                Cannibalization_perc = sim_prod_subset.iloc[0,:]['cannibalization']
+                Cannibalization_perc = sim_prod_subset.iloc[0, :]['cannibalization']
 
-
-
-            #     ##### To get the cannibilized volume 
+            # ##### To get the cannibilized volume
 
             total_forecasted_volume = float(total_forecasted_volume)
 
             Cannibalization_perc = float(Cannibalization_perc)
-            #global Cannibalization_perc
+            # global Cannibalization_perc
 
-            forecasted_cannibilization_volume = Cannibalization_perc*total_forecasted_volume
+            forecasted_cannibilization_volume = Cannibalization_perc * total_forecasted_volume
 
             ##### To get the cannibilized sales
             forecasted_cannibilization_volume = float(forecasted_cannibilization_volume)
 
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+            forecasted_cannibilization_sales = forecasted_cannibilization_volume * asp
+            # forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+            Cannibalization_perc_sales = (forecasted_cannibilization_sales / total_forecasted_sales)
 
             ##### To get the net mpact in volume
             forecasted_net_impact_volume = total_forecasted_volume - forecasted_cannibilization_volume
@@ -3241,43 +3278,43 @@ class npdpage_impact_save_scenario(APIView):
             forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
             All_attribute_subset = All_attribute.dropna()
-            All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute_subset[['base_product_number', 'product_sub_group_description']]
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            ## rolling volume at psg bpn level
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-
-
-
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
 
             # #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == time_frame]
 
             # ###### Getting the total volume for the selected psg and time period
             total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
 
-
-
-
-
             # ##### Getting the asp for all the bpn in product contri
             product_price_df_new = product_price_df
             product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
-            #print(product_price_df_new.head())
-            product_price_df_new = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+            # print(product_price_df_new.head())
+            product_price_df_new = product_price_df.groupby(['base_product_number'], as_index=False).agg(
+                {'asp': 'mean'})
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new,
+                                             left_on=['base_product_number'], right_on=['base_product_number'],
+                                             how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
 
             ###Total would be sum of all the product sales
             total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
@@ -3285,34 +3322,39 @@ class npdpage_impact_save_scenario(APIView):
             #### Getting the change in % psg volume
             total_psg_forecasted_volume = float(total_psg_forecasted_volume)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+            try:
+                psg_perc_volume = (forecasted_net_impact_volume / total_psg_forecasted_volume)
             except:
                 psg_perc_volume = 0
 
             #### Gettig the change in % psg sales
 
             total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+            psg_perc_sales = (forecasted_net_impact_sales / total_psg_forecasted_sales)
 
-            data_volume = [{'forecast': total_forecasted_volume,'modified_forecast': total_forecasted_volume,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc*100,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag ,'price_band' : price_band}]
+            data_volume = [{'forecast': total_forecasted_volume, 'modified_forecast': total_forecasted_volume,
+                            'cannibilization_value': forecasted_cannibilization_volume,
+                            'cannibilization_perc': Cannibalization_perc * 100,
+                            'net_impact_value': forecasted_net_impact_volume,
+                            'perc_change_in_psg': psg_perc_volume * 100, 'buying_controller':
+                                Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                            'psg': Product_Sub_Group_Description, 'asp':
+                                asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                            'till_roll_desc': Till_Roll_Description, 'week_flag': week_flag, 'price_band': price_band}]
 
-            data_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales*100,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag,'price_band' : price_band }]
+            data_sales = [{'forecast': total_forecasted_sales, 'modified_forecast': total_forecasted_sales,
+                           'cannibilization_value': forecasted_cannibilization_sales,
+                           'cannibilization_perc': Cannibalization_perc_sales * 100,
+                           'net_impact_value': forecasted_net_impact_sales, 'perc_change_in_psg': psg_perc_sales * 100,
+                           'buying_controller':
+                               Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                           'psg': Product_Sub_Group_Description, 'asp':
+                               asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                           'till_roll_desc': Till_Roll_Description, 'week_flag': week_flag, 'price_band': price_band}]
 
-
-
-            model_output = [{'data_volume': data_volume , 'data_sales' : data_sales }]
+            model_output = [{'data_volume': data_volume, 'data_sales': data_sales}]
 
             return model_output
-
 
         def similar_product_cannabilized(time_frame):
             sim_prod_product = sim_prod[['base_product_number']]
@@ -3320,50 +3362,59 @@ class npdpage_impact_save_scenario(APIView):
             time_frame = time_frame
             #### GETTING ONLY THOSE bpn WHICH WERE THERE IN SIM PROD (THRESHOLD OF 0.8)
 
-            product_contri_df_new = pd.merge(product_contri_df,sim_prod_product,left_on=['base_product_number'], right_on=['base_product_number'],how='inner')
+            product_contri_df_new = pd.merge(product_contri_df, sim_prod_product, left_on=['base_product_number'],
+                                             right_on=['base_product_number'], how='inner')
 
             All_attribute_subset = All_attribute.dropna()
-            All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute_subset[['base_product_number', 'product_sub_group_description']]
 
-
-            product_psg_mapping =pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
             ### rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-        
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
+
             # #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == time_frame]
 
             product_price_df_new = product_price_df
             product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
-            product_price_df_new = product_price_df_new.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+            product_price_df_new = product_price_df_new.groupby(['base_product_number'], as_index=False).agg(
+                {'asp': 'mean'})
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new,
+                                             left_on=['base_product_number'], right_on=['base_product_number'],
+                                             how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype(int)
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
             psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
-    
-            product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-      
-            product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales']]
-            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T','Own Label')
-            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B','Branded')
+
+            product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'],
+                                            right_on=['base_product_number'], how='left')
+
+            product_desc_branded = product_desc_branded[
+                ['long_description', 'brand_indicator', 'predicted_volume', 'predicted_sales']]
+            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T', 'Own Label')
+            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B', 'Branded')
 
             return product_desc_branded
 
-
-        if (modified_flag==0):
+        if (modified_flag == 0):
 
             print("inside forecast")
             similar_product = pd.DataFrame()
-            # call function for priceband and psg code 
+            # call function for priceband and psg code
             print('function 1')
             psg_priceband_merch = get_priceband_psg_merch_code()
             psg_code = psg_priceband_merch['psg_code']
@@ -3376,25 +3427,25 @@ class npdpage_impact_save_scenario(APIView):
             current_week = (week_mapping.loc[week_mapping['calendar_date'] == today]).iloc[0]['year_week_number']
 
             ### Taking Columns to spread
-            ### Converting buying controller to lower case and concating the name 
+            ### Converting buying controller to lower case and concating the name
             bc_name = (Buying_controller.replace(" ", "").lower())
 
             dataset1 = dataset[[bc_name]]
             dataset1.dropna(inplace=True)
-            dataset1 =pd.DataFrame(columns=dataset1[bc_name].values)
-         
+            dataset1 = pd.DataFrame(columns=dataset1[bc_name].values)
+
             # call function for creating ads structure
             print('function 2')
             df = get_ads_structure()
-         
+
             # call function for filling ads structure
             print('function 3')
             df1 = fill_ads_structure(df)
-          
+
             # call function for finding similar products
             print('function 4')
             sim_prod = similar_products()
-            #call function for substitute calculation 
+            # call function for substitute calculation
             if (len(sim_prod)) > 0:
                 df2 = subs_same_different(df1)
 
@@ -3403,7 +3454,7 @@ class npdpage_impact_save_scenario(APIView):
                 df2.loc[:, 'no_of_subs_same_brand'] = 0
                 df2.loc[:, 'no_of_subs_diff_brand'] = 0
 
-            All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+            All_attribute_pb = All_attribute.loc[(All_attribute['price_band'] == price_band)]
 
             # call function for product count with same psg and price band
             print('function 5')
@@ -3413,27 +3464,25 @@ class npdpage_impact_save_scenario(APIView):
             df_final_new = no_of_stores_holidays(df3)
 
             week_index = df_final_new[['year_week_number']].drop_duplicates().reset_index()
-            week_index = week_index.rename(columns={'index':'rank'})
+            week_index = week_index.rename(columns={'index': 'rank'})
             # Creating a index for the week number
-            df_final_new = pd.merge(df_final_new,week_index,on=['year_week_number'],how='left')
+            df_final_new = pd.merge(df_final_new, week_index, on=['year_week_number'], how='left')
             # global df_final_new
 
-            # Subsetting for 13 weeks 
+            # Subsetting for 13 weeks
             df_test_52weeks = df_final_new
 
-            df_test_13weeks = df_test_52weeks[df_test_52weeks['rank']<=12]
-            df_test_26weeks = df_test_52weeks[df_test_52weeks['rank']<=25]
+            df_test_13weeks = df_test_52weeks[df_test_52weeks['rank'] <= 12]
+            df_test_26weeks = df_test_52weeks[df_test_52weeks['rank'] <= 25]
 
-            del(df_test_13weeks['year_week_number'])
-            del(df_test_13weeks['rank'])
+            del (df_test_13weeks['year_week_number'])
+            del (df_test_13weeks['rank'])
 
+            del (df_test_26weeks['year_week_number'])
+            del (df_test_26weeks['rank'])
 
-            del(df_test_26weeks['year_week_number'])
-            del(df_test_26weeks['rank'])
-
-
-            del(df_test_52weeks['year_week_number'])
-            del(df_test_52weeks['rank'])
+            del (df_test_52weeks['year_week_number'])
+            del (df_test_52weeks['rank'])
 
             gzip_pickle = gzip.open("api/pickle/xg_model_MEATFISHANDVEG.pkl", "rb")
 
@@ -3444,261 +3493,262 @@ class npdpage_impact_save_scenario(APIView):
             ## To get the base product number and launch tesco week mapping
             BPN_launch_week = All_attribute[['base_product_number', 'launch_tesco_week']]
             ##Consolidated buckets subsetting only for the bc and making three datasets for calculating cannibilization percent
-            consolidated_buckets_df = consolidated_buckets_df[consolidated_buckets_df['buying_controller']==Buying_controller]
+            consolidated_buckets_df = consolidated_buckets_df[
+                consolidated_buckets_df['buying_controller'] == Buying_controller]
 
-            PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
-            PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
-            PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
-            # Cannibalization_perc = 0 
-            output_cannib_13weeks = run_cannibilization_model(df_test_13weeks,"Latest 13 Weeks","3_months")
-            output_cannib_26weeks = run_cannibilization_model(df_test_26weeks,"Latest 26 Weeks","6_months")
-            output_cannib_52weeks = run_cannibilization_model(df_test_52weeks,"Latest 52 Weeks","12_months")
+            PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGVolBrandBuckets']
+            PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGVolBuckets']
+            PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag'] == 'PSGBuckets']
+            # Cannibalization_perc = 0
+            output_cannib_13weeks = run_cannibilization_model(df_test_13weeks, "Latest 13 Weeks", "3_months")
+            output_cannib_26weeks = run_cannibilization_model(df_test_26weeks, "Latest 26 Weeks", "6_months")
+            output_cannib_52weeks = run_cannibilization_model(df_test_52weeks, "Latest 52 Weeks", "12_months")
 
-            ##for 13 weeks 
+            ##for 13 weeks
             output_cannib_13weeks_volume = pd.DataFrame(output_cannib_13weeks[0]['data_volume'])  ##Output 1 volume
             output_cannib_13weeks_sales = pd.DataFrame(output_cannib_13weeks[0]['data_sales'])  ## Output 1 Sales
 
-            data_dict_13weeks_volume={}
+            data_dict_13weeks_volume = {}
             data = [{
-                       "name":"NPD Volume","value":int(output_cannib_13weeks_volume['forecast'][0])
-                   },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_cannib_13weeks_volume['cannibilization_value'][0])
-                    }]
+                "name": "NPD Volume", "value": int(output_cannib_13weeks_volume['forecast'][0])
+            },
+                {
+                    "name": "Cannibalized Volume",
+                    "value": -int(output_cannib_13weeks_volume['cannibilization_value'][0])
+                }]
 
-            volume={}
-            volume={"Cannibilization_perc":output_cannib_13weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_13weeks_volume['perc_change_in_psg'][0].round(decimals=4)
-                   }
-            data_dict_13weeks_volume["data"]=data
-            data_dict_13weeks_volume["impact"]=volume
+            volume = {}
+            volume = {"Cannibilization_perc": output_cannib_13weeks_volume['cannibilization_perc'][0].round(decimals=2),
+                      "perc_impact_psg": output_cannib_13weeks_volume['perc_change_in_psg'][0].round(decimals=4)
+                      }
+            data_dict_13weeks_volume["data"] = data
+            data_dict_13weeks_volume["impact"] = volume
 
             volume_cann_13 = int(output_cannib_13weeks_volume['cannibilization_value'][0])
             volume_forecast_13 = int(output_cannib_13weeks_volume['forecast'][0])
-            volume_impact_13 = (int(output_cannib_13weeks_volume['forecast'][0])) - (int(output_cannib_13weeks_volume['cannibilization_value'][0]))
+            volume_impact_13 = (int(output_cannib_13weeks_volume['forecast'][0])) - (
+            int(output_cannib_13weeks_volume['cannibilization_value'][0]))
 
-
-            data_dict_13weeks_sales={}
+            data_dict_13weeks_sales = {}
             data = [{
-                    "name":"NPD Value","value":int(output_cannib_13weeks_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_cannib_13weeks_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_cannib_13weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_13weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
-                   }
-            data_dict_13weeks_sales["data"]=data
-            data_dict_13weeks_sales["impact"]=sales
-
+                "name": "NPD Value", "value": int(output_cannib_13weeks_sales['forecast'][0])
+            },
+                {
+                    "name": "Cannibalized Sales",
+                    "value": -int(output_cannib_13weeks_sales['cannibilization_value'][0])
+                }]
+            sales = {}
+            sales = {
+                "Cannibilization_perc": output_cannib_13weeks_sales['cannibilization_perc'][0].round(decimals=2),
+                "perc_impact_psg": (output_cannib_13weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
+            }
+            data_dict_13weeks_sales["data"] = data
+            data_dict_13weeks_sales["impact"] = sales
 
             value_cann_13 = int(output_cannib_13weeks_sales['cannibilization_value'][0])
             value_forecast_13 = int(output_cannib_13weeks_sales['forecast'][0])
-            value_impact_13 = (int(output_cannib_13weeks_sales['forecast'][0])) - (int(output_cannib_13weeks_sales['cannibilization_value'][0]))
+            value_impact_13 = (int(output_cannib_13weeks_sales['forecast'][0])) - (
+            int(output_cannib_13weeks_sales['cannibilization_value'][0]))
 
-            impact_data_13weeks = {'sales_chart': data_dict_13weeks_sales,'volume_chart': data_dict_13weeks_volume }
+            impact_data_13weeks = {'sales_chart': data_dict_13weeks_sales, 'volume_chart': data_dict_13weeks_volume}
             print("sales_chart for 13 weeks ")
             print(data_dict_13weeks_sales)
 
-            #for similar products table 13 weeks
+            # for similar products table 13 weeks
             similar_product_13weeks = similar_product_cannabilized('3_months')
             # similar_product_13weeks_final = similar_product_13weeks[similar_product_13weeks['long_description'].str.contains(search,case=False)]
-            
+
             data_13weeks_table = {'df': similar_product_13weeks.to_dict(orient='records')}
             print("user_attributes just b4 saving")
             print(user_attributes)
-            save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        week_tab = 13,
-                                        buying_controller = Buying_controller,
-                                        parent_supplier = par_supp,
-                                        buyer = Buyer,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_13weeks,
-                                        value_forecast = value_forecast_13,
-                                        value_impact = value_impact_13,
-                                        value_cannibalized = value_cann_13,
-                                        volume_forecast = volume_forecast_13,
-                                        volume_impact = volume_impact_13,
-                                        volume_cannibalized = volume_cann_13,
-                                        similar_products = data_13weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
+            save_scenario = SaveScenario(user_id=user_id,
+                                         designation="buyer",
+                                         session_id=session_id,
+                                         scenario_name=scenario_name,
+                                         week_tab=13,
+                                         buying_controller=Buying_controller,
+                                         parent_supplier=par_supp,
+                                         buyer=Buyer,
+                                         user_attributes=user_attributes,
+                                         forecast_data=impact_data_13weeks,
+                                         value_forecast=value_forecast_13,
+                                         value_impact=value_impact_13,
+                                         value_cannibalized=value_cann_13,
+                                         volume_forecast=volume_forecast_13,
+                                         volume_impact=volume_impact_13,
+                                         volume_cannibalized=volume_cann_13,
+                                         similar_products=data_13weeks_table,
+                                         modified_flag=modified_flag,
+                                         system_time=system_time,
+                                         page="npd")
             save_scenario.save()
-
 
             ##for 26 weeks
             output_cannib_26weeks_volume = pd.DataFrame(output_cannib_26weeks[0]['data_volume'])  ##Output 1 volume
             output_cannib_26weeks_sales = pd.DataFrame(output_cannib_26weeks[0]['data_sales'])  ## Output 1 Sales
-            
 
-            data_dict_26weeks_volume={}
+            data_dict_26weeks_volume = {}
             data = [{
-                       "name":"NPD Volume","value":int(output_cannib_26weeks_volume['forecast'][0])
-                   },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_cannib_26weeks_volume['cannibilization_value'][0])
-                    }]
+                "name": "NPD Volume", "value": int(output_cannib_26weeks_volume['forecast'][0])
+            },
+                {
+                    "name": "Cannibalized Volume",
+                    "value": -int(output_cannib_26weeks_volume['cannibilization_value'][0])
+                }]
 
-            volume={}
-            volume={"Cannibilization_perc":output_cannib_26weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=4)
-                   }
-            data_dict_26weeks_volume["data"]=data
-            data_dict_26weeks_volume["impact"]=volume
+            volume = {}
+            volume = {"Cannibilization_perc": output_cannib_26weeks_volume['cannibilization_perc'][0].round(decimals=2),
+                      "perc_impact_psg": output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=4)
+                      }
+            data_dict_26weeks_volume["data"] = data
+            data_dict_26weeks_volume["impact"] = volume
 
             volume_cann_26 = int(output_cannib_26weeks_volume['cannibilization_value'][0])
             volume_forecast_26 = int(output_cannib_26weeks_volume['forecast'][0])
-            volume_impact_26 = (int(output_cannib_26weeks_volume['forecast'][0])) - (int(output_cannib_26weeks_volume['cannibilization_value'][0]))
+            volume_impact_26 = (int(output_cannib_26weeks_volume['forecast'][0])) - (
+            int(output_cannib_26weeks_volume['cannibilization_value'][0]))
 
-
-            data_dict_26weeks_sales={}
+            data_dict_26weeks_sales = {}
             data = [{
-                    "name":"NPD Value","value":int(output_cannib_26weeks_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_cannib_26weeks_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_cannib_26weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_26weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
-                   }
-            data_dict_26weeks_sales["data"]=data
-            data_dict_26weeks_sales["impact"]=sales
+                "name": "NPD Value", "value": int(output_cannib_26weeks_sales['forecast'][0])
+            },
+                {
+                    "name": "Cannibalized Sales",
+                    "value": -int(output_cannib_26weeks_sales['cannibilization_value'][0])
+                }]
+            sales = {}
+            sales = {
+                "Cannibilization_perc": output_cannib_26weeks_sales['cannibilization_perc'][0].round(decimals=2),
+                "perc_impact_psg": (output_cannib_26weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
+            }
+            data_dict_26weeks_sales["data"] = data
+            data_dict_26weeks_sales["impact"] = sales
 
             value_cann_26 = int(output_cannib_26weeks_sales['cannibilization_value'][0])
             value_forecast_26 = int(output_cannib_26weeks_sales['forecast'][0])
-            value_impact_26 = (int(output_cannib_26weeks_sales['forecast'][0])) - (int(output_cannib_26weeks_sales['cannibilization_value'][0]))
+            value_impact_26 = (int(output_cannib_26weeks_sales['forecast'][0])) - (
+            int(output_cannib_26weeks_sales['cannibilization_value'][0]))
 
-
-            impact_data_26weeks = {'sales_chart': data_dict_26weeks_sales,'volume_chart': data_dict_26weeks_volume }
+            impact_data_26weeks = {'sales_chart': data_dict_26weeks_sales, 'volume_chart': data_dict_26weeks_volume}
             print("sales_chart for 26 weeks ")
             print(data_dict_26weeks_sales)
             similar_product_26weeks = similar_product_cannabilized('6_months')
             data_26weeks_table = {'df': similar_product_26weeks.to_dict(orient='records')}
 
-            
-            save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        week_tab = 26,
-                                        buying_controller = Buying_controller,
-                                        parent_supplier = par_supp,
-                                        buyer = Buyer,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_26weeks,
-                                        value_forecast = value_forecast_26,
-                                        value_impact = value_impact_26,
-                                        value_cannibalized = value_cann_26,
-                                        volume_forecast = volume_forecast_26,
-                                        volume_impact = volume_impact_26,
-                                        volume_cannibalized = volume_cann_26,
-                                        similar_products = data_26weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
+            save_scenario = SaveScenario(user_id=user_id,
+                                         designation="buyer",
+                                         session_id=session_id,
+                                         scenario_name=scenario_name,
+                                         week_tab=26,
+                                         buying_controller=Buying_controller,
+                                         parent_supplier=par_supp,
+                                         buyer=Buyer,
+                                         user_attributes=user_attributes,
+                                         forecast_data=impact_data_26weeks,
+                                         value_forecast=value_forecast_26,
+                                         value_impact=value_impact_26,
+                                         value_cannibalized=value_cann_26,
+                                         volume_forecast=volume_forecast_26,
+                                         volume_impact=volume_impact_26,
+                                         volume_cannibalized=volume_cann_26,
+                                         similar_products=data_26weeks_table,
+                                         modified_flag=modified_flag,
+                                         system_time=system_time,
+                                         page="npd")
             save_scenario.save()
 
-            ##for 52 weeks 
+            ##for 52 weeks
             output_cannib_52weeks_volume = pd.DataFrame(output_cannib_52weeks[0]['data_volume'])  ##Output 1 volume
             output_cannib_52weeks_sales = pd.DataFrame(output_cannib_52weeks[0]['data_sales'])  ## Output 1 Sales
 
-            data_dict_52weeks_volume={}
+            data_dict_52weeks_volume = {}
             data = [{
-                       "name":"NPD Volume","value":int(output_cannib_52weeks_volume['forecast'][0])
-                   },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_cannib_52weeks_volume['cannibilization_value'][0])
-                    }]
+                "name": "NPD Volume", "value": int(output_cannib_52weeks_volume['forecast'][0])
+            },
+                {
+                    "name": "Cannibalized Volume",
+                    "value": -int(output_cannib_52weeks_volume['cannibilization_value'][0])
+                }]
 
-            volume={}
-            volume={"Cannibilization_perc":output_cannib_52weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=4)
-                   }
-            data_dict_52weeks_volume["data"]=data
-            data_dict_52weeks_volume["impact"]=volume
+            volume = {}
+            volume = {"Cannibilization_perc": output_cannib_52weeks_volume['cannibilization_perc'][0].round(decimals=2),
+                      "perc_impact_psg": output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=4)
+                      }
+            data_dict_52weeks_volume["data"] = data
+            data_dict_52weeks_volume["impact"] = volume
 
             volume_cann_52 = int(output_cannib_52weeks_volume['cannibilization_value'][0])
             volume_forecast_52 = int(output_cannib_52weeks_volume['forecast'][0])
-            volume_impact_52 = (int(output_cannib_52weeks_volume['forecast'][0])) - (int(output_cannib_52weeks_volume['cannibilization_value'][0])) 
+            volume_impact_52 = (int(output_cannib_52weeks_volume['forecast'][0])) - (
+            int(output_cannib_52weeks_volume['cannibilization_value'][0]))
 
-            data_dict_52weeks_sales={}
+            data_dict_52weeks_sales = {}
             data = [{
-                    "name":"NPD Value","value":int(output_cannib_52weeks_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_cannib_52weeks_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_cannib_52weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_52weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
-                   }
-            data_dict_52weeks_sales["data"]=data
-            data_dict_52weeks_sales["impact"]=sales
-
+                "name": "NPD Value", "value": int(output_cannib_52weeks_sales['forecast'][0])
+            },
+                {
+                    "name": "Cannibalized Sales",
+                    "value": -int(output_cannib_52weeks_sales['cannibilization_value'][0])
+                }]
+            sales = {}
+            sales = {
+                "Cannibilization_perc": output_cannib_52weeks_sales['cannibilization_perc'][0].round(decimals=2),
+                "perc_impact_psg": (output_cannib_52weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
+            }
+            data_dict_52weeks_sales["data"] = data
+            data_dict_52weeks_sales["impact"] = sales
 
             value_cann_52 = int(output_cannib_52weeks_sales['cannibilization_value'][0])
             value_forecast_52 = int(output_cannib_52weeks_sales['forecast'][0])
-            value_impact_52 = (int(output_cannib_52weeks_sales['forecast'][0])) - (int(output_cannib_52weeks_sales['cannibilization_value'][0]))
+            value_impact_52 = (int(output_cannib_52weeks_sales['forecast'][0])) - (
+            int(output_cannib_52weeks_sales['cannibilization_value'][0]))
 
-
-            impact_data_52weeks = {'sales_chart': data_dict_52weeks_sales,'volume_chart': data_dict_52weeks_volume }
+            impact_data_52weeks = {'sales_chart': data_dict_52weeks_sales, 'volume_chart': data_dict_52weeks_volume}
             print("sales_chart for 52 weeks ")
             print(data_dict_52weeks_sales)
             similar_product_52weeks = similar_product_cannabilized('12_months')
             data_52weeks_table = {'df': similar_product_52weeks.to_dict(orient='records')}
 
-            save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        week_tab = 52,
-                                        buying_controller = Buying_controller,
-                                        parent_supplier = par_supp,
-                                        buyer = Buyer,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_52weeks,
-                                        value_forecast = value_forecast_52,
-                                        value_impact = value_impact_52,
-                                        value_cannibalized = value_cann_52,
-                                        volume_forecast = volume_forecast_52,
-                                        volume_impact = volume_impact_52,
-                                        volume_cannibalized = volume_cann_52,
-                                        similar_products = data_52weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
+            save_scenario = SaveScenario(user_id=user_id,
+                                         designation="buyer",
+                                         session_id=session_id,
+                                         scenario_name=scenario_name,
+                                         week_tab=52,
+                                         buying_controller=Buying_controller,
+                                         parent_supplier=par_supp,
+                                         buyer=Buyer,
+                                         user_attributes=user_attributes,
+                                         forecast_data=impact_data_52weeks,
+                                         value_forecast=value_forecast_52,
+                                         value_impact=value_impact_52,
+                                         value_cannibalized=value_cann_52,
+                                         volume_forecast=volume_forecast_52,
+                                         volume_impact=volume_impact_52,
+                                         volume_cannibalized=volume_cann_52,
+                                         similar_products=data_52weeks_table,
+                                         modified_flag=modified_flag,
+                                         system_time=system_time,
+                                         page="npd")
             save_scenario.save()
- 
+
         else:
             print("inside edit forecast")
-            #calculate forecast for all week tabs 
-            if (week_selected =="Latest 13 Weeks"):
+            # calculate forecast for all week tabs
+            if (week_selected == "Latest 13 Weeks"):
                 total_forecasted_volume_13 = total_forecasted_volume
-                total_forecasted_volume_26 =  2 * total_forecasted_volume_13
+                total_forecasted_volume_26 = 2 * total_forecasted_volume_13
                 total_forecasted_volume_52 = 2 * total_forecasted_volume_26
 
-            elif (week_selected =="Latest 26 Weeks"):
+            elif (week_selected == "Latest 26 Weeks"):
                 total_forecasted_volume_26 = total_forecasted_volume
-                total_forecasted_volume_13 = total_forecasted_volume_26/2
+                total_forecasted_volume_13 = total_forecasted_volume_26 / 2
                 total_forecasted_volume_52 = 2 * total_forecasted_volume_26
 
-            elif (week_selected =="Latest 52 Weeks"):                    
+            elif (week_selected == "Latest 52 Weeks"):
                 total_forecasted_volume_52 = total_forecasted_volume
-                total_forecasted_volume_26 = total_forecasted_volume_52/2
-                total_forecasted_volume_13 = total_forecasted_volume_26/2 
-            #### for calculating data table 
+                total_forecasted_volume_26 = total_forecasted_volume_52 / 2
+                total_forecasted_volume_13 = total_forecasted_volume_26 / 2
+                #### for calculating data table
             psg_priceband_merch = get_priceband_psg_merch_code()
 
             price_band = psg_priceband_merch['price_band']
@@ -3706,21 +3756,20 @@ class npdpage_impact_save_scenario(APIView):
             sim_prod = similar_products()
             psg_priceband_merch = get_priceband_psg_merch_code()
 
-
-            ##for 13 weeks 
+            ##for 13 weeks
             similar_product = similar_product_cannabilized("3_months")
-            #for similar products table 
+            # for similar products table
             data_13weeks_table = {'df': similar_product.to_dict(orient='records')}
 
             forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_13)
 
             ##### To get the cannibilized sales
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
-            
-            total_forecasted_sales = float(total_forecasted_volume_13)*float(asp)
+            forecasted_cannibilization_sales = forecasted_cannibilization_volume * asp
+            # forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+            total_forecasted_sales = float(total_forecasted_volume_13) * float(asp)
+
+            Cannibalization_perc_sales = (forecasted_cannibilization_sales / total_forecasted_sales)
 
             ##### To get the net mpact in volume
             forecasted_net_impact_volume = total_forecasted_volume_13 - forecasted_cannibilization_volume
@@ -3729,18 +3778,22 @@ class npdpage_impact_save_scenario(APIView):
             forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
             All_attribute = All_attribute.dropna()
-            All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute[['base_product_number', 'product_sub_group_description']]
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            ## rolling volume at psg bpn level
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
 
             #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="3_months"]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == "3_months"]
 
             ###### Getting the total volume for the selected psg and time period
             total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
@@ -3752,12 +3805,13 @@ class npdpage_impact_save_scenario(APIView):
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'],
+                                             right_on=['base_product_number'], how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
 
             ###Total would be sum of all the product sales
             total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
@@ -3765,108 +3819,117 @@ class npdpage_impact_save_scenario(APIView):
             #### Getting the change in % psg volume
             total_psg_forecasted_volume = float(total_psg_forecasted_volume)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+            try:
+                psg_perc_volume = (forecasted_net_impact_volume / total_psg_forecasted_volume)
             except:
                 psg_perc_volume = 0
             #### Gettig the change in % psg sales
             total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+            psg_perc_sales = (forecasted_net_impact_sales / total_psg_forecasted_sales)
 
-            data_13weeks_volume = [{'forecast': total_forecasted_volume_13,'modified_forecast': total_forecasted_volume_13,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 13 Weeks" ,'price_band' : price_band}]
+            data_13weeks_volume = [
+                {'forecast': total_forecasted_volume_13, 'modified_forecast': total_forecasted_volume_13,
+                 'cannibilization_value': forecasted_cannibilization_volume,
+                 'cannibilization_perc': Cannibalization_perc,
+                 'net_impact_value': forecasted_net_impact_volume, 'perc_change_in_psg': psg_perc_volume * 100,
+                 'buying_controller':
+                     Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                 'psg': Product_Sub_Group_Description, 'asp':
+                     asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                 'till_roll_desc': Till_Roll_Description, 'week_flag': "Latest 13 Weeks", 'price_band': price_band}]
 
-            data_13weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 13 Weeks",'price_band' : price_band }]
+            data_13weeks_sales = [{'forecast': total_forecasted_sales, 'modified_forecast': total_forecasted_sales,
+                                   'cannibilization_value': forecasted_cannibilization_sales,
+                                   'cannibilization_perc': Cannibalization_perc_sales,
+                                   'net_impact_value': forecasted_net_impact_sales,
+                                   'perc_change_in_psg': psg_perc_sales * 100, 'buying_controller':
+                                       Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                                   'psg': Product_Sub_Group_Description, 'asp':
+                                       asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                                   'till_roll_desc': Till_Roll_Description, 'week_flag': "Latest 13 Weeks",
+                                   'price_band': price_band}]
 
             output_13_cannib_volume = pd.DataFrame(data_13weeks_volume)  ##Output 1 volume
             output_13_cannib_sales = pd.DataFrame(data_13weeks_sales)  ## Output 1 Sales
 
-            data_13_dict_volume={}
+            data_13_dict_volume = {}
             data = [{
-                       "name":"NPD Volume","value":output_13_cannib_volume['forecast'][0]
-                       },
-                    {
-                        "name":"Cannibalized Volume","value":output_13_cannib_volume['cannibilization_value'][0]
-                        }]
+                "name": "NPD Volume", "value": output_13_cannib_volume['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Volume", "value": output_13_cannib_volume['cannibilization_value'][0]
+                }]
 
-            volume={}
-            volume={"Cannibilization_perc":output_13_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_13_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
-                               }
-            data_13_dict_volume["data"]=data
-            data_13_dict_volume["impact"]=volume
+            volume = {}
+            volume = {"Cannibilization_perc": output_13_cannib_volume['cannibilization_perc'][0],
+                      "perc_impact_psg": output_13_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                      }
+            data_13_dict_volume["data"] = data
+            data_13_dict_volume["impact"] = volume
 
             volume_cann_13 = int(output_cannib_13weeks_volume['cannibilization_value'][0])
             volume_forecast_13 = int(output_cannib_13weeks_volume['forecast'][0])
-            volume_impact_13 = (int(output_cannib_13weeks_volume['forecast'][0])) - (int(output_cannib_13weeks_volume['cannibilization_value'][0])) 
+            volume_impact_13 = (int(output_cannib_13weeks_volume['forecast'][0])) - (
+            int(output_cannib_13weeks_volume['cannibilization_value'][0]))
 
-            data_13_dict_sales={}
+            data_13_dict_sales = {}
             data = [{
-                    "name":"NPD Value","value":output_13_cannib_sales['forecast'][0]
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":output_13_cannib_sales['cannibilization_value'][0]
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_13_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_13_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
-                   }
-            data_13_dict_sales["data"]=data
-            data_13_dict_sales["impact"]=sales
+                "name": "NPD Value", "value": output_13_cannib_sales['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Sales",
+                    "value": output_13_cannib_sales['cannibilization_value'][0]
+                }]
+            sales = {}
+            sales = {
+                "Cannibilization_perc": output_13_cannib_sales['cannibilization_perc'][0],
+                "perc_impact_psg": (output_13_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+            }
+            data_13_dict_sales["data"] = data
+            data_13_dict_sales["impact"] = sales
 
             value_cann_13 = int(output_cannib_13weeks_sales['cannibilization_value'][0])
             value_forecast_13 = int(output_cannib_13weeks_sales['forecast'][0])
-            value_impact_13 = (int(output_cannib_13weeks_sales['forecast'][0])) - (int(output_cannib_13weeks_sales['cannibilization_value'][0]))
+            value_impact_13 = (int(output_cannib_13weeks_sales['forecast'][0])) - (
+            int(output_cannib_13weeks_sales['cannibilization_value'][0]))
 
+            impact_data_13weeks = {'sales_chart': data_13_dict_sales, 'volume_chart': data_13_dict_volume}
 
-            impact_data_13weeks = {'sales_chart': data_13_dict_sales,'volume_chart': data_13_dict_volume}
-
-            save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        week_tab = 13,
-                                        buying_controller = Buying_controller,
-                                        parent_supplier = par_supp,
-                                        buyer = Buyer,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_13weeks,
-                                        value_forecast = value_forecast_13,
-                                        value_impact = value_impact_13,
-                                        value_cannibalized = value_cann_13,
-                                        volume_forecast = volume_forecast_13,
-                                        volume_impact = volume_impact_13,
-                                        volume_cannibalized = volume_cann_13,
-                                        similar_products = data_13weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
+            save_scenario = SaveScenario(user_id=user_id,
+                                         designation="buyer",
+                                         session_id=session_id,
+                                         scenario_name=scenario_name,
+                                         week_tab=13,
+                                         buying_controller=Buying_controller,
+                                         parent_supplier=par_supp,
+                                         buyer=Buyer,
+                                         user_attributes=user_attributes,
+                                         forecast_data=impact_data_13weeks,
+                                         value_forecast=value_forecast_13,
+                                         value_impact=value_impact_13,
+                                         value_cannibalized=value_cann_13,
+                                         volume_forecast=volume_forecast_13,
+                                         volume_impact=volume_impact_13,
+                                         volume_cannibalized=volume_cann_13,
+                                         similar_products=data_13weeks_table,
+                                         modified_flag=modified_flag,
+                                         system_time=system_time,
+                                         page="npd")
             save_scenario.save()
- 
 
             ##for 26 weeks
             similar_product = similar_product_cannabilized("6_months")
 
             data_26weeks_table = {'df': similar_product.to_dict(orient='records')}
 
-
             forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_26)
 
             ##### To get the cannibilized sales
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
-            total_forecasted_sales = float(total_forecasted_volume_26)*float(asp)
+            forecasted_cannibilization_sales = forecasted_cannibilization_volume * asp
+            # forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+            total_forecasted_sales = float(total_forecasted_volume_26) * float(asp)
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+            Cannibalization_perc_sales = (forecasted_cannibilization_sales / total_forecasted_sales)
 
             ##### To get the net mpact in volume
             forecasted_net_impact_volume = total_forecasted_volume_26 - forecasted_cannibilization_volume
@@ -3875,18 +3938,22 @@ class npdpage_impact_save_scenario(APIView):
             forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
             All_attribute = All_attribute.dropna()
-            All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute[['base_product_number', 'product_sub_group_description']]
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            ## rolling volume at psg bpn level
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
 
             #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="6_months"]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == "6_months"]
 
             ###### Getting the total volume for the selected psg and time period
             total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
@@ -3898,12 +3965,13 @@ class npdpage_impact_save_scenario(APIView):
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'],
+                                             right_on=['base_product_number'], how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
 
             ###Total would be sum of all the product sales
             total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
@@ -3911,95 +3979,103 @@ class npdpage_impact_save_scenario(APIView):
             #### Getting the change in % psg volume
             total_psg_forecasted_volume = float(total_psg_forecasted_volume)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+            try:
+                psg_perc_volume = (forecasted_net_impact_volume / total_psg_forecasted_volume)
             except:
                 psg_perc_volume = 0
 
             #### Gettig the change in % psg sales
 
             total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+            psg_perc_sales = (forecasted_net_impact_sales / total_psg_forecasted_sales)
 
-            data_26weeks_volume = [{'forecast': total_forecasted_volume_26,'modified_forecast': total_forecasted_volume_26,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 26 Weeks" ,'price_band' : price_band}]
+            data_26weeks_volume = [
+                {'forecast': total_forecasted_volume_26, 'modified_forecast': total_forecasted_volume_26,
+                 'cannibilization_value': forecasted_cannibilization_volume,
+                 'cannibilization_perc': Cannibalization_perc,
+                 'net_impact_value': forecasted_net_impact_volume, 'perc_change_in_psg': psg_perc_volume * 100,
+                 'buying_controller':
+                     Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                 'psg': Product_Sub_Group_Description, 'asp':
+                     asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                 'till_roll_desc': Till_Roll_Description, 'week_flag': "Latest 26 Weeks", 'price_band': price_band}]
 
-            data_26weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 26 Weeks",'price_band' : price_band }]
+            data_26weeks_sales = [{'forecast': total_forecasted_sales, 'modified_forecast': total_forecasted_sales,
+                                   'cannibilization_value': forecasted_cannibilization_sales,
+                                   'cannibilization_perc': Cannibalization_perc_sales,
+                                   'net_impact_value': forecasted_net_impact_sales,
+                                   'perc_change_in_psg': psg_perc_sales * 100, 'buying_controller':
+                                       Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                                   'psg': Product_Sub_Group_Description, 'asp':
+                                       asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                                   'till_roll_desc': Till_Roll_Description, 'week_flag': "Latest 26 Weeks",
+                                   'price_band': price_band}]
 
             output_26_cannib_volume = pd.DataFrame(data_26weeks_volume)  ##Output 1 volume
             output_26_cannib_sales = pd.DataFrame(data_26weeks_sales)  ## Output 1 Sales
 
-            data_26_dict_volume={}
+            data_26_dict_volume = {}
             data = [{
-                       "name":"NPD Volume","value":output_26_cannib_volume['forecast'][0]
-                       },
-                    {
-                        "name":"Cannibalized Volume","value":output_26_cannib_volume['cannibilization_value'][0]
-                        }]
+                "name": "NPD Volume", "value": output_26_cannib_volume['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Volume", "value": output_26_cannib_volume['cannibilization_value'][0]
+                }]
 
-            volume={}
-            volume={"Cannibilization_perc":output_26_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_26_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
-                               }
-            data_26_dict_volume["data"]=data
-            data_26_dict_volume["impact"]=volume
-
+            volume = {}
+            volume = {"Cannibilization_perc": output_26_cannib_volume['cannibilization_perc'][0],
+                      "perc_impact_psg": output_26_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                      }
+            data_26_dict_volume["data"] = data
+            data_26_dict_volume["impact"] = volume
 
             volume_cann_26 = int(output_cannib_26weeks_volume['cannibilization_value'][0])
             volume_forecast_26 = int(output_cannib_26weeks_volume['forecast'][0])
-            volume_impact_26 = output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=4) 
+            volume_impact_26 = output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=4)
 
-            data_26_dict_sales={}
+            data_26_dict_sales = {}
             data = [{
-                    "name":"NPD Value","value":output_26_cannib_sales['forecast'][0]
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":output_26_cannib_sales['cannibilization_value'][0]
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_26_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_26_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
-                   }
-            data_26_dict_sales["data"]=data
-            data_26_dict_sales["impact"]=sales
+                "name": "NPD Value", "value": output_26_cannib_sales['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Sales",
+                    "value": output_26_cannib_sales['cannibilization_value'][0]
+                }]
+            sales = {}
+            sales = {
+                "Cannibilization_perc": output_26_cannib_sales['cannibilization_perc'][0],
+                "perc_impact_psg": (output_26_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+            }
+            data_26_dict_sales["data"] = data
+            data_26_dict_sales["impact"] = sales
 
             value_cann_26 = int(output_cannib_26weeks_sales['cannibilization_value'][0])
             value_forecast_26 = int(output_cannib_26weeks_sales['forecast'][0])
-            value_impact_26 = (int(output_cannib_26weeks_sales['forecast'][0])) - (int(output_cannib_26weeks_sales['cannibilization_value'][0]))
+            value_impact_26 = (int(output_cannib_26weeks_sales['forecast'][0])) - (
+            int(output_cannib_26weeks_sales['cannibilization_value'][0]))
 
+            impact_data_26weeks = {'sales_chart': data_26_dict_sales, 'volume_chart': data_26_dict_volume}
 
-
-            impact_data_26weeks = {'sales_chart': data_26_dict_sales,'volume_chart': data_26_dict_volume}
-
-            save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        week_tab = 26,
-                                        buying_controller = Buying_controller,
-                                        parent_supplier = par_supp,
-                                        buyer = Buyer,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_26weeks,
-                                        value_forecast = value_forecast_26,
-                                        value_impact = value_impact_26,
-                                        value_cannibalized = value_cann_26,
-                                        volume_forecast = volume_forecast_26,
-                                        volume_impact = volume_impact_26,
-                                        volume_cannibalized = volume_cann_26,
-                                        similar_products = data_26weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
+            save_scenario = SaveScenario(user_id=user_id,
+                                         designation="buyer",
+                                         session_id=session_id,
+                                         scenario_name=scenario_name,
+                                         week_tab=26,
+                                         buying_controller=Buying_controller,
+                                         parent_supplier=par_supp,
+                                         buyer=Buyer,
+                                         user_attributes=user_attributes,
+                                         forecast_data=impact_data_26weeks,
+                                         value_forecast=value_forecast_26,
+                                         value_impact=value_impact_26,
+                                         value_cannibalized=value_cann_26,
+                                         volume_forecast=volume_forecast_26,
+                                         volume_impact=volume_impact_26,
+                                         volume_cannibalized=volume_cann_26,
+                                         similar_products=data_26weeks_table,
+                                         modified_flag=modified_flag,
+                                         system_time=system_time,
+                                         page="npd")
             save_scenario.save()
 
             ##for 52 weeks
@@ -4010,11 +4086,11 @@ class npdpage_impact_save_scenario(APIView):
             forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_52)
 
             ##### To get the cannibilized sales
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
-            total_forecasted_sales = float(total_forecasted_volume_52)*float(asp)
+            forecasted_cannibilization_sales = forecasted_cannibilization_volume * asp
+            # forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+            total_forecasted_sales = float(total_forecasted_volume_52) * float(asp)
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+            Cannibalization_perc_sales = (forecasted_cannibilization_sales / total_forecasted_sales)
 
             ##### To get the net mpact in volume
             forecasted_net_impact_volume = total_forecasted_volume_52 - forecasted_cannibilization_volume
@@ -4023,18 +4099,22 @@ class npdpage_impact_save_scenario(APIView):
             forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
             All_attribute = All_attribute.dropna()
-            All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
+            All_attribute_subset = All_attribute[['base_product_number', 'product_sub_group_description']]
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            product_psg_mapping = pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'],
+                                           right_on=['base_product_number'], how='left')
 
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            ## rolling volume at psg bpn level
+            psg_product_contri_df = product_psg_mapping.groupby(
+                ['time_period', 'product_sub_group_description', 'base_product_number'], as_index=False).agg(
+                {'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+            psg_product_contri_df = psg_product_contri_df.loc[
+                psg_product_contri_df['product_sub_group_description'] == Product_Sub_Group_Description]
 
             #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="12_months"]
+            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period'] == "12_months"]
 
             ###### Getting the total volume for the selected psg and time period
             total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
@@ -4046,12 +4126,13 @@ class npdpage_impact_save_scenario(APIView):
 
             #### Doing a left join to get the asp for all bpn in product contri
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'],
+                                             right_on=['base_product_number'], how='left')
 
-            ### Getting the total sales for all the products in 
+            ### Getting the total sales for all the products in
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
+            psg_product_contri_df.loc[:, 'predicted_sales'] = psg_product_contri_df['predicted_volume'] * \
+                                                              psg_product_contri_df['asp']
 
             ###Total would be sum of all the product sales
             total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
@@ -4059,136 +4140,148 @@ class npdpage_impact_save_scenario(APIView):
             #### Getting the change in % psg volume
             total_psg_forecasted_volume = float(total_psg_forecasted_volume)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+            try:
+                psg_perc_volume = (forecasted_net_impact_volume / total_psg_forecasted_volume)
             except:
                 psg_perc_volume = 0
 
             #### Gettig the change in % psg sales
 
             total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+            psg_perc_sales = (forecasted_net_impact_sales / total_psg_forecasted_sales)
 
-            data_52weeks_volume = [{'forecast': total_forecasted_volume_52,'modified_forecast': total_forecasted_volume_52,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 52 Weeks" ,'price_band' : price_band}]
+            data_52weeks_volume = [
+                {'forecast': total_forecasted_volume_52, 'modified_forecast': total_forecasted_volume_52,
+                 'cannibilization_value': forecasted_cannibilization_volume,
+                 'cannibilization_perc': Cannibalization_perc,
+                 'net_impact_value': forecasted_net_impact_volume, 'perc_change_in_psg': psg_perc_volume * 100,
+                 'buying_controller':
+                     Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                 'psg': Product_Sub_Group_Description, 'asp':
+                     asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                 'till_roll_desc': Till_Roll_Description, 'week_flag': "Latest 52 Weeks", 'price_band': price_band}]
 
-            data_52weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 52 Weeks",'price_band' : price_band }]
+            data_52weeks_sales = [{'forecast': total_forecasted_sales, 'modified_forecast': total_forecasted_sales,
+                                   'cannibilization_value': forecasted_cannibilization_sales,
+                                   'cannibilization_perc': Cannibalization_perc_sales,
+                                   'net_impact_value': forecasted_net_impact_sales,
+                                   'perc_change_in_psg': psg_perc_sales * 100, 'buying_controller':
+                                       Buying_controller, 'junior_buyer': Junior_Buyer, 'buyer': Buyer,
+                                   'psg': Product_Sub_Group_Description, 'asp':
+                                       asp, 'acp': acp, 'size': Size, 'package_type': Package_Type,
+                                   'till_roll_desc': Till_Roll_Description, 'week_flag': "Latest 52 Weeks",
+                                   'price_band': price_band}]
 
             output_52_cannib_volume = pd.DataFrame(data_52weeks_volume)  ##Output 1 volume
             output_52_cannib_sales = pd.DataFrame(data_52weeks_sales)  ## Output 1 Sales
 
-            data_52_dict_volume={}
+            data_52_dict_volume = {}
             data = [{
-                       "name":"NPD Volume","value":output_52_cannib_volume['forecast'][0]
-                       },
-                    {
-                        "name":"Cannibalized Volume","value":output_52_cannib_volume['cannibilization_value'][0]
-                        }]
+                "name": "NPD Volume", "value": output_52_cannib_volume['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Volume", "value": output_52_cannib_volume['cannibilization_value'][0]
+                }]
 
-            volume={}
-            volume={"Cannibilization_perc":output_52_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_52_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
-                               }
-            data_52_dict_volume["data"]=data
-            data_52_dict_volume["impact"]=volume
+            volume = {}
+            volume = {"Cannibilization_perc": output_52_cannib_volume['cannibilization_perc'][0],
+                      "perc_impact_psg": output_52_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                      }
+            data_52_dict_volume["data"] = data
+            data_52_dict_volume["impact"] = volume
 
             volume_cann_52 = int(output_cannib_52weeks_volume['cannibilization_value'][0])
             volume_forecast_52 = int(output_cannib_52weeks_volume['forecast'][0])
-            volume_impact_52 = output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=4) 
+            volume_impact_52 = output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=4)
 
-
-            data_52_dict_sales={}
+            data_52_dict_sales = {}
             data = [{
-                    "name":"NPD Value","value":output_52_cannib_sales['forecast'][0]
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":output_52_cannib_sales['cannibilization_value'][0]
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_52_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_52_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
-                   }
-            data_52_dict_sales["data"]=data
-            data_52_dict_sales["impact"]=sales
+                "name": "NPD Value", "value": output_52_cannib_sales['forecast'][0]
+            },
+                {
+                    "name": "Cannibalized Sales",
+                    "value": output_52_cannib_sales['cannibilization_value'][0]
+                }]
+            sales = {}
+            sales = {
+                "Cannibilization_perc": output_52_cannib_sales['cannibilization_perc'][0],
+                "perc_impact_psg": (output_52_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+            }
+            data_52_dict_sales["data"] = data
+            data_52_dict_sales["impact"] = sales
 
             value_cann_52 = int(output_cannib_52weeks_sales['cannibilization_value'][0])
             value_forecast_52 = int(output_cannib_52weeks_sales['forecast'][0])
-            value_impact_52 = (int(output_cannib_52weeks_sales['forecast'][0])) - (int(output_cannib_52weeks_sales['cannibilization_value'][0]))
+            value_impact_52 = (int(output_cannib_52weeks_sales['forecast'][0])) - (
+            int(output_cannib_52weeks_sales['cannibilization_value'][0]))
 
-            impact_data_52weeks = {'sales_chart': data_52_dict_sales,'volume_chart': data_52_dict_volume}
+            impact_data_52weeks = {'sales_chart': data_52_dict_sales, 'volume_chart': data_52_dict_volume}
 
-            save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        week_tab = 52,
-                                        buying_controller = Buying_controller,
-                                        parent_supplier = par_supp,
-                                        buyer = Buyer,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_52weeks,
-                                        value_forecast = value_forecast_52,
-                                        value_impact = value_impact_52,
-                                        value_cannibalized = value_cann_52,
-                                        volume_forecast = volume_forecast_52,
-                                        volume_impact = volume_impact_52,
-                                        volume_cannibalized = volume_cann_52,
-                                        similar_products = data_52weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
+            save_scenario = SaveScenario(user_id=user_id,
+                                         designation="buyer",
+                                         session_id=session_id,
+                                         scenario_name=scenario_name,
+                                         week_tab=52,
+                                         buying_controller=Buying_controller,
+                                         parent_supplier=par_supp,
+                                         buyer=Buyer,
+                                         user_attributes=user_attributes,
+                                         forecast_data=impact_data_52weeks,
+                                         value_forecast=value_forecast_52,
+                                         value_impact=value_impact_52,
+                                         value_cannibalized=value_cann_52,
+                                         volume_forecast=volume_forecast_52,
+                                         volume_impact=volume_impact_52,
+                                         volume_cannibalized=volume_cann_52,
+                                         similar_products=data_52weeks_table,
+                                         modified_flag=modified_flag,
+                                         system_time=system_time,
+                                         page="npd")
             save_scenario.save()
- 
-        return JsonResponse({"save_scenario" : "SUCCESS"}, safe = False)
+
+        return JsonResponse({"save_scenario": "SUCCESS"}, safe=False)
 
 
-    # def post(self, request, format=None):
-    #     print('post request made finally')
-    #     print(request.POST, request.data)
+        # def post(self, request, format=None):
+        #     print('post request made finally')
+        #     print(request.POST, request.data)
 
-    #     save_scenario = Scenario(scenario_name = request.data.get('scenario_name'),
-    #                         user_id = request.data.get('user_id'),
-    #                         user_attributes = request.data.get('user_attributes'),
-    #                         forecast_data = request.data.get('forecast_data'))
-    #     save_scenario.save()
-    #     print(save_scenario.id)
-    #     # scenario_dict={}
-    #     # scenario_dict["id"]=save_scenario.id
-    #     # scenario_dict["scenario_name"]=save_scenario.scenario_name
-    #     # scenario_dict["user_id"]=save_scenario.user_id
-    #     # scenario_dict["user_attributes"]=save_scenario.user_attributes
-    #     # scenario_dict["forecast_data"]=save_scenario.forecast_data
+        #     save_scenario = Scenario(scenario_name = request.data.get('scenario_name'),
+        #                         user_id = request.data.get('user_id'),
+        #                         user_attributes = request.data.get('user_attributes'),
+        #                         forecast_data = request.data.get('forecast_data'))
+        #     save_scenario.save()
+        #     print(save_scenario.id)
+        #     # scenario_dict={}
+        #     # scenario_dict["id"]=save_scenario.id
+        #     # scenario_dict["scenario_name"]=save_scenario.scenario_name
+        #     # scenario_dict["user_id"]=save_scenario.user_id
+        #     # scenario_dict["user_attributes"]=save_scenario.user_attributes
+        #     # scenario_dict["forecast_data"]=save_scenario.forecast_data
 
-    #     return JsonResponse({'message': 'dones'},safe=False)
+        #     return JsonResponse({'message': 'dones'},safe=False)
 
 
 class npd_scenario_list(APIView):
-    def get(self,request,format=None):
+    def get(self, request, format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        user_id = args.pop('user_id__iexact',None)
-                        # weeks_list.sort_values(by= ['year_week_number'],ascending=False)
-        queryset = SaveScenario.objects.filter(user_id=user_id).values('system_time','scenario_name').distinct().order_by('-system_time')
+        user_id = args.pop('user_id__iexact', None)
+        # weeks_list.sort_values(by= ['year_week_number'],ascending=False)
+        queryset = SaveScenario.objects.filter(user_id=user_id).values('system_time',
+                                                                       'scenario_name').distinct().order_by(
+            '-system_time')
         print("queryset")
         print(queryset)
-        serializer_class = npd_SaveScenarioSerializer(queryset,many=True)
+        serializer_class = npd_SaveScenarioSerializer(queryset, many=True)
 
-        return JsonResponse(serializer_class.data,safe=False)
+        return JsonResponse(serializer_class.data, safe=False)
 
 
 class npd_view_scenario(APIView):
-    def get(self,request,format=None):
+    def get(self, request, format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        user_id = args.get('user_id__iexact',None)
-        scenario_name = args.get('scenario_name__iexact',None)
+        user_id = args.get('user_id__iexact', None)
+        scenario_name = args.get('scenario_name__iexact', None)
 
         # user_attributes = list(SaveScenario.objects.filter(**args).filter(week_tab=13).values_list('user_attributes',flat = True))
         # queryset_13 = list(SaveScenario.objects.filter(**args).filter(week_tab=13).values_list('forecast_data','similar_products'))
@@ -4196,48 +4289,45 @@ class npd_view_scenario(APIView):
         # queryset_52 = list(SaveScenario.objects.filter(**args).filter(week_tab=52).values_list('forecast_data','similar_products'))
 
         user_attributes = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=13).values('user_attributes'))
-        queryset_13_pd = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=13).values('forecast_data','similar_products'))
-        queryset_26_pd = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=26).values('forecast_data','similar_products'))
-        queryset_52_pd = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=52).values('forecast_data','similar_products'))
-        
-
+        queryset_13_pd = read_frame(
+            SaveScenario.objects.filter(**args).filter(week_tab=13).values('forecast_data', 'similar_products'))
+        queryset_26_pd = read_frame(
+            SaveScenario.objects.filter(**args).filter(week_tab=26).values('forecast_data', 'similar_products'))
+        queryset_52_pd = read_frame(
+            SaveScenario.objects.filter(**args).filter(week_tab=52).values('forecast_data', 'similar_products'))
 
         week_13 = {}
         week_13 = {
-            "forecast_data" : queryset_13_pd['forecast_data'][0],
-            "similar_products" : queryset_13_pd['similar_products'][0]
+            "forecast_data": queryset_13_pd['forecast_data'][0],
+            "similar_products": queryset_13_pd['similar_products'][0]
         }
 
         week_26 = {}
         week_26 = {
-            "forecast_data" : queryset_26_pd['forecast_data'][0],
-            "similar_products" : queryset_26_pd['similar_products'][0]
+            "forecast_data": queryset_26_pd['forecast_data'][0],
+            "similar_products": queryset_26_pd['similar_products'][0]
         }
-        week_52={}
+        week_52 = {}
         week_52 = {
-            "forecast_data" : queryset_52_pd['forecast_data'][0],
-            "similar_products" : queryset_52_pd['similar_products'][0]
+            "forecast_data": queryset_52_pd['forecast_data'][0],
+            "similar_products": queryset_52_pd['similar_products'][0]
         }
 
-        if (user_id is None)|(scenario_name is None):
-            scenario_data_dict = { }
+        if (user_id is None) | (scenario_name is None):
+            scenario_data_dict = {}
         else:
             scenario_data_dict = {
-                    "user_id" : user_id,
-                    "scenario_name" : scenario_name,
-                    "user_attributes" : user_attributes['user_attributes'][0],
-                    "week_13" : week_13,
-                    "week_26" : week_26,
-                    "week_52" : week_52,
+                "user_id": user_id,
+                "scenario_name": scenario_name,
+                "user_attributes": user_attributes['user_attributes'][0],
+                "week_13": week_13,
+                "week_26": week_26,
+                "week_52": week_52,
             }
-
-        
 
         # serializer_class = npd_ViewScenarioSerializer(queryset,many=True)
 
-        return JsonResponse(scenario_data_dict,safe=False)
-
-
+        return JsonResponse(scenario_data_dict, safe=False)
 
 
 # class displaynpd_scenario(APIView):
@@ -4253,15 +4343,17 @@ class npd_view_scenario(APIView):
 ## PRODUCT FILTERS
 ## Product Impact Filters
 
-def col_distinct_product(kwargs, col_name):
+def col_distinct_product(kwargs, col_name, user_buyer):
+    kwargs['buyer'] = user_buyer
     queryset = product_hierarchy.objects.filter(**kwargs).values(col_name).order_by(col_name).distinct()
     base_product_number_list = [k.get(col_name) for k in queryset]
     return base_product_number_list
 
-def make_json_product(sent_req):
+
+def make_json_product(sent_req, user_buyer):
     print('*********************\n       FILTERS2 \n*********************')
-    cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
-                                 'brand_name', 'product_sub_group_description', 'long_description']
+    cols = ['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
+            'brand_name', 'product_sub_group_description', 'long_description']
 
     # find lowest element of cols
     lowest = 0
@@ -4296,14 +4388,14 @@ def make_json_product(sent_req):
     for col_name in cols:
         print('\n********* \n' + col_name + '\n*********')
         # print('sent_req.get(col_name):', sent_req.get(col_name))
-        col_unique_list = col_distinct_product({}, col_name)
+        col_unique_list = col_distinct_product({}, col_name, user_buyer)
         col_unique_list_name.append({'name': col_name,
                                      'unique_elements': col_unique_list})
         col_unique_list_name_obj[col_name] = col_unique_list
         # args sent as url params
         kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
 
-        category_of_sent_obj_list = col_distinct_product(kwargs2, col_name)
+        category_of_sent_obj_list = col_distinct_product(kwargs2, col_name, user_buyer)
         print(len(category_of_sent_obj_list))
         sent_obj_category_list = []
 
@@ -4386,9 +4478,16 @@ def make_json_product(sent_req):
     return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
 
 
-
 class filters_product_impact(APIView):
     def get(self, request):
+        regex = re.compile('^HTTP_')
+        auth_token = dict((regex.sub('', header), value) for (header, value)
+                          in request.META.items() if header.startswith('HTTP'))
+        headers_incoming = auth_token['AUTHORIZATION']
+        underscore_index = headers_incoming.index('___')
+        user_auth_token = headers_incoming[:40]
+        user_buyer = headers_incoming[43:]
+
         print(request.GET)
         obj = {}
         get_keys = request.GET.keys()
@@ -4396,16 +4495,17 @@ class filters_product_impact(APIView):
             # print(request.GET.getlist(i))
             obj[i] = request.GET.getlist(i)
         # print(obj)
-        return make_json_product(obj)
+        return make_json_product(obj, user_buyer)
 
 
 ####Product Impact
-#chart
+# chart
 
-#Product impact inheritance class
+# Product impact inheritance class
 class vol_transfer_logic:
-
-    def __init__(self,bc=['Meat Fish and Veg'],store=['Overview'],future=['13_weeks'],input_tpns=None,delist=None,scenario_name = None,user_id = None,user_attributes=None,chart_attr = None,delist_attr = None,supp_attr = None ):
+    def __init__(self, bc=['Meat Fish and Veg'], store=['Overview'], future=['13_weeks'], input_tpns=None, delist=None,
+                 scenario_name=None, user_id=None, user_attributes=None, chart_attr=None, delist_attr=None,
+                 supp_attr=None):
         self.bc = ['Meat Fish and Veg']
         self.store = ['Overview']
         self.future = ['13_weeks']
@@ -4418,11 +4518,11 @@ class vol_transfer_logic:
         self.supp_attr = None
         self.delist_attr = None
 
-    def volume_transfer_logic(self,bc,store,future,input_tpns,delist):
-    # Predicted volume
+    def volume_transfer_logic(self, bc, store, future, input_tpns, delist):
+        # Predicted volume
         join_cate_fore = read_frame(
-        product_contri.objects.all().filter(buying_controller__in=bc, store_type__in=store,
-                                            base_product_number__in=delist, time_period__in=future))
+            product_contri.objects.all().filter(buying_controller__in=bc, store_type__in=store,
+                                                base_product_number__in=delist, time_period__in=future))
 
         # reading quantile
         pps_ros = read_frame(pps_ros_quantile.objects.all().filter(buying_controller__in=bc, store_type__in=store))
@@ -4685,7 +4785,7 @@ class vol_transfer_logic:
         rest_prob_delised['final_sub_score'] = rest_prob_delised['final_sub_score'].astype('float')
         rest_prob_delised['new_sub_score'] = rest_prob_delised['new_sub_score'].astype('float')
         rest_prob_delised['final_sub_score'] = rest_prob_delised['new_sub_score'] * (
-        1 - rest_prob_delised['tcs_per'] - rest_prob_delised['exclusivity_per'])
+            1 - rest_prob_delised['tcs_per'] - rest_prob_delised['exclusivity_per'])
         rest_prob_delised['vol_transfer_prob'] = 0
         rest_prob_delised['vol_transfer_prob'] = rest_prob_delised['predicted_volume'] * rest_prob_delised[
             'final_sub_score']
@@ -5096,7 +5196,7 @@ class vol_transfer_logic:
 
         return product_dataset
 
-    def waterfall_chart(self,product_dataset):
+    def waterfall_chart(self, product_dataset):
         initial_volume = product_dataset[['productcode', 'predicted_volume']].drop_duplicates().reset_index(
             drop=True).groupby(['productcode'], as_index=False).agg({'predicted_volume': max})
         initial_volume = initial_volume['predicted_volume'].sum()
@@ -5204,7 +5304,6 @@ class vol_transfer_logic:
             cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
             cgm_tot_transfer = float(cgm_tot_transfer)
 
-
         # In[47]:
 
         initial_cts = product_dataset[['productcode', 'predicted_cts']].drop_duplicates().reset_index(
@@ -5254,7 +5353,7 @@ class vol_transfer_logic:
         return data
 
     # supplier sales impact - table in UI
-    def supplier_table(self,product_dataset_main, store, future, bc):
+    def supplier_table(self, product_dataset_main, store, future, bc):
         sup_share = read_frame(
             supplier_share.objects.all().filter(buying_controller__in=bc, store_type__in=store).values(
                 'parent_supplier', 'base_product_number', 'volume_share'))
@@ -5314,7 +5413,7 @@ class vol_transfer_logic:
         sup_table['value_gain_share'] = sup_table['vols_gain_share'] * sup_table['asp']
         sup_table['value_loss_share'] = sup_table['vols_loss_share'] * sup_table['asp']
         sup_table['predicted_value_share'] = sup_table['predicted_volume_share'] * sup_table['asp']
-        #sup_table_main = sup_table
+        # sup_table_main = sup_table
         sup_table_share = sup_table.groupby(['parent_supplier'], as_index=False).agg(
             {'predicted_volume_share': sum, 'vols_gain_share': sum, 'vols_loss_share': sum,
              'predicted_value_share': sum, 'value_gain_share': sum,
@@ -5347,9 +5446,9 @@ class vol_transfer_logic:
         sup_sales_table_main['value_impact_per'] = sup_sales_table_main['value_impact_per'].round(decimals=1)
         sup_sales_table_main = sup_sales_table_main.drop_duplicates().fillna(0).reset_index(drop=True)
 
-        return sup_table,sup_sales_table_main
+        return sup_table, sup_sales_table_main
 
-    def delist_subs(self,bc,store,future, delist_main):
+    def delist_subs(self, bc, store, future, delist_main):
         delist_prod_subs = read_frame(
             shelf_review_subs.objects.all().filter(buying_controller__in=bc, store_type__in=store,
                                                    productcode__in=delist_main).values('productcode',
@@ -5394,20 +5493,16 @@ class vol_transfer_logic:
         return delist_prod_subs_main
 
 
-
-
-
 ####Product Impact
-#chart
-class product_impact_chart(vol_transfer_logic,APIView):
-
+# chart
+class product_impact_chart(vol_transfer_logic, APIView):
     def get(self, request, *args):
-        #reading args from url
+        # reading args from url
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         args.pop('format__iexact', None)
         print("printing argsss...")
         print(args)
-        #reading list of products to delist
+        # reading list of products to delist
         args_list = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
         print(args_list)
 
@@ -5444,7 +5539,6 @@ class product_impact_chart(vol_transfer_logic,APIView):
             else:
                 future = ['12_months']
 
-
             input_tpns = args_list.pop('long_description__in', 0)
             print(input_tpns)
             input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
@@ -5459,16 +5553,15 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             product_impact_filter.objects.all().delete()
 
-            if input_tpns == 0 :
+            if input_tpns == 0:
                 instance_insert = product_impact_filter.objects.create(input_tpns=input_tpns, future=future[0],
                                                                        store=store[0], bc=bc[0])
             else:
-                for i,val in enumerate(input_tpns):
+                for i, val in enumerate(input_tpns):
                     instance_insert = product_impact_filter.objects.create(input_tpns=val, future=future[0],
                                                                            store=store[0], bc=bc[0])
 
-
-        #insert values into the model for the filters selected
+        # insert values into the model for the filters selected
         print('Product_impact_chart')
         if store == ['Overview']:
             print("#######overview###############")
@@ -5485,16 +5578,17 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 # delist_main = input_tpns
                 input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                 delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
             # print('below values are passed - main estate')
             # print(args, bc, store, future, input_tpns_main)
 
             # In[6]:
-            #call for main estate
-            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main, delist_main)
+            # call for main estate
+            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main,
+                                                                   delist_main)
 
             if input_tpns == 0:
                 input_tpns_exp = read_frame(
@@ -5508,10 +5602,10 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 # delist_exp = input_tpns
                 input_tpns_exp = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_exp['base_product_number'] = input_tpns_exp[0].copy()
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                 delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
-            #call for Express
+            # call for Express
             product_dataset_exp = vol_logic.volume_transfer_logic(bc, ['Express'], future, input_tpns_exp, delist_exp)
             product_dataset_exp.head()
 
@@ -5551,12 +5645,10 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 ['productcode', 'substituteproductcode', 'brand_indicator', 'predicted_volume', 'predicted_value',
                  'predicted_cgm', 'predicted_cts', 'volume_transfer', 'value_transfer', 'cgm_transfer', 'cts_transfer']]
 
-
-
             # In[13]:
-            #waterfall charts
+            # waterfall charts
             initial_volume = product_dataset[['productcode', 'predicted_volume']].drop_duplicates().reset_index(
-                drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max})
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_volume': max})
 
             initial_volume = initial_volume['predicted_volume'].sum()
             volume_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(
@@ -5586,14 +5678,14 @@ class product_impact_chart(vol_transfer_logic,APIView):
             if initial_volume == 0:
                 vol_tot_transfer = 0
             else:
-                vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume)*100
+                vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
                 vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
                 vol_tot_transfer = float(vol_tot_transfer)
 
-
             # In[45]:
-            #sales chart
-            initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
+            # sales chart
+            initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_value': max})
             initial_sales = initial_sales['predicted_value'].sum()
             sales_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(
                 ['brand_indicator'], as_index=False).agg({'value_transfer': sum})
@@ -5613,7 +5705,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 sales_waterfall.ix[1, 'value'] = 0
             else:
                 sales_waterfall.ix[1, 'value'] = -sales_transfer_brand['value_transfer'].iloc[0]
-            if  sales_transfer_ownlabel.empty:
+            if sales_transfer_ownlabel.empty:
                 sales_waterfall.ix[2, 'value'] = 0
             else:
                 sales_waterfall.ix[2, 'value'] = -sales_transfer_ownlabel['value_transfer'].iloc[0]
@@ -5625,8 +5717,9 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 sales_tot_transfer = (format(sales_tot_transfer, '.1f'))
                 sales_tot_transfer = float(sales_tot_transfer)
             # In[46]:
-            #cgm chart
-            initial_cgm = product_dataset[['productcode', 'predicted_cgm']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_cgm':max})
+            # cgm chart
+            initial_cgm = product_dataset[['productcode', 'predicted_cgm']].drop_duplicates().reset_index(
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_cgm': max})
             initial_cgm = initial_cgm['predicted_cgm'].sum()
             cgm_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(['brand_indicator'],
                                                                                                     as_index=False).agg(
@@ -5653,15 +5746,16 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 cgm_waterfall.ix[2, 'value'] = -cgm_transfer_ownlabel['cgm_transfer'].iloc[0]
             cgm_waterfall = cgm_waterfall.to_dict(orient='records')
             if initial_cgm == 0:
-                cgm_tot_transfer =0
+                cgm_tot_transfer = 0
             else:
                 cgm_tot_transfer = (product_dataset['cgm_transfer'].sum() / initial_cgm) * 100
                 cgm_tot_transfer = (format(cgm_tot_transfer, '.1f'))
                 cgm_tot_transfer = float(cgm_tot_transfer)
 
             # In[47]:
-            #cts chart
-            initial_cts = product_dataset[['productcode', 'predicted_cts']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_cts':max})
+            # cts chart
+            initial_cts = product_dataset[['productcode', 'predicted_cts']].drop_duplicates().reset_index(
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_cts': max})
             initial_cts = initial_cts['predicted_cts'].sum()
             cts_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(['brand_indicator'],
                                                                                                     as_index=False).agg(
@@ -5732,7 +5826,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             bc_predict_main['predicted_sales'] = bc_predict_main['predicted_volume'] * bc_predict_main['asp']
             bc_predict_main['predicted_cgm'] = bc_predict_main['predicted_volume'] * (
-            bc_predict_main['asp'] - bc_predict_main['acp'])
+                bc_predict_main['asp'] - bc_predict_main['acp'])
             bc_predict_main['predicted_cts'] = bc_predict_main['predicted_volume'] * bc_predict_main['cts_per_unit']
             bc_predict_main = bc_predict_main[
                 ['base_product_number', 'predicted_volume', 'predicted_sales', 'predicted_cgm', 'predicted_cts', 'asp',
@@ -5745,7 +5839,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             psg_predict_main['predicted_sales'] = psg_predict_main['predicted_volume'] * psg_predict_main['asp']
             psg_predict_main['predicted_cgm'] = psg_predict_main['predicted_volume'] * (
-            psg_predict_main['asp'] - psg_predict_main['acp'])
+                psg_predict_main['asp'] - psg_predict_main['acp'])
             psg_predict_main['predicted_cts'] = psg_predict_main['predicted_volume'] * psg_predict_main['cts_per_unit']
             psg_predict_main = psg_predict_main[
                 ['base_product_number', 'predicted_volume', 'predicted_sales', 'predicted_cgm', 'predicted_cts']]
@@ -5791,7 +5885,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             bc_predict_exp['predicted_sales'] = bc_predict_exp['predicted_volume'] * bc_predict_exp['asp']
             bc_predict_exp['predicted_cgm'] = bc_predict_exp['predicted_volume'] * (
-            bc_predict_exp['asp'] - bc_predict_exp['acp'])
+                bc_predict_exp['asp'] - bc_predict_exp['acp'])
             bc_predict_exp['predicted_cts'] = bc_predict_exp['predicted_volume'] * bc_predict_exp['cts_per_unit']
             bc_predict_exp = bc_predict_exp[
                 ['base_product_number', 'predicted_volume', 'predicted_sales', 'predicted_cgm', 'predicted_cts', 'asp',
@@ -5804,7 +5898,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             psg_predict_exp['predicted_sales'] = psg_predict_exp['predicted_volume'] * psg_predict_exp['asp']
             psg_predict_exp['predicted_cgm'] = psg_predict_exp['predicted_volume'] * (
-            psg_predict_exp['asp'] - psg_predict_exp['acp'])
+                psg_predict_exp['asp'] - psg_predict_exp['acp'])
             psg_predict_exp['predicted_cts'] = psg_predict_exp['predicted_volume'] * psg_predict_exp['cts_per_unit']
             psg_predict_exp = psg_predict_exp[
                 ['base_product_number', 'predicted_volume', 'predicted_sales', 'predicted_cgm', 'predicted_cts']]
@@ -5838,11 +5932,11 @@ class product_impact_chart(vol_transfer_logic,APIView):
             bc_cgm = bc_predict['predicted_cgm'].sum()
             if bc_cgm == 0:
                 bc_cgm_contri = 0
-                bc_cgm_contri=float(bc_cgm_contri)
+                bc_cgm_contri = float(bc_cgm_contri)
             else:
                 bc_cgm_contri = (float(cgm_final_loss) / float(bc_cgm)) * (-100)
                 bc_cgm_contri = (format(bc_cgm_contri, '.1f'))
-                bc_cgm_contri=float(bc_cgm_contri)
+                bc_cgm_contri = float(bc_cgm_contri)
 
             psg_cgm = psg_predict['predicted_cgm'].sum()
             if psg_cgm == 0:
@@ -5892,11 +5986,11 @@ class product_impact_chart(vol_transfer_logic,APIView):
             bc_vols = bc_predict['predicted_volume'].sum()
             if bc_vols == 0:
                 bc_vols_contri = 0
-                bc_vols_contri =float(bc_vols_contri)
+                bc_vols_contri = float(bc_vols_contri)
             else:
                 bc_vols_contri = (float(volume_final_loss) / float(bc_vols)) * (-100)
                 bc_vols_contri = (format(bc_vols_contri, '.1f'))
-                bc_vols_contri =float(bc_vols_contri)
+                bc_vols_contri = float(bc_vols_contri)
 
             psg_vols = psg_predict['predicted_volume'].sum()
             if psg_vols == 0:
@@ -5909,23 +6003,24 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
         else:
 
-            if input_tpns==0:
-                input_tpns = read_frame(nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=store,
+            if input_tpns == 0:
+                input_tpns = read_frame(
+                    nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=store,
                                                       performance_quartile__in=['Low CPS/Low Profit'],
-                                                      time_period__in=['Last 52 Weeks']).values('base_product_number').distinct())
+                                                      time_period__in=['Last 52 Weeks']).values(
+                        'base_product_number').distinct())
 
                 delist = list(input_tpns['base_product_number'])
             else:
                 delist = input_tpns
                 input_tpns = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns['base_product_number'] = input_tpns[0].copy()
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
 
             # In[4]:
             product_dataset = vol_logic.volume_transfer_logic(bc, store, future, input_tpns, delist)
-
 
             # In[44]:
             prod_hrchy = read_frame(
@@ -5934,7 +6029,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
                                                                                    'long_description').distinct())
 
             initial_volume = product_dataset[['productcode', 'predicted_volume']].drop_duplicates().reset_index(
-                drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max})
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_volume': max})
             initial_volume = initial_volume['predicted_volume'].sum()
             volume_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(
                 ['brand_indicator'], as_index=False).agg({'volume_transfer': sum})
@@ -5967,14 +6062,15 @@ class product_impact_chart(vol_transfer_logic,APIView):
             print(product_dataset['volume_transfer'].sum())
             print(initial_volume)
             if initial_volume == 0:
-                vol_tot_transfer =0
+                vol_tot_transfer = 0
             else:
                 vol_tot_transfer = (product_dataset['volume_transfer'].sum() / initial_volume) * 100
                 vol_tot_transfer = (format(vol_tot_transfer, '.1f'))
 
             # In[45]:
 
-            initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_value':max})
+            initial_sales = product_dataset[['productcode', 'predicted_value']].drop_duplicates().reset_index(
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_value': max})
             initial_sales = initial_sales['predicted_value'].sum()
             sales_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(
                 ['brand_indicator'], as_index=False).agg({'value_transfer': sum})
@@ -6008,7 +6104,8 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             # In[46]:
 
-            initial_cgm = product_dataset[['productcode', 'predicted_cgm']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_cgm':max})
+            initial_cgm = product_dataset[['productcode', 'predicted_cgm']].drop_duplicates().reset_index(
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_cgm': max})
             initial_cgm = initial_cgm['predicted_cgm'].sum()
             cgm_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(['brand_indicator'],
                                                                                                     as_index=False).agg(
@@ -6042,7 +6139,8 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             # In[47]:
 
-            initial_cts = product_dataset[['productcode', 'predicted_cts']].drop_duplicates().reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_cts':max})
+            initial_cts = product_dataset[['productcode', 'predicted_cts']].drop_duplicates().reset_index(
+                drop=True).groupby(['productcode'], as_index=False).agg({'predicted_cts': max})
             initial_cts = initial_cts['predicted_cts'].sum()
             cts_transfer_brand = product_dataset[product_dataset['brand_indicator'] == "B"].groupby(['brand_indicator'],
                                                                                                     as_index=False).agg(
@@ -6100,9 +6198,9 @@ class product_impact_chart(vol_transfer_logic,APIView):
             contribution = contribution.rename(columns={'base_product_number': 'productcode'})
 
             bc_predict = pd.merge(contribution, prod_price_data, left_on=['productcode'],
-                                       right_on=['base_product_number'], how='left')
+                                  right_on=['base_product_number'], how='left')
             bc_predict = pd.merge(bc_predict, cts, left_on=['base_product_number'],
-                                       right_on=['base_product_number'], how='left')
+                                  right_on=['base_product_number'], how='left')
             bc_predict = bc_predict.drop_duplicates().fillna(0).reset_index(drop=True)
 
             bc_predict['predicted_volume'] = bc_predict['predicted_volume'].astype('float')
@@ -6113,11 +6211,12 @@ class product_impact_chart(vol_transfer_logic,APIView):
             bc_predict['predicted_sales'] = bc_predict['predicted_volume'] * bc_predict['asp']
             bc_predict['predicted_cgm'] = bc_predict['predicted_volume'] * (bc_predict['asp'] - bc_predict['acp'])
             bc_predict['predicted_cts'] = bc_predict['predicted_volume'] * bc_predict['cts_per_unit']
-            bc_predict = bc_predict[['base_product_number', 'predicted_volume', 'predicted_sales', 'predicted_cgm', 'predicted_cts', 'asp',
+            bc_predict = bc_predict[
+                ['base_product_number', 'predicted_volume', 'predicted_sales', 'predicted_cgm', 'predicted_cts', 'asp',
                  'acp', 'cts_per_unit']]
 
             psg_predict = pd.merge(bc_predict, psg_impact, left_on=['base_product_number'],
-                                        right_on=['base_product_number'], how='inner')
+                                   right_on=['base_product_number'], how='inner')
             psg_predict = psg_predict.drop_duplicates().fillna(0).reset_index(drop=True)
             psg_predict['predicted_volume'] = psg_predict['predicted_volume'].astype('float')
 
@@ -6188,7 +6287,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
         if vol_tot_transfer == 0:
             input_tpns = pd.DataFrame(input_tpns)
             data = {'Message': "Product is not available",
-                "product_number": input_tpns.to_json()}
+                    "product_number": input_tpns.to_json()}
         else:
             data = {
                 'cgm_chart': cgm_waterfall,
@@ -6203,7 +6302,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 'psg_sales_contri': psg_sales_contri,
                 'psg_cgm_contri': psg_cgm_contri,
                 'psg_cts_contri': psg_cts_contri,
-                'vol_tot_transfer' : vol_tot_transfer,
+                'vol_tot_transfer': vol_tot_transfer,
                 'sales_tot_transfer': sales_tot_transfer,
                 'cgm_tot_transfer': cgm_tot_transfer,
                 'cts_tot_transfer': cts_tot_transfer
@@ -6211,9 +6310,8 @@ class product_impact_chart(vol_transfer_logic,APIView):
         return JsonResponse(data, safe=False)
 
 
-
-#supplier table
-class product_impact_supplier_table(vol_transfer_logic,APIView):
+# supplier table
+class product_impact_supplier_table(vol_transfer_logic, APIView):
     def get(self, request, *args):
 
         # reading all the user selected filter values from the table
@@ -6221,16 +6319,16 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
         all_filter = read_frame(product_impact_filter.objects.all().distinct())
         input_tpns = all_filter['input_tpns']
         input_tpns = list(input_tpns)
-        bc=all_filter['bc'][0]
-        bc=[bc]
+        bc = all_filter['bc'][0]
+        bc = [bc]
         print(type(bc))
         store = all_filter['store'][0]
-        store=[store]
+        store = [store]
         print(type(store))
         future = all_filter['future'][0]
-        future=[future]
+        future = [future]
         vol_logic = vol_transfer_logic()
-        #Logic for overview
+        # Logic for overview
         if store == ['Overview']:
 
             if input_tpns[0] == 0:
@@ -6240,18 +6338,18 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
                                                       time_period__in=['Last 52 Weeks']).values(
                         'base_product_number').distinct())
 
-
                 delist_main = list(input_tpns_main['base_product_number'])
             else:
                 # delist_main = input_tpns
                 input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                 delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
-            #call transfer logic for main estate
-            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main, delist_main)
+            # call transfer logic for main estate
+            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main,
+                                                                   delist_main)
             product_dataset_main.head()
 
             # In[7]:
@@ -6268,10 +6366,10 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
                 # delist_exp = input_tpns
                 input_tpns_exp = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_exp['base_product_number'] = input_tpns_exp[0].copy()
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                 delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
-            #call volume transfer logic for express
+            # call volume transfer logic for express
             product_dataset_exp = vol_logic.volume_transfer_logic(bc, ['Express'], future, input_tpns_exp, delist_exp)
 
             # In[9]:
@@ -6312,12 +6410,12 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
                  'predicted_cgm', 'predicted_cts', 'volume_transfer', 'value_transfer', 'cgm_transfer', 'cts_transfer']]
 
             # supplier sales impact - table in UI
-            #For overview logic
+            # For overview logic
             sup_table_main, sup_sales_table_main = vol_logic.supplier_table(product_dataset_main, ['Main Estate'],
                                                                             future, bc)
             sup_table_exp, sup_sales_table_exp = vol_logic.supplier_table(product_dataset_exp, ['Express'], future, bc)
 
-            #aggregation of tables start here
+            # aggregation of tables start here
             sup_sales_table = pd.merge(sup_sales_table_main, sup_sales_table_exp, left_on=['parent_supplier'],
                                        right_on=['parent_supplier'], how='outer')
             sup_sales_table.head(2)
@@ -6368,18 +6466,20 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
 
         else:
 
-            if input_tpns[0]== 0 :
-                input_tpns = read_frame(nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=store,
+            if input_tpns[0] == 0:
+                input_tpns = read_frame(
+                    nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=store,
                                                       performance_quartile__in=['Low CPS/Low Profit'],
-                                                      time_period__in=['Last 52 Weeks']).values('base_product_number').distinct())
+                                                      time_period__in=['Last 52 Weeks']).values(
+                        'base_product_number').distinct())
 
                 delist = list(input_tpns['base_product_number'])
             else:
                 delist = input_tpns
                 input_tpns = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns['base_product_number'] = input_tpns[0].copy()
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
 
             print('below values are passed')
@@ -6393,22 +6493,23 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
                 product_desc.objects.all().filter(buying_controller__in=bc).values('base_product_number',
                                                                                    'brand_indicator',
                                                                                    'long_description').distinct())
-            sup_table, sup_sales_table= vol_logic.supplier_table(product_dataset,store,
-                                                                            future, bc)
+            sup_table, sup_sales_table = vol_logic.supplier_table(product_dataset, store,
+                                                                  future, bc)
 
         ## Original supplier table starts here -- keyword
 
         sup_sales_table = sup_sales_table
 
-        sup_sales_table['vol_impact_per'] =  sup_sales_table['vol_impact_per'].round(decimals=1)
-        sup_sales_table['value_impact_per'] =  sup_sales_table['value_impact_per'].round(decimals=1)
+        sup_sales_table['vol_impact_per'] = sup_sales_table['vol_impact_per'].round(decimals=1)
+        sup_sales_table['value_impact_per'] = sup_sales_table['value_impact_per'].round(decimals=1)
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         args.pop('format__iexact', None)
 
         supplier_search = args.pop('supplier_search__iexact', '')
 
         if supplier_search is not None:
-            supplier_search_table = sup_sales_table[sup_sales_table['parent_supplier'].str.contains(supplier_search, case=False)]
+            supplier_search_table = sup_sales_table[
+                sup_sales_table['parent_supplier'].str.contains(supplier_search, case=False)]
 
         ## set default delist page as 1
         supplier_page = 1
@@ -6450,11 +6551,8 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
                              'sup_sales_table': data['sup_sales_table']}, safe=False)
 
 
-
-
-#supplier popup
-class supplier_popup(vol_transfer_logic,APIView):
-
+# supplier popup
+class supplier_popup(vol_transfer_logic, APIView):
     def get(self, request, *args):
 
         all_filter = read_frame(product_impact_filter.objects.all())
@@ -6463,16 +6561,16 @@ class supplier_popup(vol_transfer_logic,APIView):
         print('inside supplier pop up')
         print(input_tpns)
         bc = all_filter['bc'][0]
-        bc=[bc]
+        bc = [bc]
         store = all_filter['store'][0]
-        store=[store]
+        store = [store]
         future = all_filter['future'][0]
-        future=[future]
+        future = [future]
         vol_logic = vol_transfer_logic()
         # Logic for overview
         if store == ['Overview']:
 
-            if input_tpns[0]==0:
+            if input_tpns[0] == 0:
                 input_tpns_main = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Main Estate'],
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -6484,15 +6582,16 @@ class supplier_popup(vol_transfer_logic,APIView):
                 # delist_main = input_tpns
                 input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                 delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
-            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main, delist_main)
+            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main,
+                                                                   delist_main)
 
             # In[7]:
 
-            if input_tpns[0]==0:
+            if input_tpns[0] == 0:
                 input_tpns_exp = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Express'],
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -6504,8 +6603,8 @@ class supplier_popup(vol_transfer_logic,APIView):
                 # delist_exp = input_tpns
                 input_tpns_exp = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_exp['base_product_number'] = input_tpns_exp[0].copy()
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                 delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
 
             print(args, bc, store, future, input_tpns_exp)
@@ -6599,7 +6698,7 @@ class supplier_popup(vol_transfer_logic,APIView):
 
             sup_sales_table = sup_sales_table[sup_sales_table['vol_impact'] != 0]
 
-            #popup supplier table
+            # popup supplier table
             sup_table = pd.merge(sup_table_main, sup_table_exp, on=['parent_supplier', 'base_product_number'],
                                  how="outer")
 
@@ -6710,7 +6809,7 @@ class supplier_popup(vol_transfer_logic,APIView):
             sup_product_pop['delist_pred_vol'] = sup_product_pop['delist_pred_vol'].astype('int')
 
             supplier_table_popup = pd.DataFrame(sup_product_pop)
-            #delist_table_popup = pd.DataFrame(delist_prod_subs)
+            # delist_table_popup = pd.DataFrame(delist_prod_subs)
 
             print('supplier pop up before pop up condition')
             print(supplier_table_popup.shape)
@@ -6718,7 +6817,7 @@ class supplier_popup(vol_transfer_logic,APIView):
 
         else:
 
-            if input_tpns[0] ==0:
+            if input_tpns[0] == 0:
                 input_tpns = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=store,
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -6730,11 +6829,9 @@ class supplier_popup(vol_transfer_logic,APIView):
                 delist = input_tpns
                 input_tpns = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns['base_product_number'] = input_tpns[0].copy()
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
-
-
 
             product_dataset = vol_logic.volume_transfer_logic(bc, store, future, input_tpns, delist)
 
@@ -6744,7 +6841,7 @@ class supplier_popup(vol_transfer_logic,APIView):
                                                                                    'long_description').distinct())
 
             sup_table, sup_sales_table = vol_logic.supplier_table(product_dataset, store,
-                                                      future, bc)
+                                                                  future, bc)
             ##------- supplier product level impact - pop up in UI------##
             print("printing sup table data")
             print(sup_table.shape)
@@ -6827,8 +6924,7 @@ class supplier_popup(vol_transfer_logic,APIView):
 
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             print(supplier_table_popup.shape)
-            #delist_table_popup = pd.DataFrame(delist_prod_subs)
-
+            # delist_table_popup = pd.DataFrame(delist_prod_subs)
 
         ## original supplier pop up starts here
 
@@ -6838,8 +6934,10 @@ class supplier_popup(vol_transfer_logic,APIView):
         supplier = [supplier]
         sup_pop = pd.DataFrame(supplier)
         sup_pop['supplier'] = sup_pop[0]
-        popup_data1 = pd.merge(supplier_table_popup, sup_pop, left_on=['delist_supplier'], right_on=['supplier'], how='inner')
-        print('\n supplier from arguments after converting to list and popup_data1 _____', type(supplier_table_popup['delist_supplier']),type(sup_pop['supplier']))
+        popup_data1 = pd.merge(supplier_table_popup, sup_pop, left_on=['delist_supplier'], right_on=['supplier'],
+                               how='inner')
+        print('\n supplier from arguments after converting to list and popup_data1 _____',
+              type(supplier_table_popup['delist_supplier']), type(sup_pop['supplier']))
         popup_data1 = popup_data1.drop_duplicates().fillna(0).reset_index(drop=True)
 
         ## set default page as 1
@@ -6871,7 +6969,7 @@ class supplier_popup(vol_transfer_logic,APIView):
         ## subset the queryset to display required data
         popup_data1 = popup_data1.loc[start_row:end_row, ]
 
-        print('\n final output of supplier pop up after everything',popup_data1)
+        print('\n final output of supplier pop up after everything', popup_data1)
 
         data = {
             'supplier_table_popup': popup_data1.to_dict(orient='records')
@@ -6885,43 +6983,43 @@ class supplier_popup(vol_transfer_logic,APIView):
                              'table': data['supplier_table_popup']}, safe=False)
 
 
-
-#delist table
-class product_impact_delist_table(vol_transfer_logic,APIView):
+# delist table
+class product_impact_delist_table(vol_transfer_logic, APIView):
     def get(self, request, *args):
         all_filter = read_frame(product_impact_filter.objects.all())
         input_tpns = all_filter['input_tpns']
         input_tpns = list(input_tpns)
         bc = all_filter['bc'][0]
-        bc= [bc]
+        bc = [bc]
         store = all_filter['store'][0]
-        store=[store]
+        store = [store]
         future = all_filter['future'][0]
-        future =[future]
+        future = [future]
         vol_logic = vol_transfer_logic()
         # Logic for overview10358
         if store == ['Overview']:
-            if input_tpns[0]==0:
+            if input_tpns[0] == 0:
                 input_tpns_main = read_frame(
-                nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Main Estate'],
-                                                  performance_quartile__in=['Low CPS/Low Profit'],
-                                                  time_period__in=['Last 52 Weeks']).values(
-                    'base_product_number').distinct())
+                    nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Main Estate'],
+                                                      performance_quartile__in=['Low CPS/Low Profit'],
+                                                      time_period__in=['Last 52 Weeks']).values(
+                        'base_product_number').distinct())
 
                 delist_main = list(input_tpns_main['base_product_number'])
             else:
                 # delist_main = input_tpns
                 input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                 delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
             # In[6]:
 
-            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main, delist_main)
+            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main,
+                                                                   delist_main)
 
-            if input_tpns[0]==0:
+            if input_tpns[0] == 0:
                 input_tpns_exp = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Express'],
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -6933,8 +7031,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                 # delist_exp = input_tpns
                 input_tpns_exp = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_exp['base_product_number'] = input_tpns_exp[0].copy()
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                 delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
 
             print('below values are passed - express')
@@ -6980,8 +7078,13 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                  'predicted_cgm', 'predicted_cts', 'volume_transfer', 'value_transfer', 'cgm_transfer', 'cts_transfer']]
 
             # delist product table for UI
-            delist_prod_table = product_dataset[['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm','volume_transfer','value_transfer']]
-            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max, 'predicted_value': max, 'predicted_cgm':max,'volume_transfer':sum,'value_transfer':sum})
+            delist_prod_table = product_dataset[
+                ['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm', 'volume_transfer',
+                 'value_transfer']]
+            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(
+                ['productcode'], as_index=False).agg(
+                {'predicted_volume': max, 'predicted_value': max, 'predicted_cgm': max, 'volume_transfer': sum,
+                 'value_transfer': sum})
             prod_hrchy = read_frame(product_desc.objects.all().values('base_product_number', 'brand_indicator',
                                                                       'long_description').distinct())
 
@@ -6990,7 +7093,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
             del delist_prod_table['base_product_number']
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True)
 
-            #delist_prod_table = delist_prod_table.groupby(['productcode', 'long_description'], as_index=False).agg(
+            # delist_prod_table = delist_prod_table.groupby(['productcode', 'long_description'], as_index=False).agg(
             #   {'predicted_volume': sum, 'predicted_value': sum, 'predicted_cgm': sum})
 
             # In[22]:
@@ -7028,7 +7131,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
 
         else:
 
-            if input_tpns[0]==0:
+            if input_tpns[0] == 0:
                 input_tpns = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=store,
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -7040,8 +7143,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                 delist = input_tpns
                 input_tpns = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns['base_product_number'] = input_tpns[0].copy()
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
 
             # In[4]:
@@ -7054,13 +7157,18 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                                                                                    'long_description').distinct())
 
             # delist product table for UI
-            delist_prod_table = product_dataset[['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm','volume_transfer','value_transfer']]
-            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max, 'predicted_value': max, 'predicted_cgm':max,'volume_transfer':sum,'value_transfer':sum})
+            delist_prod_table = product_dataset[
+                ['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm', 'volume_transfer',
+                 'value_transfer']]
+            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(
+                ['productcode'], as_index=False).agg(
+                {'predicted_volume': max, 'predicted_value': max, 'predicted_cgm': max, 'volume_transfer': sum,
+                 'value_transfer': sum})
             delist_prod_table = pd.merge(delist_prod_table, prod_hrchy, left_on=['productcode'],
                                          right_on=['base_product_number'], how='left')
             del delist_prod_table['base_product_number']
 
-            #delist_prod_table = delist_prod_table.groupby(['productcode', 'long_description'], as_index=False).agg(
+            # delist_prod_table = delist_prod_table.groupby(['productcode', 'long_description'], as_index=False).agg(
             #   {'predicted_volume': sum, 'predicted_value': sum, 'predicted_cgm': sum})
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0)
             contribution = read_frame(
@@ -7088,7 +7196,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
         delist_search = args.pop('delist_search__iexact', '')
 
         if delist_search is not None:
-            delist_search_table = delist_prod_table[delist_prod_table['long_description'].str.contains(delist_search, case=False)]
+            delist_search_table = delist_prod_table[
+                delist_prod_table['long_description'].str.contains(delist_search, case=False)]
 
         ## set default delist page as 1
         delist_page = 1
@@ -7134,25 +7243,25 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                              'end_index': end_index,
                              'delist_prod_table': data['delist_prod_table']}, safe=False)
 
-#delist popup
-class delist_popup(vol_transfer_logic,APIView):
 
+# delist popup
+class delist_popup(vol_transfer_logic, APIView):
     def get(self, request, *args):
 
         all_filter = read_frame(product_impact_filter.objects.all())
         input_tpns = all_filter['input_tpns']
-        input_tpns =list(input_tpns)
+        input_tpns = list(input_tpns)
         bc = all_filter['bc'][0]
-        bc= [bc]
+        bc = [bc]
         store = all_filter['store'][0]
-        store =[store]
+        store = [store]
         future = all_filter['future'][0]
-        future=[future]
-        vol_logic =vol_transfer_logic()
+        future = [future]
+        vol_logic = vol_transfer_logic()
         # Logic for overview
         if store == ['Overview']:
 
-            if input_tpns[0]==0:
+            if input_tpns[0] == 0:
                 input_tpns_main = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Main Estate'],
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -7164,8 +7273,8 @@ class delist_popup(vol_transfer_logic,APIView):
                 # delist_main = input_tpns
                 input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
-                #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+                # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                 delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
             # print('below values are passed - main estate')
@@ -7173,8 +7282,9 @@ class delist_popup(vol_transfer_logic,APIView):
 
             # In[6]:
 
-            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main, delist_main)
-            if input_tpns[0]==0:
+            product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main,
+                                                                   delist_main)
+            if input_tpns[0] == 0:
                 input_tpns_exp = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Express'],
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -7186,8 +7296,8 @@ class delist_popup(vol_transfer_logic,APIView):
                 # delist_exp = input_tpns
                 input_tpns_exp = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns_exp['base_product_number'] = input_tpns_exp[0].copy()
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
-                #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
+                # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                 delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
 
             product_dataset_exp = vol_logic.volume_transfer_logic(bc, ['Express'], future, input_tpns_exp, delist_exp)
@@ -7226,10 +7336,11 @@ class delist_popup(vol_transfer_logic,APIView):
                 ['productcode', 'substituteproductcode', 'brand_indicator', 'predicted_volume', 'predicted_value',
                  'predicted_cgm', 'predicted_cts', 'volume_transfer', 'value_transfer', 'cgm_transfer', 'cts_transfer']]
 
-
             # delist product table for UI
             delist_prod_table = product_dataset[['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm']]
-            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max, 'predicted_value': max, 'predicted_cgm':max})
+            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(
+                ['productcode'], as_index=False).agg(
+                {'predicted_volume': max, 'predicted_value': max, 'predicted_cgm': max})
             prod_hrchy = read_frame(product_desc.objects.all().values('base_product_number', 'brand_indicator',
                                                                       'long_description').distinct())
 
@@ -7281,7 +7392,7 @@ class delist_popup(vol_transfer_logic,APIView):
 
         else:
 
-            if input_tpns[0]==0:
+            if input_tpns[0] == 0:
                 input_tpns = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=store,
                                                       performance_quartile__in=['Low CPS/Low Profit'],
@@ -7293,8 +7404,8 @@ class delist_popup(vol_transfer_logic,APIView):
                 delist = input_tpns
                 input_tpns = pd.DataFrame(input_tpns).reset_index(drop=True)
                 input_tpns['base_product_number'] = input_tpns[0].copy()
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
-                #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].str[-8:]
+                # input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
 
             print('below values are passed')
@@ -7310,7 +7421,9 @@ class delist_popup(vol_transfer_logic,APIView):
                                                                                    'long_description').distinct())
             # delist product table for UI
             delist_prod_table = product_dataset[['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm']]
-            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max, 'predicted_value': max, 'predicted_cgm':max})
+            delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(
+                ['productcode'], as_index=False).agg(
+                {'predicted_volume': max, 'predicted_value': max, 'predicted_cgm': max})
             delist_prod_table = pd.merge(delist_prod_table, prod_hrchy, left_on=['productcode'],
                                          right_on=['base_product_number'], how='left')
             del delist_prod_table['base_product_number']
@@ -7371,7 +7484,6 @@ class delist_popup(vol_transfer_logic,APIView):
                                how='inner')
         popup_data2 = popup_data2.drop_duplicates().fillna(0).reset_index(drop=True)
 
-
         ## set default page as 1
         delist_popup_page = 1
 
@@ -7413,9 +7525,7 @@ class delist_popup(vol_transfer_logic,APIView):
                              'table': data['delist_table_popup']}, safe=False)
 
 
-
-class delist_scenario_final(vol_transfer_logic,APIView):
-
+class delist_scenario_final(vol_transfer_logic, APIView):
     def get(self, request, *args):
         args = {reqobj: request.GET.get(reqobj) for reqobj in request.GET.keys()}
 
@@ -7425,15 +7535,13 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         scenario_name = args.pop('scenario_name', None)
         print("scenario_name")
         print(scenario_name)
-        #event_name = args.pop('event_name', None)
+        # event_name = args.pop('event_name', None)
         user_id = args.pop('user_id', None)
-        Buying_controller = args.pop('buying_controller',None)
+        Buying_controller = args.pop('buying_controller', None)
 
-
-
-        #bc = Buying_controller
-        #par_supp = args.pop('parent_supplier',None)
-        #Buyer = args.pop('buyer',None)
+        # bc = Buying_controller
+        # par_supp = args.pop('parent_supplier',None)
+        # Buyer = args.pop('buyer',None)
         print(args)
         args_list = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
         # input_tpns = args_list.pop('long_description__in', 0)
@@ -7444,7 +7552,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
         # input_tpns = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
-        if Buying_controller is not None: #or Buyer is None:
+        if Buying_controller is not None:  # or Buyer is None:
             view_mine = "True"
         else:
             view_mine = "False"
@@ -7486,17 +7594,17 @@ class delist_scenario_final(vol_transfer_logic,APIView):
             input_tpns = list(input_tpns)
             bc = all_filter['bc'][0]
             bc = [bc]
-                #store = all_filter['store'][0]
+            # store = all_filter['store'][0]
             store = ['Overview']
-                #future = all_filter['future'][0]
-                #future = [future]
+            # future = all_filter['future'][0]
+            # future = [future]
             months = ['3_months', '6_months', '12_months']
 
             print(".........inside_class..............")
 
             for i in range(0, len(months)):
                 future = [months[i]]
-                week_tab=str(future[0])
+                week_tab = str(future[0])
                 if input_tpns[0] == 0:
 
                     input_tpns_main = read_frame(
@@ -7511,19 +7619,20 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                     # delist_main = input_tpns
                     input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
                     input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-                    #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
-                    #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
+                    # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+                    # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                     delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
                     print(delist_main)
                 # print('below values are passed - main estate')
                 # print(args, bc, store, future, input_tpns_main)
 
                 # In[6]:
-                #print(bc,future, input_tpns_main, delist_main)
+                # print(bc,future, input_tpns_main, delist_main)
                 vol_logic = vol_transfer_logic()
                 print("Following values are passed...")
-                print(bc,future,input_tpns_main,delist_main)
-                product_dataset_main = vol_logic.volume_transfer_logic(bc,['Main Estate'],future,input_tpns_main,delist_main)
+                print(bc, future, input_tpns_main, delist_main)
+                product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main,
+                                                                       delist_main)
                 print(product_dataset_main)
 
                 # In[7]:
@@ -7540,16 +7649,17 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                     # delist_exp = input_tpns
                     input_tpns_exp = pd.DataFrame(input_tpns).reset_index(drop=True)
                     input_tpns_exp['base_product_number'] = input_tpns_exp[0].copy()
-                    #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
-                    #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
+                    # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].str[-8:]
+                    # input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                     delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
 
                 print('below values are passed - express')
-                #print(args, bc, store, future, input_tpns_exp)
+                # print(args, bc, store, future, input_tpns_exp)
 
                 # In[8]:
 
-                product_dataset_exp = vol_logic.volume_transfer_logic(bc, ['Express'], future, input_tpns_exp, delist_exp)
+                product_dataset_exp = vol_logic.volume_transfer_logic(bc, ['Express'], future, input_tpns_exp,
+                                                                      delist_exp)
                 product_dataset_exp.head()
 
                 # In[9]:
@@ -7568,8 +7678,10 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                     'predicted_volume_y']
                 product_dataset['predicted_value'] = product_dataset['predicted_value_x'] + product_dataset[
                     'predicted_value_y']
-                product_dataset['predicted_cgm'] = product_dataset['predicted_cgm_x'] + product_dataset['predicted_cgm_y']
-                product_dataset['predicted_cts'] = product_dataset['predicted_cts_x'] + product_dataset['predicted_cts_y']
+                product_dataset['predicted_cgm'] = product_dataset['predicted_cgm_x'] + product_dataset[
+                    'predicted_cgm_y']
+                product_dataset['predicted_cts'] = product_dataset['predicted_cts_x'] + product_dataset[
+                    'predicted_cts_y']
                 product_dataset['volume_transfer'] = product_dataset['volume_transfer_x'] + product_dataset[
                     'volume_transfer_y']
                 product_dataset['value_transfer'] = product_dataset['value_transfer_x'] + product_dataset[
@@ -7587,20 +7699,24 @@ class delist_scenario_final(vol_transfer_logic,APIView):
 
                 product_dataset = product_dataset[
                     ['productcode', 'substituteproductcode', 'brand_indicator', 'predicted_volume', 'predicted_value',
-                     'predicted_cgm', 'predicted_cts', 'volume_transfer', 'value_transfer', 'cgm_transfer', 'cts_transfer']]
+                     'predicted_cgm', 'predicted_cts', 'volume_transfer', 'value_transfer', 'cgm_transfer',
+                     'cts_transfer']]
 
                 chart_data = vol_logic.waterfall_chart(product_dataset)
-                #supplier table for overview
-                sup_table_main,sup_sales_table_main = vol_logic.supplier_table(product_dataset_main, ['Main Estate'], future, bc)
-                sup_table_exp,sup_sales_table_exp = vol_logic.supplier_table(product_dataset_exp, ['Express'], future, bc)
+                # supplier table for overview
+                sup_table_main, sup_sales_table_main = vol_logic.supplier_table(product_dataset_main, ['Main Estate'],
+                                                                                future, bc)
+                sup_table_exp, sup_sales_table_exp = vol_logic.supplier_table(product_dataset_exp, ['Express'], future,
+                                                                              bc)
 
                 sup_sales_table = pd.merge(sup_sales_table_main, sup_sales_table_exp, left_on=['parent_supplier'],
                                            right_on=['parent_supplier'], how='outer')
 
                 # In[30]:
                 sup_sales_table = sup_sales_table.drop_duplicates().reset_index(drop=True).fillna(0)
-                sup_sales_table['predicted_volume_share'] = sup_sales_table['predicted_volume_share_x'] + sup_sales_table[
-                    'predicted_volume_share_y']
+                sup_sales_table['predicted_volume_share'] = sup_sales_table['predicted_volume_share_x'] + \
+                                                            sup_sales_table[
+                                                                'predicted_volume_share_y']
                 sup_sales_table['vols_gain_share'] = sup_sales_table['vols_gain_share_x'] + sup_sales_table[
                     'vols_gain_share_y']
                 sup_sales_table['vols_loss_share'] = sup_sales_table['vols_loss_share_x'] + sup_sales_table[
@@ -7620,7 +7736,8 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 # In[31]:
 
                 sup_sales_table['vol_impact'] = sup_sales_table['vols_gain_share'] - sup_sales_table['vols_loss_share']
-                sup_sales_table['value_impact'] = sup_sales_table['value_gain_share'] - sup_sales_table['value_loss_share']
+                sup_sales_table['value_impact'] = sup_sales_table['value_gain_share'] - sup_sales_table[
+                    'value_loss_share']
 
                 sup_sales_table['predicted_volume_share'] = sup_sales_table['predicted_volume_share'].replace(0, 1)
                 sup_sales_table['predicted_value_share'] = sup_sales_table['predicted_value_share'].replace(0, 1)
@@ -7639,9 +7756,9 @@ class delist_scenario_final(vol_transfer_logic,APIView):
 
                 sup_sales_table = sup_sales_table[sup_sales_table['vol_impact'] != 0]
 
-                #for delist attributes
-                delist_prod_subs_main = vol_logic.delist_subs(bc,['Main Estate'],future, delist_main)
-                delist_prod_subs_exp = vol_logic.delist_subs(bc,['Express'], future,delist_exp)
+                # for delist attributes
+                delist_prod_subs_main = vol_logic.delist_subs(bc, ['Main Estate'], future, delist_main)
+                delist_prod_subs_exp = vol_logic.delist_subs(bc, ['Express'], future, delist_exp)
 
                 delist_prod_subs = pd.DataFrame()
                 delist_prod_subs = delist_prod_subs.append(delist_prod_subs_main)
@@ -7649,48 +7766,44 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 delist_prod_subs = delist_prod_subs.drop_duplicates().fillna(0).reset_index(drop=True)
                 print(delist_prod_subs.columns)
                 delist_prods = delist_prod_subs[['productcode']].drop_duplicates().reset_index(drop=True)
-                #delist_prods = delist_prods.productcode.unique()
+                # delist_prods = delist_prods.productcode.unique()
 
-                #chart_attr = product_dataset.to_dict(orient='records')
+                # chart_attr = product_dataset.to_dict(orient='records')
                 chart_attr = chart_data
-                #delist_prods = {'delist_prods':}
+                # delist_prods = {'delist_prods':}
                 supp_attr = {'sup_attr': sup_sales_table.to_dict(orient='records')}
                 delist_attr = {'delist_attr': delist_prod_subs.to_dict(orient='records')}
                 print("for loop running...")
                 print(i)
-                save_scenario = delist_scenario(scenario_name = scenario_name,
-                                                user_id = user_id,
+                save_scenario = delist_scenario(scenario_name=scenario_name,
+                                                user_id=user_id,
                                                 buying_controller=Buying_controller,
                                                 designation="buying_controller",
-                                                #buyer=Buyer,
-                                                time_period = week_tab,
-                                                user_attributes = user_attributes,
-                                                chart_attr = chart_attr,
-                                                supp_attr = supp_attr,
-                                                delist_attr = delist_attr,
+                                                # buyer=Buyer,
+                                                time_period=week_tab,
+                                                user_attributes=user_attributes,
+                                                chart_attr=chart_attr,
+                                                supp_attr=supp_attr,
+                                                delist_attr=delist_attr,
                                                 system_time=system_time,
                                                 page="delist",
-                                                view_mine = view_mine,
-                                                input_tpns = delist_prods['productcode'].tolist())
+                                                view_mine=view_mine,
+                                                input_tpns=delist_prods['productcode'].tolist())
                 save_scenario.save()
-        #result= "SUCCESS"
+        # result= "SUCCESS"
 
-        return JsonResponse({"save_scenario" : result}, safe=False)
+        return JsonResponse({"save_scenario": result}, safe=False)
 
 
-
-        
 class delist_scenario_list(APIView):
     def get(self, request, format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         user_id = args.pop('user_id__iexact', None)
-        queryset = delist_scenario.objects.filter(user_id=user_id).values('system_time','scenario_name').distinct().order_by('-system_time')
+        queryset = delist_scenario.objects.filter(user_id=user_id).values('system_time',
+                                                                          'scenario_name').distinct().order_by(
+            '-system_time')
         serializer_class = delist_savescenarioserializer(queryset, many=True)
         return JsonResponse(serializer_class.data, safe=False)
-
-
-
-
 
 # class classA(APIView):
 #     var3 = 4
@@ -7700,7 +7813,7 @@ class delist_scenario_list(APIView):
 #     #     classA.var2 = 2
 
 #     def methodA(var3):
-#         var5 = var3 * 2 
+#         var5 = var3 * 2
 #         # return var5
 #     def get(self, request, *args):
 #         var1 = 1
@@ -7724,11 +7837,10 @@ class delist_scenario_list(APIView):
 
 #     def get(self, request, *args):
 #         calculate = classA.copy_var4 + classA.var3
-#         return JsonResponse(calculate,safe=False) 
+#         return JsonResponse(calculate,safe=False)
 
 
 # object1 = classA()
 # sum_total = object1.methodA()
 # object2 = classB()
 # sum_total1 = object2.methodB()
-
