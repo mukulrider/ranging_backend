@@ -85,3 +85,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+.idea/dataSources.local.xml
+.idea/workspace.xml
