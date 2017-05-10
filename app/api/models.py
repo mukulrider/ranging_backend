@@ -472,12 +472,16 @@ class SaveScenario(models.Model):
     
     #user id 
     user_id = models.CharField('user_id',max_length=100, default="none")# event = models.ForeignKey(Event, related_name='event', on_delete=models.CASCADE)
+    #user_name
+    user_name = models.CharField('user_name',max_length=100, default="none")
     #designation
     designation = models.TextField('designation', max_length=100, blank=True, null=True)
     #session id from front end 
-    session_id = models.CharField('user_id',max_length=100, default="none")    
+    session_id = models.CharField('session_id',max_length=100, default="none")    
     #scenario name from front end
     scenario_name = models.TextField('scenario_name', max_length=100, blank=True, null=True)
+    #product name 
+    scenario_tag = models.TextField('sceanrio_tag',max_length=100, blank=True, null=True)
     #week flag
     week_tab = models.IntegerField('week_tab', blank=True, null=True)
     #Buying_controller from frontend
@@ -488,6 +492,8 @@ class SaveScenario(models.Model):
     buyer = models.TextField('buyer',max_length=100, blank=True, null=True)
     #user input from front end 
     user_attributes = models.TextField('user_attributes', default='')
+    #asp 
+    asp = models.DecimalField('asp', blank=True, max_digits=20, decimal_places=4, default=0.0)
     #forecast generated 
     forecast_data = models.TextField('forecast_data', default='') 
     #value_forecast
@@ -507,7 +513,7 @@ class SaveScenario(models.Model):
     #modified forecast from front end 
     modified_flag = models.IntegerField('modified_flag', blank=True, null=True)
     #time of creation
-    system_time = models.DateTimeField('system_time',auto_now=False, auto_now_add=False,default='')
+    system_time = models.DateField('system_time',auto_now=False, auto_now_add=False,default='')
     page = models.TextField('page',default = '')
     
 
@@ -537,7 +543,7 @@ class delist_scenario(models.Model):
     event_name = models.TextField('event_name', max_length=100, blank=True, null=True)
     time_period = models.TextField('time_period', blank=True, null=True)
     buying_controller = models.TextField('buying_controller', max_length=100, blank=True, null=True)
-    #parent_supplier = models.TextField('parent_supplier', max_length=100, blank=True, null=True)
+    designation = models.TextField('designation', max_length=100, blank=True, null=True)
     buyer = models.TextField('buyer', max_length=100, blank=True, null=True)
     user_attributes = models.TextField('user_attributes', default='')
     chart_attr = models.TextField('chart_attr', default='')

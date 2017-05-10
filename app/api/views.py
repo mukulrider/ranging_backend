@@ -33,19 +33,42 @@ import numpy as np
 import gzip
 import xgboost as xgb
 import pickle
+#for authentication
+import re
 
 
 ## for NPD Opportunity View Filters
 class npdpage_filterdata_new(APIView):
     def get(self, request, format=None):
+        #input from header
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+
+        if buyer_header is None:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header
+            }
+        else:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header,
+                'buyer__iexact' : buyer_header
+            }        
+
+        #input from args 
         default = args.pop('default__iexact',None)
         if default is None:
             if not args:
                 print("inside default")
 
-                df = read_frame(pricebucket.objects.filter(**args))
-                heirarchy = read_frame(pricebucket.objects.all().values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
+                df = read_frame(pricebucket.objects.filter(**kwargs_header).filter(**args))
+                heirarchy = read_frame(pricebucket.objects.filter(**kwargs_header).values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
 
                 data ={'buying_controller' : df.buying_controller.unique()}
                 bc = pd.DataFrame(data)
@@ -150,8 +173,7 @@ class npdpage_filterdata_new(APIView):
                 final.append(d)
             else:
                 
-                heirarchy = read_frame(pricebucket.objects.all().values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
-
+                heirarchy = read_frame(pricebucket.objects.values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
 
                 bc_df = heirarchy[['buying_controller']].drop_duplicates()
                 buyer_df = heirarchy[['buyer']].drop_duplicates()
@@ -287,17 +309,26 @@ class npdpage_filterdata_new(APIView):
 class npdpage_outperformance(APIView):
     def get(self, request, *args):
 
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+
+        #input from args 
+
         kwargs = {
             'buying_controller': 'Meat Fish and Veg',
             'junior_buyer': 'Coated Fish'
         }
-
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
-        args.pop('page__iexact', None)
-        print("getting session details ")
-        x=request.session
-        print(x)
+        # args.pop('page__iexact', None)
+
         args.pop('product_sub_group_description__iexact',None)
         print(args)
 
@@ -359,6 +390,18 @@ class npdpage_outperformance(APIView):
 # for pricebucket - chart
 class npdpage_pricebucket(APIView):
     def get(self, request, *args):
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+
+        #input from args 
 
         kwargs = {
             'buying_controller': 'Meat Fish and Veg',
@@ -366,9 +409,8 @@ class npdpage_pricebucket(APIView):
             'product_sub_group_description': 'FRZ SCAMPI'
         }
 
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
-        args.pop('page__iexact', None)
+        # args.pop('page__iexact', None)
 
         week={}
         week["week_flag__iexact"]=args.pop('week_flag__iexact',None)
@@ -427,15 +469,26 @@ class npdpage_pricebucket(APIView):
 # for psgskudistribution - chart
 class npdpage_psgskudistribution(APIView):
     def get(self, request, *args):
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+
+        #input from args 
 
         kwargs = {
             'buying_controller': 'Meat Fish and Veg',
             'junior_buyer': 'Coated Fish'
         }
 
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
-        args.pop('page__iexact', None)
+        # args.pop('page__iexact', None)
         args.pop('product_sub_group_description__iexact',None)
         week={}
         week["week_flag__iexact"]=args.pop('week_flag__iexact',None)
@@ -486,206 +539,278 @@ class npdpage_psgskudistribution(APIView):
 # for unmatchedprod - table
 class npdpage_unmatchedprod(generic.TemplateView):
     def get(self, request, *args):
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+
+        #input from args 
 
         kwargs = {
             'buying_controller': 'Meat Fish and Veg',
             'junior_buyer': 'Coated Fish',
             'product_sub_group_description': 'FRZ SCAMPI'
         }
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(args)
 
         week={}
         week["week_flag__iexact"]=args.pop('week_flag__iexact',None)
         if week["week_flag__iexact"]==None:
-                        week = {
-                                        'week_flag__iexact': 'Latest 13 Weeks'
-                        }
+            week = {
+                            'week_flag__iexact': 'Latest 13 Weeks'
+            }
 
         #### To include pagination feature
-        page = 1
-        try:
-                        page = int(args.get('page__iexact'))
-        except:
-                        page = 1
+        # page = 1
+        # try:
+        #     page = int(args.get('page__iexact'))
+        # except:
+        #     page = 1
 
-        args.pop('page__iexact', None)
+        # args.pop('page__iexact', None)
         # start_row = int(args.pop('startRow__iexact', 0))
         # end_row = start_row + 8  ### Taking 8 elements per page
 
         #### To include search feature. Applicable for only retailer
-        search = args.pop('search__iexact', '')
+        # search = args.pop('search__iexact', '')
         print(args)
         if not args:
-                        queryset = unmatchedprod.objects.filter(**kwargs).filter(**week).filter(retailer__icontains=search)#[start_row:end_row]
+            queryset = unmatchedprod.objects.filter(**kwargs).filter(**week)#.filter(retailer__icontains=search)#[start_row:end_row]
         else:
-                        queryset = unmatchedprod.objects.filter(**args).filter(**week).filter(retailer__icontains=search)#[start_row:end_row]
+            queryset = unmatchedprod.objects.filter(**args).filter(**week)#.filter(retailer__icontains=search)#[start_row:end_row]
 
-        p = Paginator(queryset, 5)
+        # p = Paginator(queryset, 5)             p.page(page),
 
-        serializer_class = unmatchedprodSerializer(p.page(page), many=True)
+        serializer_class = unmatchedprodSerializer(queryset, many=True)
         # return JsonResponse(serializer_class.data, safe=False)
-        return JsonResponse({'pagination_count': p.num_pages,'page': page,'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
+        return JsonResponse({'table': serializer_class.data}, safe=False)
+        # return JsonResponse({'pagination_count': p.num_pages,'page': page,'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
 
 
 ## Negotiation Filters
-def col_distinct(kwargs, col_name):
-    queryset = nego_ads_drf.objects.filter(**kwargs).values(col_name).order_by(col_name).distinct()
+def col_distinct(kwargs, col_name,kwargs_header):
+    print("kwargs_header")
+    print(kwargs_header)
+    queryset = nego_ads_drf.objects.filter(**kwargs_header).filter(**kwargs).values(col_name).order_by(col_name).distinct()
+    print("queryset")
+    print(queryset)
     base_product_number_list = [k.get(col_name) for k in queryset]
     return base_product_number_list
 
 
-def make_json(sent_req):
-    print('*********************\n       FILTERS2 \n*********************')
-    cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
-
-    # find lowest element of cols
-    lowest = 0
-    second_lowest = 0
-
-    element_list = []
-    for i in sent_req.keys():
-        if i in cols:
-            element_list.append(cols.index(i))
-
-    element_list.sort()
-
-    try:
-        lowest = element_list[-1]
-    except:
-        pass
-
-    try:
-        second_lowest = element_list[-2]
-    except:
-        pass
-
-    lowest_key = cols[lowest]
-    second_lowest_key = cols[lowest]
-
-    # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
-
-    final_list = []  # final list to send
-
-    col_unique_list_name = []  # rename
-    col_unique_list_name_obj = {}  # rename
-    for col_name in cols:
-        print('\n********* \n' + col_name + '\n*********')
-        # print('sent_req.get(col_name):', sent_req.get(col_name))
-        col_unique_list = col_distinct({}, col_name)
-        col_unique_list_name.append({'name': col_name,
-                                     'unique_elements': col_unique_list})
-        col_unique_list_name_obj[col_name] = col_unique_list
-        # args sent as url params
-        kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
-
-        category_of_sent_obj_list = col_distinct(kwargs2, col_name)
-        print(len(category_of_sent_obj_list))
-        sent_obj_category_list = []
-
-        # get unique elements for `col_name`
-        for i in category_of_sent_obj_list:
-            sent_obj_category_list.append(i)
-
-        def highlight_check(category_unique):
-            # print(title)
-            if len(sent_req.keys()) > 0:
-                highlighted = False
-                if col_name in sent_req.keys():
-                    if col_name == cols[lowest]:
-                        queryset = nego_ads_drf.objects.filter(**{col_name: category_unique})[:1].get()
-                        # x = getattr(queryset, cols[lowest])
-                        y = getattr(queryset, cols[second_lowest])
-                        # print(x, '|', y, '|', cols[lowest], '|',
-                        #       'Category_second_last:' + cols[second_lowest],
-                        #       '|', col_name,
-                        #       '|', category_unique)
-                        for i in sent_req.keys():
-                            print('keys:', i, sent_req.get(i))
-                            if y in sent_req.get(i) and cols[second_lowest] == i:
-                                highlighted = True
-
-                        return highlighted
-                    else:
-                        return False
-                else:
-                    if category_unique in sent_obj_category_list:
-                        highlighted = True
-                    return highlighted
-            else:
-                return True
-
-        # assign props to send as json response
-
-        y = []
-        for title in col_unique_list:
-            selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
-            y.append({'title': title,
-                      'resource': {'params': col_name + '=' + title,
-                                   'selected': selected},
-                      'highlighted': selected if selected else highlight_check(title)})
-
-        final_list.append({'items': y,
-                           'input_type': 'Checkbox',
-                           'title': col_name,
-                           'buying_controller': 'Beers, Wines and Spirits',
-                           'id': col_name,
-                           'required': True if col_name == 'buying_controller' else False
-                           })
-
-    def get_element_type(title):
-        if title == 'buying_controller':
-            return 'Checkbox'
-        else:
-            return 'Checkbox'
-
-    # sort list with checked at top
-
-    final_list2 = []
-    for i in final_list:
-        m = []
-        for j in i.get('items'):
-
-            if j['resource']['selected']:
-                m.append(j)
-
-        for j in i.get('items'):
-            if not j['resource']['selected']:
-                m.append(j)
-
-        final_list2.append({'items': m,
-                            'input_type': get_element_type(i['title']),
-                            'title': i['title'],
-                            'required': i['required'],
-                            'category_director': 'Beers, Wines and Spirits',
-                            'id': i['id']})
-    return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
-
 class filters_nego(APIView):
     def get(self, request):
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         print(request.GET)
+        print("get keys")
+        print(request.GET.keys())
         obj = {}
         get_keys = request.GET.keys()
+
         for i in get_keys:
             # print(request.GET.getlist(i))
             obj[i] = request.GET.getlist(i)
         # print(obj)
-        return make_json(obj)
+
+        print("objects")
+        print(obj)
+        sent_req = obj
+        print(sent_req)
+
+        user_id = sent_req.pop('user_id')
+        designation = sent_req.pop('designation')
+        session_id = sent_req.pop('session_id',None)
+        user_name = sent_req.pop('user_name', None)
+        buying_controller_header = sent_req.pop('buying_controller_header',None)
+        buyer_header = sent_req.pop('buyer_header',None)
+        print("after pop")
+        print(sent_req)
+
+        if buyer_header is None:
+            kwargs_header = {
+                'buying_controller__in' : buying_controller_header
+            }
+        else:
+            kwargs_header = {
+                'buying_controller__in' : buying_controller_header,
+                'buyer__in' : buyer_header
+            }        
+
+
+
+        print('*********************\n       FILTERS2 \n*********************')
+        cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
+
+        # find lowest element of cols
+        lowest = 0
+        second_lowest = 0
+
+        element_list = []
+        for i in sent_req.keys():
+            if i in cols:
+                element_list.append(cols.index(i))
+
+        element_list.sort()
+
+        try:
+            lowest = element_list[-1]
+        except:
+            pass
+
+        try:
+            second_lowest = element_list[-2]
+        except:
+            pass
+
+        lowest_key = cols[lowest]
+        second_lowest_key = cols[lowest]
+
+        # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
+
+        final_list = []  # final list to send
+
+        col_unique_list_name = []  # rename
+        col_unique_list_name_obj = {}  # rename
+        for col_name in cols:
+            print('\n********* \n' + col_name + '\n*********')
+            # print('sent_req.get(col_name):', sent_req.get(col_name))
+            col_unique_list = col_distinct({}, col_name,kwargs_header)
+            col_unique_list_name.append({'name': col_name,
+                                         'unique_elements': col_unique_list})
+            col_unique_list_name_obj[col_name] = col_unique_list
+            # args sent as url params
+            kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
+
+
+            category_of_sent_obj_list = col_distinct(kwargs2, col_name,kwargs_header)
+            print(len(category_of_sent_obj_list))
+            sent_obj_category_list = []
+
+            # get unique elements for `col_name`
+            for i in category_of_sent_obj_list:
+                sent_obj_category_list.append(i)
+
+            def highlight_check(category_unique):
+                # print(title)
+                if len(sent_req.keys()) > 0:
+                    highlighted = False
+                    if col_name in sent_req.keys():
+                        if col_name == cols[lowest]:
+                            queryset = nego_ads_drf.objects.filter(**{col_name: category_unique})[:1].get()
+                            # x = getattr(queryset, cols[lowest])
+                            y = getattr(queryset, cols[second_lowest])
+                            # print(x, '|', y, '|', cols[lowest], '|',
+                            #       'Category_second_last:' + cols[second_lowest],
+                            #       '|', col_name,
+                            #       '|', category_unique)
+                            for i in sent_req.keys():
+                                print('keys:', i, sent_req.get(i))
+                                if y in sent_req.get(i) and cols[second_lowest] == i:
+                                    highlighted = True
+
+                            return highlighted
+                        else:
+                            return False
+                    else:
+                        if category_unique in sent_obj_category_list:
+                            highlighted = True
+                        return highlighted
+                else:
+                    return True
+
+            # assign props to send as json response
+
+            y = []
+            for title in col_unique_list:
+                selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
+                y.append({'title': title,
+                          'resource': {'params': col_name + '=' + title,
+                                       'selected': selected},
+                          'highlighted': selected if selected else highlight_check(title)})
+
+            final_list.append({'items': y,
+                               'input_type': 'Checkbox',
+                               'title': col_name,
+                               'buying_controller': 'Beers, Wines and Spirits',
+                               'id': col_name,
+                               'required': True if col_name == 'buying_controller' else False
+                               })
+
+        def get_element_type(title):
+            if title == 'buying_controller':
+                return 'Checkbox'
+            else:
+                return 'Checkbox'
+
+        # sort list with checked at top
+
+        final_list2 = []
+        for i in final_list:
+            m = []
+            for j in i.get('items'):
+
+                if j['resource']['selected']:
+                    m.append(j)
+
+            for j in i.get('items'):
+                if not j['resource']['selected']:
+                    m.append(j)
+
+            final_list2.append({'items': m,
+                                'input_type': get_element_type(i['title']),
+                                'title': i['title'],
+                                'required': i['required'],
+                                'category_director': 'Beers, Wines and Spirits',
+                                'id': i['id']})
+        return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
 
 ##Negotiation
 
 #for bubble chart
 class nego_bubble_chart(APIView):
     def get(self, request, *args):
+        #input from header
+        args_header = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
 
+        designation = args_header.pop('designation__iexact',None)
+        user_id = args_header.pop('user_id__iexact',None)
+        session_id = args_header.pop('session_id__iexact',None)
+        user_name = args_header.pop('user_name__iexact', None)
+        buying_controller_header = args_header.pop('buying_controller_header__iexact',None)
+        buyer_header = args_header.pop('buyer_header__iexact',None)
+        #header over
+
+        if buyer_header is None:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header
+            }
+        else:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header,
+                'buyer__iexact' : buyer_header
+            }        
+
+        #input from args 
 
         kwargs = {
             'store_type': 'Main Estate'
         }
 
         args = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
+        args.pop('designation__in',None)
+        args.pop('user_id__in',None)
+        args.pop('user_name__in',None)
+        args.pop('buying_controller_header__in',None)
+        args.pop('buyer_header__in',None)
+        args.pop('session_id__in',None)
         print(args)
-        args.pop('page__in',None)
+        # args.pop('page__in',None)
         w=args.pop('time_period__in',None)
         week={}
         if not w:
@@ -696,10 +821,10 @@ class nego_bubble_chart(APIView):
         print(args)
 
         if not args:
-            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
+            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**kwargs).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
 
         else:
-            df = read_frame(nego_ads_drf.objects.filter(**args).filter(**week).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
+            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**args).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
 
 
         df["rate_of_sale"] = df["rate_of_sale"].astype('float')
@@ -727,11 +852,40 @@ class nego_bubble_chart(APIView):
 #for table 
 class nego_bubble_table(APIView):
     def get(self, request, *args):
+        #input from header
+        args_header = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+        designation = args_header.pop('designation__iexact',None)
+        user_id = args_header.pop('user_id__iexact',None)
+        session_id = args_header.pop('session_id__iexact',None)
+        user_name = args_header.pop('user_name__iexact', None)
+        buying_controller_header = args_header.pop('buying_controller_header__iexact',None)
+        buyer_header = args_header.pop('buyer_header__iexact',None)
+        #header over
+
+
+        if buyer_header is None:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header
+            }
+        else:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header,
+                'buyer__iexact' : buyer_header
+            }        
+
+
+        #input from args 
 
         kwargs = {
             'store_type': 'Main Estate'
         }
         args = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
+        args.pop('designation__in',None)
+        args.pop('user_id__in',None)
+        args.pop('user_name__in',None)
+        args.pop('buying_controller_header__in',None)
+        args.pop('buyer_header__in',None)
+        args.pop('session_id__in',None)        
         print(args)
         ## for week tab
         week={}
@@ -770,30 +924,25 @@ class nego_bubble_table(APIView):
             print("args in product NONE")
             print(kwargs)
             if not args :
-                queryset = nego_ads_drf.objects.filter(**week).filter(**kwargs).filter(long_description__icontains=search)
+                queryset = nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**kwargs).filter(long_description__icontains=search)
 
 
             else:
-                queryset = nego_ads_drf.objects.filter(**args).filter(**week).filter(long_description__icontains=search)
+                queryset = nego_ads_drf.objects.filter(**week).filter(**args).filter(**kwargs_header).filter(long_description__icontains=search)
             p = Paginator(queryset, 8)
             
             serializer_class = negochartsSerializer(p.page(page), many=True)
             return JsonResponse({'pagination_count': p.num_pages,'page': page, 'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
 
         else:
-            print("inside elseeeeeeeeeeee")
             queryset = read_frame(nego_ads_drf.objects.filter(**week).filter(**args).filter(long_description__icontains=search))
             product_df = pd.DataFrame(product,columns=['base_product_number'])
-            print('dfffffffffffffffffffff')
-            print(product_df)
             product_df['base_product_number'] = product_df['base_product_number'].astype('int')
             product_df['checked'] = True
             queryset = pd.merge(queryset,product_df,on='base_product_number',how='left')
             
             queryset['checked'] = queryset['checked'].fillna(False)
             queryset = queryset.sort_values(['checked'],ascending=False)
-            print(queryset[['checked']])
-            print("negoooooooo")
             # print(queryset)
             # print(product_df)
             num_pages = math.ceil((len(queryset)/8))
@@ -807,19 +956,31 @@ class nego_bubble_table(APIView):
             return JsonResponse({'pagination_count': num_pages,'page': page, 'start_index': start_index,'count': count,'end_index': end_index,'table': df}, safe=False)
 
 
-
-
-
-
-
 ## NPD Second Half 
 ## NPD IMPACT FILTERS
 class npdimpactpage_filterdata(APIView):
     def get(self, request, format=None):
 
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}        
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+        if buyer_header is None:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header
+            }
+        else:
+            kwargs_header = {
+                'buying_controller__iexact' : buying_controller_header,
+                'buyer__iexact' : buyer_header
+            }
 
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-
+        #input from args 
         bc_name = args.get('buying_controller__iexact')
         buyer_name = args.get('buyer__iexact')
         jr_buyer_name = args.get('junior_buyer__iexact')
@@ -899,10 +1060,8 @@ class npdimpactpage_filterdata(APIView):
 
         if not args:
 
-            heirarchy = read_frame(input_npd.objects.filter(**kwargs).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
+            heirarchy = read_frame(input_npd.objects.filter(**kwargs_header).filter(**kwargs).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
                             'till_roll_description','measure_type'))
-
-
 
             bc_df = heirarchy[['buying_controller']].drop_duplicates()
             buyer_df = heirarchy[['buyer']].drop_duplicates()
@@ -975,14 +1134,15 @@ class npdimpactpage_filterdata(APIView):
             final = {}
             final["product_hierarchy"] = final_ph                            
         else:
-
+            print("kwargs")
+            print(kwargs)
             df = read_frame(input_npd.objects.filter(**kwargs))
+            print("inside else .......... dfffffffffffffffff")
+            print(df)
 
             hh = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
                             'till_roll_description','measure_type'))
 
-            # heirarchy = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
-            #             'till_roll_description','measure_type'))
             merch_range_df = read_frame(merch_range.objects.filter(buying_controller__in=df.buying_controller.unique()))
 
             supplier_df = read_frame(npd_supplier_ads.objects.filter(buying_controller__in=df.buying_controller.unique()))
@@ -1400,14 +1560,23 @@ class npdimpactpage_filterdata(APIView):
         return JsonResponse(final, safe=False)
 
 
-
 #NPD IMPACT VIEW
 # for bubble chart
 class npdpage_impact_bubble_chart(APIView):
     def get(self, request, *args):
 
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        # args = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}        
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+
+        #input from args 
+
         par_supp = args.get('parent_supplier__iexact')
         bc_name = args.get('buying_controller__iexact')
 
@@ -1416,7 +1585,7 @@ class npdpage_impact_bubble_chart(APIView):
         args.pop('modified_forecast__iexact',0)
         args.pop('Cannibalization_perc__iexact',0)
 
-        args.pop('page__iexact', None)
+        # args.pop('page__iexact', None)
         week={}
         week["time_period__iexact"]=args.pop('week_flag__iexact',None)
         print("calculating week")
@@ -1478,12 +1647,21 @@ class npdpage_impact_bubble_chart(APIView):
 
         return JsonResponse(final_bubble, safe=False)
 
-
 # for table 
 class npdpage_impact_bubble_table(generic.TemplateView):
     def get(self, request, *args):
 
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}        
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
+
+        #input from args 
         print(args)
         par_supp = args.get('parent_supplier__iexact')
         bc_name = args.get('buying_controller__iexact')
@@ -1516,18 +1694,18 @@ class npdpage_impact_bubble_table(generic.TemplateView):
                         }
 
         #### To include pagination feature
-        page = 1
-        try:
-            page = int(args.get('page1__iexact'))
-        except:
-            page = 1
+        # page = 1
+        # try:
+        #     page = int(args.get('page1__iexact'))
+        # except:
+        #     page = 1
 
-        args.pop('page1__iexact', None)
-        print(page)
+        # args.pop('page1__iexact', None)
+        # print(page)
 
-        #### To include search feature. Applicable for only long desc
-        search = args.pop('search1__iexact', '')
-        print(search)
+        # #### To include search feature. Applicable for only long desc
+        # search = args.pop('search1__iexact', '')
+        # print(search)
         print(week)
 
         kwargs = {
@@ -1536,12 +1714,13 @@ class npdpage_impact_bubble_table(generic.TemplateView):
                     }
         kwargs = dict(filter(lambda item: item[1] is not None, kwargs.items()))
 
-        queryset = npd_supplier_ads.objects.filter(**kwargs).filter(**week).filter(long_description__icontains=search)
+        queryset = npd_supplier_ads.objects.filter(**kwargs).filter(**week)#.filter(long_description__icontains=search)
 
-        p = Paginator(queryset, 5)
-        serializer_class = npd_impact_tableSerializer(p.page(page), many=True)
-        return JsonResponse({'pagination_count': p.num_pages,'page': page,'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
-
+        # p = Paginator(queryset, 5)   p.page(page)
+        serializer_class = npd_impact_tableSerializer(queryset, many=True)
+        return JsonResponse({'table': serializer_class.data}, safe=False)
+        # return JsonResponse({'pagination_count': p.num_pages,'page': page,'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
+    
 # for forecast and waterfall chart
 
 class npdpage_impact_forecast(APIView):
@@ -1556,7 +1735,19 @@ class npdpage_impact_forecast(APIView):
         if week==None:
             week = 'Latest 13 Weeks'
         #define variables 
+
+        #input from header
+        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}        
+        designation = args.pop('designation__iexact',None)
+        user_id = args.pop('user_id__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        #header over
         print("creating variables for npd impact")
+
+
         
         Buying_controller = args.pop('buying_controller__iexact', '')
         Buyer = args.pop('buyer__iexact', '')
@@ -1619,15 +1810,15 @@ class npdpage_impact_forecast(APIView):
         brand_grp_mapping_df = read_frame(brand_grp_mapping.objects.all())
         #global brand_grp_mapping_df
         #files read
-        search = args.pop('search__iexact', "")
-        page = 1
-        try:
-            page = int(args.get('page__iexact'))
-        except:
-            page = 1
-        args.pop('page__iexact', None)
-        start_row = (page-1)*5
-        end_row = start_row + 5       
+        # search = args.pop('search__iexact', "")
+        # page = 1
+        # try:
+        #     page = int(args.get('page__iexact'))
+        # except:
+        #     page = 1
+        # args.pop('page__iexact', None)
+        # start_row = (page-1)*5
+        # end_row = start_row + 5       
 
         ### To get the priceband , psg code and merch code
 
@@ -1981,7 +2172,6 @@ class npdpage_impact_forecast(APIView):
 
             brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
             #### Cannibalization percentage 
-            print("llllllllllllllllllllllll")
             print(len(sim_prod))
             if len(sim_prod)==0:
                 if Buying_controller=='Frozen Impulse':
@@ -2026,22 +2216,18 @@ class npdpage_impact_forecast(APIView):
                 ####Need to import psg code to desc mapping
 
                 if (psg_code+Volume_flag+brand_ind  in list(PSGVolBrandBuckets['bucket_value'])):
-                    print("puuuuuuuuuuurrrrrrrrrrrrrrrraaaaaaaaaaaaaaaaa")
                     Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets['bucket_value'] == psg_code+Volume_flag+brand_ind]).iloc[0]['cannibalization']
                     #Cannibalization_perc = Cannibalization_perc.round(2)
 
                 elif (psg_code+Volume_flag  in list(PSGVolBuckets['bucket_value'])):
-                    print("kkkkkkkkkkkkkkkkkkkaaaaaaaaaaaaaaaaaammmmmmmmmmmmmmmmmmm")
                     Cannibalization_perc = (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code+Volume_flag]).iloc[0]['cannibalization']
                     #Cannibalization_perc = Cannibalization_perc.round(2)
 
                 elif (psg_code  in list(PSGBuckets['bucket_value'])):
-                    print("ekdummmmmmmmmmmmmmmmmmm thodaaaaaaaaaaaaaaaaaaaa")
                     Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
                     #Cannibalization_perc = Cannibalization_perc.round(2)
 
                 else :
-                    print("naiiiiiiiiiiiiiiiiiiiiiii")
                     Cannibalization_perc = 0
 
             sim_prod_subset = sim_prod_new[sim_prod_new['final_score']>0.8]
@@ -2303,7 +2489,7 @@ class npdpage_impact_forecast(APIView):
 
                 volume={}
                 volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
                                    }
                 data_dict_volume["data"]=data
                 data_dict_volume["impact"]=volume
@@ -2319,7 +2505,7 @@ class npdpage_impact_forecast(APIView):
                 sales={}
                 sales={
                                                 "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                                                "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
                                    }
                 data_dict_sales["data"]=data
                 data_dict_sales["impact"]=sales
@@ -2415,7 +2601,7 @@ class npdpage_impact_forecast(APIView):
 
                 volume={}
                 volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
                                    }
                 data_dict_volume["data"]=data
                 data_dict_volume["impact"]=volume
@@ -2431,7 +2617,7 @@ class npdpage_impact_forecast(APIView):
                 sales={}
                 sales={
                         "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
-                        "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                        "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
                        }
                 data_dict_sales["data"]=data
                 data_dict_sales["impact"]=sales
@@ -2529,7 +2715,7 @@ class npdpage_impact_forecast(APIView):
 
                 volume={}
                 volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0].round(decimals=2),
-                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                                                "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
                                    }
                 data_dict_volume["data"]=data
                 data_dict_volume["impact"]=volume
@@ -2545,7 +2731,7 @@ class npdpage_impact_forecast(APIView):
                 sales={}
                 sales={
                         "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0].round(decimals=2),
-                        "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                        "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
                        }
                 data_dict_sales["data"]=data
                 data_dict_sales["impact"]=sales
@@ -2553,24 +2739,27 @@ class npdpage_impact_forecast(APIView):
 
                 similar_product = similar_product_cannabilized('12_months')
 
-            similar_product_final = similar_product[similar_product['long_description'].str.contains(search,case=False)]
+            # similar_product_final = similar_product[similar_product['long_description'].str.contains(search,case=False)]
 
-            num_pages = math.ceil((len(similar_product_final)/5))
-            start_index = (page-1)*5+1
-            count = len(similar_product)
-            end_index = page*5
-            similar_product_final = similar_product_final.reset_index() 
-            df_new=similar_product_final.loc[start_row:end_row,]
+            similar_product_final = similar_product
+
+            # num_pages = math.ceil((len(similar_product_final)/5))
+            # start_index = (page-1)*5+1
+            # count = len(similar_product)
+            # end_index = page*5
+            # similar_product_final = similar_product_final.reset_index() 
+            # df_new=similar_product_final.loc[start_row:end_row,]
+            # data_table = {
+            #         'df': df_new.to_dict(orient='records'),
+            #         'pagination_count': num_pages,
+            #         'page': page,
+            #         'start_index': start_index,
+            #         'count': count,
+            #         'end_index': end_index,
+            # }
             data_table = {
-                    'df': df_new.to_dict(orient='records'),
-                    'pagination_count': num_pages,
-                    'page': page,
-                    'start_index': start_index,
-                    'count': count,
-                    'end_index': end_index,
-            }
-
-        # for edit forecast pop-up
+                    'df': similar_product_final.to_dict(orient='records')
+                 }        
         else:
 
             print("inside edit forecast")
@@ -2593,21 +2782,24 @@ class npdpage_impact_forecast(APIView):
 
             similar_product = similar_product_cannabilized(time_frame)
 
-            similar_product_final = similar_product[similar_product['long_description'].str.contains(search,case=False)]
+            # similar_product_final = similar_product[similar_product['long_description'].str.contains(search,case=False)]
 
-            num_pages = math.ceil((len(similar_product_final)/5))
-            start_index = (page-1)*5+1
-            count = len(similar_product)
-            end_index = page*5
-            similar_product_final = similar_product_final.reset_index() 
-            df_new=similar_product_final.loc[start_row:end_row,]
+            similar_product_final = similar_product
+
+            # num_pages = math.ceil((len(similar_product_final)/5))
+            # start_index = (page-1)*5+1
+            # count = len(similar_product)
+            # end_index = page*5
+            # similar_product_final = similar_product_final.reset_index() 
+            # df_new=similar_product_final.loc[start_row:end_row,]
             data_table = {
-                    'df': df_new.to_dict(orient='records'),
-                    'pagination_count': num_pages,
-                    'page': page,
-                    'start_index': start_index,
-                    'count': count,
-                    'end_index': end_index,
+                    'df': similar_product_final.to_dict(orient='records')
+                    # 'df': df_new.to_dict(orient='records'),
+                    # 'pagination_count': num_pages,
+                    # 'page': page,
+                    # 'start_index': start_index,
+                    # 'count': count,
+                    # 'end_index': end_index,
             }
 
 
@@ -2701,7 +2893,7 @@ class npdpage_impact_forecast(APIView):
 
             volume={}
             volume={"Cannibilization_perc":output_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                                            "perc_impact_psg":output_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
                                }
             data_dict_volume["data"]=data
             data_dict_volume["impact"]=volume
@@ -2716,7 +2908,7 @@ class npdpage_impact_forecast(APIView):
             sales={}
             sales={
                     "Cannibilization_perc" : output_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                    "perc_impact_psg":(output_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
                    }
             data_dict_sales["data"]=data
             data_dict_sales["impact"]=sales
@@ -2724,23 +2916,48 @@ class npdpage_impact_forecast(APIView):
 
         return JsonResponse({'sales_chart':data_dict_sales,'volume_chart':data_dict_volume,'similar_product_table':data_table},safe=False)
 
-
 #Save Scenario for NPD IMPACT
 
 class npdpage_impact_save_scenario(APIView): 
     def get(self, request, *args):
+
+        # # input from headers
+        # regex = re.compile('^HTTP_')
+        # auth_token = dict((regex.sub('', header), value) for (header, value)
+        #                     in request.META.items() if header.startswith('HTTP'))
+        # headers_incoming = auth_token['AUTHORIZATION']
+        # print("headers_list")
+        # print(headers_incoming)
+
+        # headers_list = headers_incoming.split("___")
+        # print(headers_list)
+
+        # user_id = headers_list[0]
+        # user_name = headers_list[1]
+        # designation = headers_list[2]
+        # session_id = headers_list[3]
+
+        # Buying_controller = headers_list[4]
+        # if len(headers_list) > 5:
+        #     Buyer = headers_list[5]
+        # else:
+        #     Buyer = args.pop('buyer', '')  
+        # #remove format arg
+
+        #input from args
         args = {reqobj : request.GET.get(reqobj) for reqobj in request.GET.keys()}
-                
-        #remove format arg
+
         args.pop('format', None)   
 
         # print(args)
         # pop week tab
         week_selected = args.pop('week_flag',None)
+        print("args")
+        print(args)
 
         # page and search not used 
-        args.pop('search', "")
-        args.pop('page',None)         
+        # args.pop('search', "")
+        # args.pop('page',None)         
 
         # check if forecast is modified
         modified_flag = int(args.pop('modified_flag', 0))
@@ -2748,23 +2965,37 @@ class npdpage_impact_save_scenario(APIView):
         Cannibalization_perc = float(args.pop('Cannibalization_perc',0))      
 
         scenario_name = args.pop('scenario_name',None)
+        scenario_tag = args.pop('scenario_tag',None)
         designation = args.pop('designation',None)
+
         user_id = args.pop('user_id',None)
         session_id = args.pop('session_id',None)
+        user_name = args.pop('user_name', None)
+        buying_controller_header = args.pop('buying_controller_header',None)
+        buyer_header = args.pop('buyer_header',None)
+        print("type of input values")
+        print(scenario_tag)
+        print(type(designation))
+        print(type(user_id))
+        print(type(user_name))
+        print(type(session_id))
+
 
         print(args)
         user_attributes_args = args.copy()
         user_attributes = user_attributes_args
-
-        system_time = strftime("%Y-%m-%d %H:%M:%S" ,gmtime())
+        system_time = strftime("%Y-%m-%d" ,gmtime())
         print("system time")
         print(system_time)
         #define variables 
         print("creating variables for npd impact")
         
-        Buying_controller = args.pop('buying_controller', '')
+        Buying_controller = args.pop('buying_controller', None)
+        print("buying_controller")
+        print(type(Buying_controller))
         par_supp = args.pop('parent_supplier')
-        Buyer = args.pop('buyer', '')
+        Buyer = args.pop('buyer', None)
+        print(type(Buyer))
         Junior_Buyer = args.pop('junior_buyer', '')
         Package_Type = args.pop('package_type', '')
         Product_Sub_Group_Description = args.pop('product_sub_group_description', '')
@@ -2804,7 +3035,7 @@ class npdpage_impact_save_scenario(APIView):
 
         # if result == "SUCCESS":
         #     print("inside success")
-            #read all files 
+        #read all files 
         All_attribute = read_frame(bc_allprod_attributes.objects.all())
   
         attribute_score = read_frame(attribute_score_allbc.objects.all())
@@ -3182,7 +3413,6 @@ class npdpage_impact_save_scenario(APIView):
 
             brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
             #### Cannibalization percentage 
-            print("llllllllllllllllllllllll")
             print(len(sim_prod))
             if len(sim_prod)==0:
                 if Buying_controller=='Frozen Impulse':
@@ -3227,22 +3457,18 @@ class npdpage_impact_save_scenario(APIView):
                 ####Need to import psg code to desc mapping
 
                 if (psg_code+Volume_flag+brand_ind  in list(PSGVolBrandBuckets['bucket_value'])):
-                    print("puuuuuuuuuuurrrrrrrrrrrrrrrraaaaaaaaaaaaaaaaa")
                     Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets['bucket_value'] == psg_code+Volume_flag+brand_ind]).iloc[0]['cannibalization']
                     #Cannibalization_perc = Cannibalization_perc.round(2)
 
                 elif (psg_code+Volume_flag  in list(PSGVolBuckets['bucket_value'])):
-                    print("kkkkkkkkkkkkkkkkkkkaaaaaaaaaaaaaaaaaammmmmmmmmmmmmmmmmmm")
                     Cannibalization_perc = (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code+Volume_flag]).iloc[0]['cannibalization']
                     #Cannibalization_perc = Cannibalization_perc.round(2)
 
                 elif (psg_code  in list(PSGBuckets['bucket_value'])):
-                    print("ekdummmmmmmmmmmmmmmmmmm thodaaaaaaaaaaaaaaaaaaaa")
                     Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
                     #Cannibalization_perc = Cannibalization_perc.round(2)
 
                 else :
-                    print("naiiiiiiiiiiiiiiiiiiiiiii")
                     Cannibalization_perc = 0
 
             sim_prod_subset = sim_prod_new[sim_prod_new['final_score']>0.8]
@@ -3511,7 +3737,7 @@ class npdpage_impact_save_scenario(APIView):
 
             volume={}
             volume={"Cannibilization_perc":output_cannib_13weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_13weeks_volume['perc_change_in_psg'][0].round(decimals=4)
+                    "perc_impact_psg":output_cannib_13weeks_volume['perc_change_in_psg'][0].round(decimals=2)
                    }
             data_dict_13weeks_volume["data"]=data
             data_dict_13weeks_volume["impact"]=volume
@@ -3532,7 +3758,7 @@ class npdpage_impact_save_scenario(APIView):
             sales={}
             sales={
                     "Cannibilization_perc" : output_cannib_13weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_13weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
+                    "perc_impact_psg":(output_cannib_13weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
                    }
             data_dict_13weeks_sales["data"]=data
             data_dict_13weeks_sales["impact"]=sales
@@ -3553,14 +3779,23 @@ class npdpage_impact_save_scenario(APIView):
             data_13weeks_table = {'df': similar_product_13weeks.to_dict(orient='records')}
             print("user_attributes just b4 saving")
             print(user_attributes)
+            print(user_id,user_name,designation,session_id,scenario_name,scenario_tag,asp,Buying_controller,par_supp,Buyer,
+                                        user_attributes,
+                                        impact_data_13weeks, value_forecast_13,value_impact_13,
+                                        value_cann_13,
+                                        volume_forecast_13,volume_impact_13,volume_cann_13,data_13weeks_table,modified_flag,system_time)
+                                       
             save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
+                                        user_name = user_name,
+                                        designation = designation,
                                         session_id = session_id,
                                         scenario_name = scenario_name,
+                                        scenario_tag = scenario_tag,
+                                        asp = asp,
                                         week_tab = 13,
-                                        buying_controller = Buying_controller,
+                                        buying_controller = buying_controller_header,
+                                        buyer = buyer_header,
                                         parent_supplier = par_supp,
-                                        buyer = Buyer,
                                         user_attributes = user_attributes,
                                         forecast_data = impact_data_13weeks,
                                         value_forecast = value_forecast_13,
@@ -3573,6 +3808,7 @@ class npdpage_impact_save_scenario(APIView):
                                         modified_flag = modified_flag,
                                         system_time = system_time,
                                         page = "npd")
+
             save_scenario.save()
 
 
@@ -3591,7 +3827,7 @@ class npdpage_impact_save_scenario(APIView):
 
             volume={}
             volume={"Cannibilization_perc":output_cannib_26weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=4)
+                    "perc_impact_psg":output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=2)
                    }
             data_dict_26weeks_volume["data"]=data
             data_dict_26weeks_volume["impact"]=volume
@@ -3612,7 +3848,7 @@ class npdpage_impact_save_scenario(APIView):
             sales={}
             sales={
                     "Cannibilization_perc" : output_cannib_26weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_26weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
+                    "perc_impact_psg":(output_cannib_26weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
                    }
             data_dict_26weeks_sales["data"]=data
             data_dict_26weeks_sales["impact"]=sales
@@ -3630,13 +3866,16 @@ class npdpage_impact_save_scenario(APIView):
 
             
             save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
+                                        user_name = user_name,
+                                        designation = designation,
                                         session_id = session_id,
                                         scenario_name = scenario_name,
+                                        scenario_tag = scenario_tag,
+                                        asp = asp,                                        
                                         week_tab = 26,
-                                        buying_controller = Buying_controller,
+                                        buying_controller = buying_controller_header,
+                                        buyer = buyer_header,
                                         parent_supplier = par_supp,
-                                        buyer = Buyer,
                                         user_attributes = user_attributes,
                                         forecast_data = impact_data_26weeks,
                                         value_forecast = value_forecast_26,
@@ -3665,7 +3904,7 @@ class npdpage_impact_save_scenario(APIView):
 
             volume={}
             volume={"Cannibilization_perc":output_cannib_52weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=4)
+                    "perc_impact_psg":output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=2)
                    }
             data_dict_52weeks_volume["data"]=data
             data_dict_52weeks_volume["impact"]=volume
@@ -3685,7 +3924,7 @@ class npdpage_impact_save_scenario(APIView):
             sales={}
             sales={
                     "Cannibilization_perc" : output_cannib_52weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_52weeks_sales['perc_change_in_psg'][0]).round(decimals=4)
+                    "perc_impact_psg":(output_cannib_52weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
                    }
             data_dict_52weeks_sales["data"]=data
             data_dict_52weeks_sales["impact"]=sales
@@ -3703,13 +3942,16 @@ class npdpage_impact_save_scenario(APIView):
             data_52weeks_table = {'df': similar_product_52weeks.to_dict(orient='records')}
 
             save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
+                                        user_name = user_name,
+                                        designation = designation,
                                         session_id = session_id,
                                         scenario_name = scenario_name,
+                                        scenario_tag = scenario_tag,
+                                        asp = asp,                                        
                                         week_tab = 52,
-                                        buying_controller = Buying_controller,
+                                        buying_controller = buying_controller_header,
+                                        buyer = buyer_header,
                                         parent_supplier = par_supp,
-                                        buyer = Buyer,
                                         user_attributes = user_attributes,
                                         forecast_data = impact_data_52weeks,
                                         value_forecast = value_forecast_52,
@@ -3841,7 +4083,7 @@ class npdpage_impact_save_scenario(APIView):
 
             volume={}
             volume={"Cannibilization_perc":output_13_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_13_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                                            "perc_impact_psg":output_13_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
                                }
             data_13_dict_volume["data"]=data
             data_13_dict_volume["impact"]=volume
@@ -3861,7 +4103,7 @@ class npdpage_impact_save_scenario(APIView):
             sales={}
             sales={
                     "Cannibilization_perc" : output_13_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_13_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                    "perc_impact_psg":(output_13_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
                    }
             data_13_dict_sales["data"]=data
             data_13_dict_sales["impact"]=sales
@@ -3874,13 +4116,16 @@ class npdpage_impact_save_scenario(APIView):
             impact_data_13weeks = {'sales_chart': data_13_dict_sales,'volume_chart': data_13_dict_volume}
 
             save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
+                                        user_name = user_name,
+                                        designation = designation,
                                         session_id = session_id,
                                         scenario_name = scenario_name,
+                                        scenario_tag = scenario_tag,
+                                        asp = asp,
                                         week_tab = 13,
-                                        buying_controller = Buying_controller,
+                                        buying_controller = buying_controller_header,
+                                        buyer = buyer_header,
                                         parent_supplier = par_supp,
-                                        buyer = Buyer,
                                         user_attributes = user_attributes,
                                         forecast_data = impact_data_13weeks,
                                         value_forecast = value_forecast_13,
@@ -3989,7 +4234,7 @@ class npdpage_impact_save_scenario(APIView):
 
             volume={}
             volume={"Cannibilization_perc":output_26_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_26_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                                            "perc_impact_psg":output_26_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
                                }
             data_26_dict_volume["data"]=data
             data_26_dict_volume["impact"]=volume
@@ -3997,7 +4242,7 @@ class npdpage_impact_save_scenario(APIView):
 
             volume_cann_26 = int(output_cannib_26weeks_volume['cannibilization_value'][0])
             volume_forecast_26 = int(output_cannib_26weeks_volume['forecast'][0])
-            volume_impact_26 = output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=4) 
+            volume_impact_26 = output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=2) 
 
             data_26_dict_sales={}
             data = [{
@@ -4010,7 +4255,7 @@ class npdpage_impact_save_scenario(APIView):
             sales={}
             sales={
                     "Cannibilization_perc" : output_26_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_26_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                    "perc_impact_psg":(output_26_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
                    }
             data_26_dict_sales["data"]=data
             data_26_dict_sales["impact"]=sales
@@ -4024,13 +4269,14 @@ class npdpage_impact_save_scenario(APIView):
             impact_data_26weeks = {'sales_chart': data_26_dict_sales,'volume_chart': data_26_dict_volume}
 
             save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
+                                        user_name = user_name,
+                                        designation = designation,
                                         session_id = session_id,
                                         scenario_name = scenario_name,
                                         week_tab = 26,
-                                        buying_controller = Buying_controller,
+                                        buying_controller = buying_controller_header,
+                                        buyer = buyer_header,
                                         parent_supplier = par_supp,
-                                        buyer = Buyer,
                                         user_attributes = user_attributes,
                                         forecast_data = impact_data_26weeks,
                                         value_forecast = value_forecast_26,
@@ -4137,14 +4383,14 @@ class npdpage_impact_save_scenario(APIView):
 
             volume={}
             volume={"Cannibilization_perc":output_52_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_52_cannib_volume['perc_change_in_psg'][0].round(decimals=4)
+                                            "perc_impact_psg":output_52_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
                                }
             data_52_dict_volume["data"]=data
             data_52_dict_volume["impact"]=volume
 
             volume_cann_52 = int(output_cannib_52weeks_volume['cannibilization_value'][0])
             volume_forecast_52 = int(output_cannib_52weeks_volume['forecast'][0])
-            volume_impact_52 = output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=4) 
+            volume_impact_52 = output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=2) 
 
 
             data_52_dict_sales={}
@@ -4158,7 +4404,7 @@ class npdpage_impact_save_scenario(APIView):
             sales={}
             sales={
                     "Cannibilization_perc" : output_52_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_52_cannib_sales['perc_change_in_psg'][0]).round(decimals=4)
+                    "perc_impact_psg":(output_52_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
                    }
             data_52_dict_sales["data"]=data
             data_52_dict_sales["impact"]=sales
@@ -4170,13 +4416,16 @@ class npdpage_impact_save_scenario(APIView):
             impact_data_52weeks = {'sales_chart': data_52_dict_sales,'volume_chart': data_52_dict_volume}
 
             save_scenario = SaveScenario(user_id = user_id,
-                                        designation = "buyer",
+                                        user_name = user_name,
+                                        designation = designation,
                                         session_id = session_id,
                                         scenario_name = scenario_name,
+                                        scenario_tag = scenario_tag,
+                                        asp = asp,                                        
                                         week_tab = 52,
-                                        buying_controller = Buying_controller,
+                                        buying_controller = buying_controller_header,
+                                        buyer = buyer_header,
                                         parent_supplier = par_supp,
-                                        buyer = Buyer,
                                         user_attributes = user_attributes,
                                         forecast_data = impact_data_52weeks,
                                         value_forecast = value_forecast_52,
@@ -4213,25 +4462,67 @@ class npdpage_impact_save_scenario(APIView):
 
     #     return JsonResponse({'message': 'dones'},safe=False)
 
-
 class npd_scenario_list(APIView):
     def get(self,request,format=None):
+
+        # # input from headers
+        # regex = re.compile('^HTTP_')
+        # auth_token = dict((regex.sub('', header), value) for (header, value)
+        #                     in request.META.items() if header.startswith('HTTP'))
+        # headers_incoming = auth_token['AUTHORIZATION']
+        # print("headers_list")
+        # print(headers_incoming)
+
+        # headers_list = headers_incoming.split("___")
+        # print(headers_list)
+
+        # user_id = headers_list[0]
+        # user_name = headers_list[1]
+        # designation = headers_list[2]
+        # session_id = headers_list[3]
+        # Buying_controller = headers_list[4] 
+
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        user_id = args.pop('user_id__iexact',None)
-                        # weeks_list.sort_values(by= ['year_week_number'],ascending=False)
-        queryset = SaveScenario.objects.filter(user_id=user_id).values('system_time','scenario_name').distinct().order_by('-system_time')
-        print("queryset")
-        print(queryset)
-        serializer_class = npd_SaveScenarioSerializer(queryset,many=True)
+        designation = args.pop('designation__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
+        user_id = args.get('user_id__iexact',None)
+        delete_row = args.pop('delete__iexact',0)
+        # scenario_name = args.pop('scenario_name__iexact',None)
+        # scenario_tag = args.pop('scenario_tag__iexact',None)
 
-        return JsonResponse(serializer_class.data,safe=False)
+        if delete_row==0:
+            print("inside list")
+            queryset = SaveScenario.objects.filter(user_id=user_id).values('system_time','scenario_name','scenario_tag').distinct().order_by('-system_time')
+            print("queryset")
+            print(queryset)
+            serializer_class = npd_SaveScenarioSerializer(queryset,many=True)
 
+        else:
+            print("inside delete")
+            SaveScenario.objects.filter(**args).delete()
+            queryset = SaveScenario.objects.filter(user_id=user_id).values('system_time','scenario_name','scenario_tag').distinct().order_by('-system_time')
+            print("queryset")
+            print(queryset)
+            serializer_class = npd_SaveScenarioSerializer(queryset,many=True)
+
+        return JsonResponse(serializer_class.data,safe=False)       
 
 class npd_view_scenario(APIView):
     def get(self,request,format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+
+        designation = args.pop('designation__iexact',None)
+        session_id = args.pop('session_id__iexact',None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header = args.pop('buyer_header__iexact',None)
         user_id = args.get('user_id__iexact',None)
+
         scenario_name = args.get('scenario_name__iexact',None)
+        scenario_tag = args.get('scenario_tag__iexact',None)
 
         # user_attributes = list(SaveScenario.objects.filter(**args).filter(week_tab=13).values_list('user_attributes',flat = True))
         # queryset_13 = list(SaveScenario.objects.filter(**args).filter(week_tab=13).values_list('forecast_data','similar_products'))
@@ -4262,12 +4553,13 @@ class npd_view_scenario(APIView):
             "similar_products" : queryset_52_pd['similar_products'][0]
         }
 
-        if (user_id is None)|(scenario_name is None):
+        if (user_id is None)|(scenario_name is None)|(scenario_tag is None):
             scenario_data_dict = { }
         else:
             scenario_data_dict = {
                     "user_id" : user_id,
                     "scenario_name" : scenario_name,
+                    "scenario_tag" : scenario_tag,
                     "user_attributes" : user_attributes['user_attributes'][0],
                     "week_13" : week_13,
                     "week_26" : week_26,
@@ -4283,151 +4575,15 @@ class npd_view_scenario(APIView):
 
 
 
-# class displaynpd_scenario(APIView):
-#     def get(self,request,format=None):
-#         queryset=Scenario.objects.all()
-#         print('here inside display ')
-#         print(len(queryset))
-
-#         serializer_class=npd_scenarioSerializer(queryset,many=True)
-
-#         return JsonResponse(serializer_class.data,safe=False)
-
 ## PRODUCT FILTERS
 ## Product Impact Filters
 
-def col_distinct_product(kwargs, col_name):
-    queryset = product_hierarchy.objects.filter(**kwargs).values(col_name).order_by(col_name).distinct()
+def col_distinct_product(kwargs, col_name,kwargs_header):
+    queryset = product_hierarchy.objects.filter(**kwargs_header).filter(**kwargs).values(col_name).order_by(col_name).distinct()
     base_product_number_list = [k.get(col_name) for k in queryset]
     return base_product_number_list
 
-def make_json_product(sent_req):
-    print('*********************\n       FILTERS2 \n*********************')
-    cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
-                                 'brand_name', 'product_sub_group_description', 'long_description']
-
-    # find lowest element of cols
-    lowest = 0
-    second_lowest = 0
-
-    element_list = []
-    for i in sent_req.keys():
-        if i in cols:
-            element_list.append(cols.index(i))
-
-    element_list.sort()
-
-    try:
-        lowest = element_list[-1]
-    except:
-        pass
-
-    try:
-        second_lowest = element_list[-2]
-    except:
-        pass
-
-    lowest_key = cols[lowest]
-    second_lowest_key = cols[lowest]
-
-    # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
-
-    final_list = []  # final list to send
-
-    col_unique_list_name = []  # rename
-    col_unique_list_name_obj = {}  # rename
-    for col_name in cols:
-        print('\n********* \n' + col_name + '\n*********')
-        # print('sent_req.get(col_name):', sent_req.get(col_name))
-        col_unique_list = col_distinct_product({}, col_name)
-        col_unique_list_name.append({'name': col_name,
-                                     'unique_elements': col_unique_list})
-        col_unique_list_name_obj[col_name] = col_unique_list
-        # args sent as url params
-        kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
-
-        category_of_sent_obj_list = col_distinct_product(kwargs2, col_name)
-        print(len(category_of_sent_obj_list))
-        sent_obj_category_list = []
-
-        # get unique elements for `col_name`
-        for i in category_of_sent_obj_list:
-            sent_obj_category_list.append(i)
-
-        def highlight_check(category_unique):
-            # print(title)
-            if len(sent_req.keys()) > 0:
-                highlighted = False
-                if col_name in sent_req.keys():
-                    if col_name == cols[lowest]:
-                        queryset = product_hierarchy.objects.filter(**{col_name: category_unique})[:1].get()
-                        # x = getattr(queryset, cols[lowest])
-                        y = getattr(queryset, cols[second_lowest])
-                        # print(x, '|', y, '|', cols[lowest], '|',
-                        #       'Category_second_last:' + cols[second_lowest],
-                        #       '|', col_name,
-                        #       '|', category_unique)
-                        for i in sent_req.keys():
-                            print('keys:', i, sent_req.get(i))
-                            if y in sent_req.get(i) and cols[second_lowest] == i:
-                                highlighted = True
-
-                        return highlighted
-                    else:
-                        return False
-                else:
-                    if category_unique in sent_obj_category_list:
-                        highlighted = True
-                    return highlighted
-            else:
-                return True
-
-        # assign props to send as json response
-
-        y = []
-        for title in col_unique_list:
-            selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
-            y.append({'title': title,
-                      'resource': {'params': col_name + '=' + title,
-                                   'selected': selected},
-                      'highlighted': selected if selected else highlight_check(title)})
-
-        final_list.append({'items': y,
-                           'input_type': 'Checkbox',
-                           'title': col_name,
-                           'buying_controller': 'Beers, Wines and Spirits',
-                           'id': col_name,
-                           'required': True if col_name in ['buying_controller', 'long_description'] else False
-                           })
-
-    def get_element_type(title):
-        if title == 'buying_controller':
-            return 'Checkbox'
-        else:
-            return 'Checkbox'
-
-    # sort list with checked at top
-
-    final_list2 = []
-    for i in final_list:
-        m = []
-        for j in i.get('items'):
-
-            if j['resource']['selected']:
-                m.append(j)
-
-        for j in i.get('items'):
-            if not j['resource']['selected']:
-                m.append(j)
-
-        final_list2.append({'items': m,
-                            'input_type': get_element_type(i['title']),
-                            'title': i['title'],
-                            'required': i['required'],
-                            'category_director': 'Beers, Wines and Spirits',
-                            'id': i['id']})
-    return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
-
+# def make_json_product(sent_req):
 
 
 class filters_product_impact(APIView):
@@ -4439,7 +4595,156 @@ class filters_product_impact(APIView):
             # print(request.GET.getlist(i))
             obj[i] = request.GET.getlist(i)
         # print(obj)
-        return make_json_product(obj)
+        # return make_json_product(obj)
+
+        sent_req = obj
+        user_id = sent_req.pop('user_id')
+        designation = sent_req.pop('designation')
+        session_id = sent_req.pop('session_id',None)
+        user_name = sent_req.pop('user_name', None)
+        buying_controller_header = sent_req.pop('buying_controller_header',None)
+        buyer_header = sent_req.pop('buyer_header',None)
+        print("after pop")
+        print(sent_req)
+
+        if buyer_header is None:
+            kwargs_header = {
+                'buying_controller__in' : buying_controller_header
+            }
+        else:
+            kwargs_header = {
+                'buying_controller__in' : buying_controller_header,
+                'buyer__in' : buyer_header
+            }        
+
+
+        print('*********************\n       FILTERS2 \n*********************')
+        cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
+                                     'brand_name', 'product_sub_group_description', 'long_description']
+
+        # find lowest element of cols
+        lowest = 0
+        second_lowest = 0
+
+        element_list = []
+        for i in sent_req.keys():
+            if i in cols:
+                element_list.append(cols.index(i))
+
+        element_list.sort()
+
+        try:
+            lowest = element_list[-1]
+        except:
+            pass
+
+        try:
+            second_lowest = element_list[-2]
+        except:
+            pass
+
+        lowest_key = cols[lowest]
+        second_lowest_key = cols[lowest]
+
+        # print('lowest_key:', lowest_key, '|', 'lowest', lowest)
+
+        final_list = []  # final list to send
+
+        col_unique_list_name = []  # rename
+        col_unique_list_name_obj = {}  # rename
+        for col_name in cols:
+            print('\n********* \n' + col_name + '\n*********')
+            # print('sent_req.get(col_name):', sent_req.get(col_name))
+            col_unique_list = col_distinct_product({}, col_name,kwargs_header)
+            col_unique_list_name.append({'name': col_name,
+                                         'unique_elements': col_unique_list})
+            col_unique_list_name_obj[col_name] = col_unique_list
+            # args sent as url params
+            kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
+
+            category_of_sent_obj_list = col_distinct_product(kwargs2, col_name,kwargs_header)
+            print(len(category_of_sent_obj_list))
+            sent_obj_category_list = []
+
+            # get unique elements for `col_name`
+            for i in category_of_sent_obj_list:
+                sent_obj_category_list.append(i)
+
+            def highlight_check(category_unique):
+                # print(title)
+                if len(sent_req.keys()) > 0:
+                    highlighted = False
+                    if col_name in sent_req.keys():
+                        if col_name == cols[lowest]:
+                            queryset = product_hierarchy.objects.filter(**{col_name: category_unique})[:1].get()
+                            # x = getattr(queryset, cols[lowest])
+                            y = getattr(queryset, cols[second_lowest])
+                            # print(x, '|', y, '|', cols[lowest], '|',
+                            #       'Category_second_last:' + cols[second_lowest],
+                            #       '|', col_name,
+                            #       '|', category_unique)
+                            for i in sent_req.keys():
+                                print('keys:', i, sent_req.get(i))
+                                if y in sent_req.get(i) and cols[second_lowest] == i:
+                                    highlighted = True
+
+                            return highlighted
+                        else:
+                            return False
+                    else:
+                        if category_unique in sent_obj_category_list:
+                            highlighted = True
+                        return highlighted
+                else:
+                    return True
+
+            # assign props to send as json response
+
+            y = []
+            for title in col_unique_list:
+                selected = True if type(sent_req.get(col_name)) == list and title in sent_req.get(col_name) else False
+                y.append({'title': title,
+                          'resource': {'params': col_name + '=' + title,
+                                       'selected': selected},
+                          'highlighted': selected if selected else highlight_check(title)})
+
+            final_list.append({'items': y,
+                               'input_type': 'Checkbox',
+                               'title': col_name,
+                               'buying_controller': 'Beers, Wines and Spirits',
+                               'id': col_name,
+                               'required': True if col_name in ['buying_controller', 'long_description'] else False
+                               })
+
+        def get_element_type(title):
+            if title == 'buying_controller':
+                return 'Checkbox'
+            else:
+                return 'Checkbox'
+
+        # sort list with checked at top
+
+        final_list2 = []
+        for i in final_list:
+            m = []
+            for j in i.get('items'):
+
+                if j['resource']['selected']:
+                    m.append(j)
+
+            for j in i.get('items'):
+                if not j['resource']['selected']:
+                    m.append(j)
+
+            final_list2.append({'items': m,
+                                'input_type': get_element_type(i['title']),
+                                'title': i['title'],
+                                'required': i['required'],
+                                'category_director': 'Beers, Wines and Spirits',
+                                'id': i['id']})
+        return JsonResponse({'cols': cols, 'checkbox_list': final_list2}, safe=False)
+
+
 
 
 ####Product Impact
@@ -7519,7 +7824,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         today = datetime.date.today()
         curr_time = today.ctime()
         # %H:%M"
-        system_time = strftime("%Y-%m-%d", gmtime())
+        system_time = strftime("%Y-%m-%d %H:%M:%S" ,gmtime())
         print("system time")
         print(system_time)
         # to check if the scenario name exists already

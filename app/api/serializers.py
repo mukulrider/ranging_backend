@@ -29,7 +29,7 @@ class npd_scenarioSerializer(serializers.ModelSerializer):
 class npd_SaveScenarioSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = SaveScenario
-		fields = ('system_time','scenario_name')
+		fields = ('system_time','scenario_name','scenario_tag')
 
 
 class npd_ViewScenarioSerializer(serializers.ModelSerializer):
@@ -38,7 +38,7 @@ class npd_ViewScenarioSerializer(serializers.ModelSerializer):
 		fields = ('forecast_data','similar_products','page')
 
 
-##product impact
+#product impact
 class delist_savescenarioserializer(serializers.ModelSerializer):
 	class Meta:
 		model = delist_scenario

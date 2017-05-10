@@ -55,10 +55,10 @@ urlpatterns = [
     url(r'^delist_table_popup', views.delist_popup.as_view(), name='delist_popup'),
 
 
-    ##Delist save scenario
+    # ##Delist save scenario
     url(r'^delist_scenario', views.delist_scenario_final.as_view(), name='delist_scenario_final'),
     url(r'^delist_list_scenario', views.delist_scenario_list.as_view(), name='delist_scenario_list'),
-    # url(r'^display_delist_scenario', views.display_delist_scenario.as_view(), name='display_delist_scenario'),
+    # # url(r'^display_delist_scenario', views.display_delist_scenario.as_view(), name='display_delist_scenario'),
 
 
     # url(r'^classa', views.classA.as_view(), name='classA'),
