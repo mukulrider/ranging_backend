@@ -42,4 +42,4 @@ class npd_ViewScenarioSerializer(serializers.ModelSerializer):
 class delist_savescenarioserializer(serializers.ModelSerializer):
 	class Meta:
 		model = delist_scenario
-		fields = ('system_time', 'scenario_name', 'event_name')
+		fields = ('system_time', 'scenario_name', 'user_name')

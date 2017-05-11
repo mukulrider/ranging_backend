@@ -540,7 +540,7 @@ class delist_scenario(models.Model):
     scenario_name = models.TextField('scenario_name', max_length=100, blank=True, null=True)
     token  = models.CharField(max_length=100, default="none")
     user_id = models.CharField(max_length=100, default="none")
-    event_name = models.TextField('event_name', max_length=100, blank=True, null=True)
+    user_name = models.TextField('user_name', max_length=100, blank=True, null=True)
     time_period = models.TextField('time_period', blank=True, null=True)
     buying_controller = models.TextField('buying_controller', max_length=100, blank=True, null=True)
     designation = models.TextField('designation', max_length=100, blank=True, null=True)
@@ -551,7 +551,7 @@ class delist_scenario(models.Model):
     delist_attr = models.TextField('delist_attr', default='')
     system_time = models.DateTimeField('system_time', auto_now=False, auto_now_add=False, default='')
     page = models.TextField('page', default='')
-    session_id=models.CharField(max_length=100, default="none")
+    session_id=models.CharField(max_length=100, default="none",null=True)
     view_mine= models.TextField('view_mine', max_length=100, blank=True, null=True)
     input_tpns = models.TextField('chart_attr', default='')
     
