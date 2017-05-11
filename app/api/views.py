@@ -4273,6 +4273,7 @@ class npdpage_impact_save_scenario(APIView):
 										designation = designation,
 										session_id = session_id,
 										scenario_name = scenario_name,
+										scenario_tag = scenario_tag,
 										week_tab = 26,
 										buying_controller = buying_controller_header,
 										buyer = buyer_header,
@@ -4524,18 +4525,10 @@ class npd_view_scenario(APIView):
 		scenario_name = args.get('scenario_name__iexact',None)
 		scenario_tag = args.get('scenario_tag__iexact',None)
 
-		# user_attributes = list(SaveScenario.objects.filter(**args).filter(week_tab=13).values_list('user_attributes',flat = True))
-		# queryset_13 = list(SaveScenario.objects.filter(**args).filter(week_tab=13).values_list('forecast_data','similar_products'))
-		# queryset_26 = list(SaveScenario.objects.filter(**args).filter(week_tab=26).values_list('forecast_data','similar_products'))
-		# queryset_52 = list(SaveScenario.objects.filter(**args).filter(week_tab=52).values_list('forecast_data','similar_products'))
-
 		user_attributes = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=13).values('user_attributes'))
 		queryset_13_pd = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=13).values('forecast_data','similar_products'))
 		queryset_26_pd = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=26).values('forecast_data','similar_products'))
 		queryset_52_pd = read_frame(SaveScenario.objects.filter(**args).filter(week_tab=52).values('forecast_data','similar_products'))
-
-
-
 		week_13 = {}
 		week_13 = {
 			"forecast_data" : queryset_13_pd['forecast_data'][0],
