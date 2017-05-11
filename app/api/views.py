@@ -4088,9 +4088,9 @@ class npdpage_impact_save_scenario(APIView):
 			data_13_dict_volume["data"]=data
 			data_13_dict_volume["impact"]=volume
 
-			volume_cann_13 = int(output_cannib_13weeks_volume['cannibilization_value'][0])
-			volume_forecast_13 = int(output_cannib_13weeks_volume['forecast'][0])
-			volume_impact_13 = (int(output_cannib_13weeks_volume['forecast'][0])) - (int(output_cannib_13weeks_volume['cannibilization_value'][0]))
+			volume_cann_13 = int(output_13_cannib_volume['cannibilization_value'][0])
+			volume_forecast_13 = int(output_13_cannib_volume['forecast'][0])
+			volume_impact_13 = (int(output_13_cannib_volume['forecast'][0])) - (int(output_13_cannib_volume['cannibilization_value'][0]))
 
 			data_13_dict_sales={}
 			data = [{
@@ -4108,9 +4108,9 @@ class npdpage_impact_save_scenario(APIView):
 			data_13_dict_sales["data"]=data
 			data_13_dict_sales["impact"]=sales
 
-			value_cann_13 = int(output_cannib_13weeks_sales['cannibilization_value'][0])
-			value_forecast_13 = int(output_cannib_13weeks_sales['forecast'][0])
-			value_impact_13 = (int(output_cannib_13weeks_sales['forecast'][0])) - (int(output_cannib_13weeks_sales['cannibilization_value'][0]))
+			value_cann_13 = int(output_13_cannib_sales['cannibilization_value'][0])
+			value_forecast_13 = int(output_13_cannib_sales['forecast'][0])
+			value_impact_13 = (int(output_13_cannib_sales['forecast'][0])) - (int(output_13_cannib_sales['cannibilization_value'][0]))
 
 
 			impact_data_13weeks = {'sales_chart': data_13_dict_sales,'volume_chart': data_13_dict_volume}
@@ -4240,9 +4240,9 @@ class npdpage_impact_save_scenario(APIView):
 			data_26_dict_volume["impact"]=volume
 
 
-			volume_cann_26 = int(output_cannib_26weeks_volume['cannibilization_value'][0])
-			volume_forecast_26 = int(output_cannib_26weeks_volume['forecast'][0])
-			volume_impact_26 = output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=2)
+			volume_cann_26 = int(output_26_cannib_volume['cannibilization_value'][0])
+			volume_forecast_26 = int(output_26_cannib_volume['forecast'][0])
+			volume_impact_26 = int(output_26_cannib_volume['forecast'][0]) - int(output_26_cannib_volume['cannibilization_value'][0])
 
 			data_26_dict_sales={}
 			data = [{
@@ -4260,9 +4260,9 @@ class npdpage_impact_save_scenario(APIView):
 			data_26_dict_sales["data"]=data
 			data_26_dict_sales["impact"]=sales
 
-			value_cann_26 = int(output_cannib_26weeks_sales['cannibilization_value'][0])
-			value_forecast_26 = int(output_cannib_26weeks_sales['forecast'][0])
-			value_impact_26 = (int(output_cannib_26weeks_sales['forecast'][0])) - (int(output_cannib_26weeks_sales['cannibilization_value'][0]))
+			value_cann_26 = int(output_26_cannib_sales['cannibilization_value'][0])
+			value_forecast_26 = int(output_26_cannib_sales['forecast'][0])
+			value_impact_26 = (int(output_26_cannib_sales['forecast'][0])) - (int(output_26_cannib_sales['cannibilization_value'][0]))
 
 
 
@@ -4388,9 +4388,9 @@ class npdpage_impact_save_scenario(APIView):
 			data_52_dict_volume["data"]=data
 			data_52_dict_volume["impact"]=volume
 
-			volume_cann_52 = int(output_cannib_52weeks_volume['cannibilization_value'][0])
-			volume_forecast_52 = int(output_cannib_52weeks_volume['forecast'][0])
-			volume_impact_52 = output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=2)
+			volume_cann_52 = int(output_52_cannib_volume['cannibilization_value'][0])
+			volume_forecast_52 = int(output_52_cannib_volume['forecast'][0])
+			volume_impact_52 = int(output_52_cannib_volume['forecast'][0]) - int(output_52_cannib_volume['cannibilization_value'][0])
 
 
 			data_52_dict_sales={}
@@ -4409,9 +4409,9 @@ class npdpage_impact_save_scenario(APIView):
 			data_52_dict_sales["data"]=data
 			data_52_dict_sales["impact"]=sales
 
-			value_cann_52 = int(output_cannib_52weeks_sales['cannibilization_value'][0])
-			value_forecast_52 = int(output_cannib_52weeks_sales['forecast'][0])
-			value_impact_52 = (int(output_cannib_52weeks_sales['forecast'][0])) - (int(output_cannib_52weeks_sales['cannibilization_value'][0]))
+			value_cann_52 = int(output_52_cannib_sales['cannibilization_value'][0])
+			value_forecast_52 = int(output_52_cannib_sales['forecast'][0])
+			value_impact_52 = (int(output_52_cannib_sales['forecast'][0])) - (int(output_52_cannib_sales['cannibilization_value'][0]))
 
 			impact_data_52weeks = {'sales_chart': data_52_dict_sales,'volume_chart': data_52_dict_volume}
 
