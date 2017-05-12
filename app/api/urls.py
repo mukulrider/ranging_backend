@@ -60,15 +60,4 @@ urlpatterns = [
     url(r'^delist_list_scenario', views.delist_scenario_list.as_view(), name='delist_scenario_list'),
     url(r'^display_delist_scenario', views.display_delist_scenario.as_view(), name='display_delist_scenario'),
 
-
-    # url(r'^classa', views.classA.as_view(), name='classA'),
-    # url(r'^classb', views.classB.as_view(), name='classB'),
-        
-
-
-
-    # url(r'^npd_impact_view_scenario', views.displaynpd_scenario.as_view(), name='displaynpd_scenario'),
-    # url(r'^npd_edit_forecast', views.npdpage_impact_edit_forecast.as_view(), name='npd_impact_view_edit_forecast'),
-
-
     ]

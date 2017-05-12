@@ -24,10 +24,10 @@ from .models import product_hierarchy,product_impact_filter, pps_ros_quantile, s
 #models for npd 2nd half
 from .models import bc_allprod_attributes, attribute_score_allbc, consolidated_calculated_cannibalization, npd_supplier_ads,features_allbc,consolidated_buckets,seasonality_index,uk_holidays,npd_calendar,merch_range,input_npd,brand_grp_mapping,range_space_store_future,store_details
 #models for save scenario
-from .models import Scenario,SaveScenario, delist_scenario
+from .models import SaveScenario, delist_scenario
 from .serializers import unmatchedprodSerializer, negochartsSerializer, npd_impact_tableSerializer
 #serializers for npd save scenario
-from .serializers import npd_scenarioSerializer,npd_SaveScenarioSerializer,npd_ViewScenarioSerializer,delist_savescenarioserializer
+from .serializers import npd_SaveScenarioSerializer,npd_ViewScenarioSerializer,delist_savescenarioserializer
 from django.core.paginator import Paginator
 import numpy as np
 import gzip
@@ -2147,8 +2147,6 @@ class npdpage_impact_forecast(APIView):
 			time_frame = time_frame
 			####Xg boost model pickled
 			#global xg_model
-
-			input_test_dataset
 
 
 
@@ -4576,8 +4574,6 @@ def col_distinct_product(kwargs, col_name,kwargs_header):
 	base_product_number_list = [k.get(col_name) for k in queryset]
 	return base_product_number_list
 
-# def make_json_product(sent_req):
-
 
 class filters_product_impact(APIView):
 	def get(self, request):
@@ -5743,7 +5739,6 @@ class vol_transfer_logic:
 		}
 		return data
 
-#fdaf
 
 	def supplier_table(self,product_dataset_main, store, future, bc):
 		sup_share = read_frame(
@@ -5978,9 +5973,6 @@ class vol_transfer_logic:
 		buyer_sales_table['value_impact_per'] = buyer_sales_table['value_impact_per'].round(decimals=1)
 		buyer_sales_table = buyer_sales_table.drop_duplicates().fillna(0).reset_index(drop=True)
 		return buyer_sales_table
-
-
-
 
 
 ####Product Impact
@@ -6816,8 +6808,6 @@ class product_impact_chart(vol_transfer_logic,APIView):
 			}
 		return JsonResponse(data, safe=False)
 
-
-
 #supplier table
 class product_impact_supplier_table(vol_transfer_logic,APIView):
 	def get(self, request, *args):
@@ -7056,9 +7046,6 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
 							 #'count': count,
 							 #'end_index': end_index,
 							 'sup_sales_table': data['sup_sales_table']}, safe=False)
-
-
-
 
 #supplier popup
 class supplier_popup(vol_transfer_logic,APIView):
@@ -7492,8 +7479,6 @@ class supplier_popup(vol_transfer_logic,APIView):
 							 #'end_index': end_index,
 							 'table': data['supplier_table_popup']}, safe=False)
 
-
-
 #delist table
 class product_impact_delist_table(vol_transfer_logic,APIView):
 	def get(self, request, *args):
@@ -7742,7 +7727,6 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
 							 #'count': count,
 							 #'end_index': end_index,
 							 'delist_prod_table': data['delist_prod_table']}, safe=False)
-
 
 #delist popup
 class delist_popup(vol_transfer_logic,APIView):
@@ -8021,8 +8005,6 @@ class delist_popup(vol_transfer_logic,APIView):
 							 #'count': count,
 							 #'end_index': end_index,
 							 'table': data['delist_table_popup']}, safe=False)
-
-
 
 class delist_scenario_final(vol_transfer_logic,APIView):
 
@@ -8364,9 +8346,6 @@ class display_delist_scenario(vol_transfer_logic,APIView):
 				"week_13" : queryset_13,
 				"week_26" : queryset_26,
 				"week_52" : queryset_52})
-
-
-
 
 class delist_scenario_list(APIView):
 	def get(self, request, format=None):

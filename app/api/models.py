@@ -438,36 +438,6 @@ class brand_grp_mapping(models.Model):
     def __str__(self):
                     return '%s' % (self.brand_name)
 
-##SAVE SCENARIO FOR NPD IMPACT
-# class Event(models.Model):
-#     event_name = models.TextField('event_name', max_length=100, blank=True, null=True)
-#     # store_format = models.TextField('store_format', max_length=100, blank=True, null=True)
-#     created_on = models.DateTimeField(auto_now=True)
-#     # weeks = models.IntegerField(default=12)
-#     # start_date = models.TextField('start_date', max_length=100, blank=True, null=True)
-
-
-class Scenario(models.Model):
-    # event = models.ForeignKey(Event, related_name='event', on_delete=models.CASCADE)
-    scenario_name = models.TextField('scenario_name', max_length=100, blank=True, null=True)
-    # status = models.IntegerField(default=0)
-    # scenario_category_id = models.CharField(max_length=100, default="none")
-    # scenario_buyer_id = models.CharField(max_length=100, default="none")
-    # scenario_buying_controller_id = models.CharField(max_length=100, default="none")
-    
-    #user id
-    user_id = models.CharField('user_id',max_length=100, default="none")
-
-    #user input
-    user_attributes = models.TextField('user_attributes', default='')
-    
-    #forecast generated 
-    forecast_data = models.TextField('forecast_data', default='') 
-
-    #similar products table 
-    # similar_products = models.TextField('similar_products',default = '')
-
-
 class SaveScenario(models.Model):
     
     #user id 
