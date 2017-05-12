@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import unmatchedprod,nego_ads_drf,npd_supplier_ads,Scenario,SaveScenario
+from .models import unmatchedprod,nego_ads_drf,npd_supplier_ads,SaveScenario
 #models for product impact
 from .models import delist_scenario
 
@@ -19,11 +19,6 @@ class npd_impact_tableSerializer(serializers.ModelSerializer):
 		model = npd_supplier_ads
 		fields = ('base_product_number','long_description','pps','cps','store_count','rate_of_sale')
 
-
-class npd_scenarioSerializer(serializers.ModelSerializer):
-	class Meta:
-		model = Scenario
-		fields = ('scenario_name','user_id','user_attributes','forecast_data')
 
 
 class npd_SaveScenarioSerializer(serializers.ModelSerializer):
