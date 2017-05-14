@@ -169,6 +169,7 @@ class nego_ads_drf(models.Model):
     cps_quartile = models.DecimalField('cps_quartile', blank=True, max_digits=5, decimal_places=2, default=0.0)
     pps_quartile = models.DecimalField('pps_quartile', blank=True, max_digits=5, decimal_places=2, default=0.0)
     performance_quartile = models.TextField('performance_quartile', max_length=100, blank=True, null=True)
+    psg_value_impact = models.DecimalField('psg_value_impact', blank=True, max_digits=20, decimal_places=2, default=0.0)
     def __str__(self):
         return '%s' % (self.base_product_number)
 
