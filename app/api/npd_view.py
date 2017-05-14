@@ -641,6 +641,7 @@ class forecast_impact(APIView):
         def similar_products():
 
             #### Getting number of subs same and different brand
+            All_attribute_bc = All_attribute.loc[(All_attribute['bc'] == Buying_controller)]
             All_attribute_treated = All_attribute.dropna()
             # All_attribute_treated.to_csv('all_attribute.csv')
             # In the new logic, PSG is not a hard and fast rule. So PSG filter is not required
@@ -673,10 +674,12 @@ class forecast_impact(APIView):
             match_all_prod['brand_flag'] = np.where(match_all_prod.loc[:,"brand_name_x"] == match_all_prod.loc[:,"brand_name_y"], 1, 0)
             match_all_prod['package_flag'] = np.where(match_all_prod.loc[:,"package_type_x"] == match_all_prod.loc[:,"package_type_y"], 1, 0)
             match_all_prod['Size_flag'] = np.where((match_all_prod.loc[:,"measure_type_x"] == match_all_prod.loc[:,"measure_type_y"]) & 
-                                                   ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
-                                                    ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
+                                       ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
+                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
+                                       ((match_all_prod.loc[:,"measure_type_y"] == 'ML')  & 
+                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
+                                        ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
+                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
             match_all_prod['price_flag'] = np.where(match_all_prod.loc[:,"price_band_x"] == match_all_prod.loc[:,"price_band_y"], 1, 0)
             match_all_prod['till_roll_flag'] = np.where(match_all_prod.loc[:,"till_roll_description_x"] == match_all_prod.loc[:,"till_roll_description_y"], 1, 0)
             match_all_prod['psg_flag'] = np.where(match_all_prod.loc[:,"psg"] == match_all_prod.loc[:,"product_sub_group_description"], 1, 0)
@@ -699,19 +702,21 @@ class forecast_impact(APIView):
 
             #### Subsetting for score greater than 0.7 (threshold)
             # match_all_prod.to_csv('match_all_prod.csv')
-            sim_prod = match_all_prod[match_all_prod['final_score'] > 0.7]
+            sim_prod = match_all_prod[match_all_prod['final_score'] > 0.4]
 
             return sim_prod
 
         def subs_same_different(dataset):
             ####Total products left after putting a threshold of 0.7
-            tot_prod = sim_prod.shape[0]
+
+            sim_prod_copy = sim_prod[sim_prod['final_score']>0.7]
+            tot_prod = sim_prod_copy.shape[0]
 
             #### Same brand product count
-            same_brand_count = sum(sim_prod['brand_flag'] == 1)
+            same_brand_count = sum(sim_prod_copy['brand_flag'] == 1)
 
             #### Total - same = different brand
-            diff_brand_count = tot_prod - sum(sim_prod['brand_flag'] == 1)
+            diff_brand_count = tot_prod - sum(sim_prod_copy['brand_flag'] == 1)
 
             ##### Assigning values to our columns in ADS (no_of_subs_same_brand , no_of_subs_diff_brand)
             if 'no_of_subs_same_brand' in dataset.columns:
@@ -868,8 +873,17 @@ class forecast_impact(APIView):
                 elif (psg_code  in list(PSGBuckets['bucket_value'])):
                     Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
                     
-                else :
+                elif (Junior_Buyer+Volume_flag+brand_ind  in list(Junior_BuyerVolBrandBuckets['bucket_value'])):
+                    Cannibalization_perc = (Junior_BuyerVolBrandBuckets.loc[Junior_BuyerVolBrandBuckets['bucket_value'] == Junior_Buyer+Volume_flag+brand_ind]).iloc[0]['cannibalization']
+
+                elif (Junior_Buyer+Volume_flag  in list(Junior_BuyerVolBuckets['bucket_value'])):
+                    Cannibalization_perc = (Junior_BuyerVolBuckets.loc[Junior_BuyerVolBuckets['bucket_value'] == Junior_Buyer+Volume_flag]).iloc[0]['cannibalization']
+
+                elif (Junior_Buyer  in list(Junior_BuyerBuckets['bucket_value'])):
+                    Cannibalization_perc = (Junior_BuyerBuckets.loc[Junior_BuyerBuckets['bucket_value'] == Junior_Buyer]).iloc[0]['cannibalization'] 
+                else:
                     Cannibalization_perc = 0
+                    
                     
             # This should be used before only 
 
@@ -970,7 +984,10 @@ class forecast_impact(APIView):
 
 
         def similar_product_cannabilized(time_frame):
-            sim_prod_product = sim_prod[['base_product_number']]
+            sim_prod_copy = sim_prod
+            sim_prod_copy = sim_prod_copy.sort_values(['final_score'], ascending = [False])
+            sim_prod_copy = sim_prod_copy.head(10)
+            sim_prod_product = sim_prod_copy[['base_product_number','final_score']]
             time_frame = time_frame
             #### GETTING ONLY THOSE bpn WHICH WERE THERE IN SIM PROD (THRESHOLD OF 0.8)
             product_contri_df_new = pd.merge(product_contri_df,sim_prod_product,left_on=['base_product_number'], right_on=['base_product_number'],how='inner')
@@ -980,7 +997,7 @@ class forecast_impact(APIView):
             product_psg_mapping =pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
 
             ### rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number','final_score'], as_index=False).agg({'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
             psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
@@ -1001,8 +1018,9 @@ class forecast_impact(APIView):
             psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
     
             product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-      
-            product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales']]
+            product_desc_branded = product_desc_branded.rename(columns={'final_score':'similarity_score'})
+            product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales','similarity_score']]
+
             product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T','Own Label')
             product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B','Branded')
 
@@ -1105,6 +1123,13 @@ class forecast_impact(APIView):
                 PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
                 PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
                 
+                # Newly added to get cannibalization for all NPDs
+                Junior_BuyerVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBrandBuckets']
+                Junior_BuyerVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBuckets']
+                Junior_BuyerBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerBuckets']
+
+                print("Junior_BuyerVolBrandBuckets")
+                print(Junior_BuyerVolBrandBuckets)
                 output_cannib = run_cannibilization_model(df_test,"Latest 13 Weeks","3_months")
 
                 output_cannib_volume = pd.DataFrame(output_cannib[0]['data_volume'])  ##Output 1 volume
@@ -1223,8 +1248,16 @@ class forecast_impact(APIView):
                 PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
                 PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
                 PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
-                output_cannib = run_cannibilization_model(df_test,"Latest 26 Weeks","6_months")
 
+
+                # Newly added to get cannibalization for all NPDs
+                Junior_BuyerVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBrandBuckets']
+                print("Junior_BuyerVolBrandBuckets")
+                print(Junior_BuyerVolBrandBuckets)
+                Junior_BuyerVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBuckets']
+                Junior_BuyerBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerBuckets']
+
+                output_cannib = run_cannibilization_model(df_test,"Latest 26 Weeks","6_months")
                 output_cannib_volume = pd.DataFrame(output_cannib[0]['data_volume'])  ##Output 1 volume
                 output_cannib_sales = pd.DataFrame(output_cannib[0]['data_sales'])  ## Output 1 Sales
 
@@ -1338,6 +1371,11 @@ class forecast_impact(APIView):
                 PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
                 PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
 
+                # Newly added to get cannibalization for all NPDs
+                Junior_BuyerVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBrandBuckets']
+                Junior_BuyerVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBuckets']
+                Junior_BuyerBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerBuckets']
+
                 output_cannib = run_cannibilization_model(df_test,"Latest 52 Weeks","12_months")
 
                 output_cannib_volume = pd.DataFrame(output_cannib[0]['data_volume'])  ##Output 1 volume
@@ -1431,9 +1469,6 @@ class forecast_impact(APIView):
 
             ### Subsetting above table for only the selected psg
             psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-
-
-
 
             #### Taking variable from the function for getting the time frame
             psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
@@ -1853,6 +1888,7 @@ class npd_save_scenario(APIView):
         def similar_products():
 
             #### Getting number of subs same and different brand
+            All_attribute_bc = All_attribute.loc[(All_attribute['bc'] == Buying_controller)]
             All_attribute_treated = All_attribute.dropna()
             # All_attribute_treated.to_csv('all_attribute.csv')
             # In the new logic, PSG is not a hard and fast rule. So PSG filter is not required
@@ -1885,10 +1921,12 @@ class npd_save_scenario(APIView):
             match_all_prod['brand_flag'] = np.where(match_all_prod.loc[:,"brand_name_x"] == match_all_prod.loc[:,"brand_name_y"], 1, 0)
             match_all_prod['package_flag'] = np.where(match_all_prod.loc[:,"package_type_x"] == match_all_prod.loc[:,"package_type_y"], 1, 0)
             match_all_prod['Size_flag'] = np.where((match_all_prod.loc[:,"measure_type_x"] == match_all_prod.loc[:,"measure_type_y"]) & 
-                                                   ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
-                                                    ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
-                                                   ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
+                                       ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
+                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
+                                       ((match_all_prod.loc[:,"measure_type_y"] == 'ML')  & 
+                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
+                                        ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
+                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
             match_all_prod['price_flag'] = np.where(match_all_prod.loc[:,"price_band_x"] == match_all_prod.loc[:,"price_band_y"], 1, 0)
             match_all_prod['till_roll_flag'] = np.where(match_all_prod.loc[:,"till_roll_description_x"] == match_all_prod.loc[:,"till_roll_description_y"], 1, 0)
             match_all_prod['psg_flag'] = np.where(match_all_prod.loc[:,"psg"] == match_all_prod.loc[:,"product_sub_group_description"], 1, 0)
@@ -1911,19 +1949,21 @@ class npd_save_scenario(APIView):
 
             #### Subsetting for score greater than 0.7 (threshold)
             # match_all_prod.to_csv('match_all_prod.csv')
-            sim_prod = match_all_prod[match_all_prod['final_score'] > 0.7]
+            sim_prod = match_all_prod[match_all_prod['final_score'] > 0.4]
 
             return sim_prod
 
         def subs_same_different(dataset):
             ####Total products left after putting a threshold of 0.7
-            tot_prod = sim_prod.shape[0]
+
+            sim_prod_copy = sim_prod[sim_prod['final_score']>0.7]
+            tot_prod = sim_prod_copy.shape[0]
 
             #### Same brand product count
-            same_brand_count = sum(sim_prod['brand_flag'] == 1)
+            same_brand_count = sum(sim_prod_copy['brand_flag'] == 1)
 
             #### Total - same = different brand
-            diff_brand_count = tot_prod - sum(sim_prod['brand_flag'] == 1)
+            diff_brand_count = tot_prod - sum(sim_prod_copy['brand_flag'] == 1)
 
             ##### Assigning values to our columns in ADS (no_of_subs_same_brand , no_of_subs_diff_brand)
             if 'no_of_subs_same_brand' in dataset.columns:
@@ -2071,7 +2111,15 @@ class npd_save_scenario(APIView):
                 elif (psg_code  in list(PSGBuckets['bucket_value'])):
                     Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
                     
-                else :
+                elif (Junior_Buyer+Volume_flag+brand_ind  in list(Junior_BuyerVolBrandBuckets['bucket_value'])):
+                    Cannibalization_perc = (Junior_BuyerVolBrandBuckets.loc[Junior_BuyerVolBrandBuckets['bucket_value'] == Junior_Buyer+Volume_flag+brand_ind]).iloc[0]['cannibalization']
+
+                elif (Junior_Buyer+Volume_flag  in list(Junior_BuyerVolBuckets['bucket_value'])):
+                    Cannibalization_perc = (Junior_BuyerVolBuckets.loc[Junior_BuyerVolBuckets['bucket_value'] == Junior_Buyer+Volume_flag]).iloc[0]['cannibalization']
+
+                elif (Junior_Buyer  in list(Junior_BuyerBuckets['bucket_value'])):
+                    Cannibalization_perc = (Junior_BuyerBuckets.loc[Junior_BuyerBuckets['bucket_value'] == Junior_Buyer]).iloc[0]['cannibalization'] 
+                else:
                     Cannibalization_perc = 0
                     
             # This should be used before only 
@@ -2173,7 +2221,10 @@ class npd_save_scenario(APIView):
 
 
         def similar_product_cannabilized(time_frame):
-            sim_prod_product = sim_prod[['base_product_number']]
+            sim_prod_copy = sim_prod
+            sim_prod_copy = sim_prod_copy.sort_values(['final_score'], ascending = [False])
+            sim_prod_copy = sim_prod_copy.head(10)
+            sim_prod_product = sim_prod_copy[['base_product_number','final_score']]
             time_frame = time_frame
             #### GETTING ONLY THOSE bpn WHICH WERE THERE IN SIM PROD (THRESHOLD OF 0.8)
             product_contri_df_new = pd.merge(product_contri_df,sim_prod_product,left_on=['base_product_number'], right_on=['base_product_number'],how='inner')
@@ -2183,7 +2234,7 @@ class npd_save_scenario(APIView):
             product_psg_mapping =pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
 
             ### rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number','final_score'], as_index=False).agg({'predicted_volume': sum})
 
             ### Subsetting above table for only the selected psg
             psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
@@ -2204,8 +2255,8 @@ class npd_save_scenario(APIView):
             psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
     
             product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-      
-            product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales']]
+            product_desc_branded = product_desc_branded.rename(columns={'final_score':'similarity_score'})
+            product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales','similarity_score']]
             product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T','Own Label')
             product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B','Branded')
 
@@ -2310,7 +2361,13 @@ class npd_save_scenario(APIView):
             PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
             PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
             PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
-            # Cannibalization_perc = 0
+
+            # Newly added to get cannibalization for all NPDs
+            Junior_BuyerVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBrandBuckets']
+            Junior_BuyerVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBuckets']
+            Junior_BuyerBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerBuckets']
+
+
             output_cannib_13weeks = run_cannibilization_model(df_test_13weeks,"Latest 13 Weeks","3_months")
             output_cannib_26weeks = run_cannibilization_model(df_test_26weeks,"Latest 26 Weeks","6_months")
             output_cannib_52weeks = run_cannibilization_model(df_test_52weeks,"Latest 52 Weeks","12_months")
