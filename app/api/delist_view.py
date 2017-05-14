@@ -27,6 +27,9 @@ from .models import product_hierarchy,product_impact_filter, pps_ros_quantile, s
 # Models for Product Impact Save Scenario
 from .models import delist_scenario
 
+# Serializers Negotiation
+from .serializers import negochartsSerializer
+
 # Serializers NPD Imapct Save Scenario
 from .serializers import delist_savescenarioserializer
 
@@ -148,7 +151,7 @@ class supplier_importance_table(APIView):
         args.pop('buying_controller_header__in',None)
         args.pop('buyer_header__in',None)
         args.pop('session_id__in',None)
-        print(args)
+
         ## for week tab
         week={}
         w=args.pop('time_period__in',None)
@@ -156,35 +159,35 @@ class supplier_importance_table(APIView):
             week = {'time_period__iexact': 'Last 13 Weeks'}
         else:
             week['time_period__iexact'] = w[0]
-        print(week)
+
 
         #### To include pagination feature
         page = 1
         try:
             page = int(args.get('page__in')[0])
-            print(page)
+
 
         except:
             page = 1
 
         start_row = (page-1)*8
         end_row = start_row + 8
-        print(page)
+
         args.pop('page__in', None)
 
 
         #### To include search feature. Applicable for only long desc
         s = args.pop('search__in',[''])
         search = s[0]
-        print(search)
+
 
 
         #### Getting the products
         product = args.pop('base_product_number__in',None)
 
         if product is None:
-            print("args in product NONE")
-            print(kwargs)
+
+
             if not args :
                 queryset = nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**kwargs).filter(long_description__icontains=search)
 
@@ -239,10 +242,10 @@ class vol_transfer_logic:
         join_cate_fore = read_frame(
             product_contri.objects.all().filter(buying_controller__in=bc, store_type__in=store,
                                                 base_product_number__in=delist, time_period__in=future))
-        print('printing inside volume transfer logic \n',join_cate_fore.head())
+
         # reading quantile
         pps_ros = read_frame(pps_ros_quantile.objects.all().filter(buying_controller__in=bc, store_type__in=store))
-        print('printing inside volume transfer logic pps \n', pps_ros.head())
+
         join_cate_fore_pps = pd.merge(join_cate_fore, pps_ros[
             ['base_product_number', 'pps_ros_quantile', 'ros_quantile', 'pps_quantile']],
                                       left_on=["base_product_number"], right_on=["base_product_number"], how="left")
@@ -342,8 +345,7 @@ class vol_transfer_logic:
         # DD quantile products
         dd_quantile_dh_delised = join_tot_delisted[
             join_tot_delisted['base_product_number_x'].isin(dd_prods['base_product_number'])]
-        print(len(dd_quantile_dh_delised.base_product_number_x.unique()))
-        print(dd_prods)
+
         dd_quantile_dh_delised = dd_quantile_dh_delised.drop_duplicates().fillna(0).reset_index(drop=True)
         dd_quantile_dh_delised_grp = dd_quantile_dh_delised.groupby(['productcode'], as_index=False).agg(
             {'new_sub_score': sum})
@@ -468,7 +470,7 @@ class vol_transfer_logic:
 
         dd_quantile_prob_delised = join_tot_delisted1[
             join_tot_delisted1['base_product_number_x'].isin(dd_prods['base_product_number'])]
-        print(len(dd_quantile_dh_delised.base_product_number_x.unique()))
+
         dd_quantile_prob_delised = dd_quantile_prob_delised.drop_duplicates().fillna(0).reset_index(drop=True)
         dd_quantile_prob_delised_grp = dd_quantile_prob_delised.groupby(['base_product_number_x'],
                                                                         as_index=False).agg({'new_sub_score': sum})
@@ -515,7 +517,7 @@ class vol_transfer_logic:
             ['base_prod', 'sub_prod', 'actual_similarity_score', 'similarity_score']],
                                            left_on='base_product_number', right_on='base_prod', how='left')
         cate_fore_similar_prods_present = cate_fore_similar_prods[cate_fore_similar_prods.base_prod.notnull()]
-        print(cate_fore_similar_prods_present)
+
 
         # In[19]:
 
@@ -614,7 +616,7 @@ class vol_transfer_logic:
         med_dh_missing_delised['tcs_per'] = med_dh_missing_delised['tcs_per'].astype('float')
         med_dh_missing_delised['exclusivity_per'] = med_dh_missing_delised['exclusivity_per'].astype('float')
         med_dh_missing_delised['substitutescore'] = med_dh_missing_delised['substitutescore'].astype('float')
-        print(med_dh_missing_delised)
+
         # In[21]:
 
         # for condition base prod ros bucket = sub prod ros bucket
@@ -627,35 +629,30 @@ class vol_transfer_logic:
         cut_off = med_dh_missing_delised[['base_prod', 'similarity_score']].drop_duplicates()
         cut_off = cut_off[['similarity_score']].mean()
         cut_off = cut_off['similarity_score']
-        print("cut_off is")
-        print(cut_off)
+
         similar_prods = med_dh_missing_delised[
             [u'base_product_number', u'sub_prod', u'ros_quantile', u'similarity_score']].drop_duplicates().reset_index(
             drop=True).fillna(0)
         similar_prods = pd.merge(similar_prods, sub_prod[['sub_prod', 'ros_tag_sub']], left_on="sub_prod",
                                  right_on='sub_prod', how="left")
-        print(similar_prods)
-        print(similar_prods.ros_quantile == similar_prods.ros_tag_sub)
 
-        print(similar_prods.similarity_score >= cut_off)
         similar_prods.similarity_score = similar_prods.similarity_score.astype(float)
-        print(similar_prods.similarity_score)
+
         similar_prods_filter1 = similar_prods[
             (similar_prods.similarity_score >= cut_off) & (similar_prods.ros_quantile == similar_prods.ros_tag_sub)]
-        print(similar_prods_filter1)
+
         similar_prods_filter1['sim_ros'] = "P"
-        print(similar_prods_filter1)
+
         # if couldnt satisfy above condition, take prods above similar prods only
         similar_prods_filter2 = pd.merge(similar_prods, similar_prods_filter1[['base_product_number', 'sim_ros']],
                                          left_on="base_product_number", right_on="base_product_number", how='left')
         similar_prods_filter2 = similar_prods_filter2[(similar_prods_filter2.sim_ros.isnull())]
-        print(similar_prods_filter2)
+
         similar_prods_filter2 = similar_prods_filter2[(similar_prods_filter2.similarity_score >= cut_off)]
         similar_prods_filter = similar_prods_filter1.append(similar_prods_filter2)
-        print(similar_prods_filter)
+
         similar_prods_filter = similar_prods_filter.reset_index(drop=True)
-        print("similar_prods:")
-        print(similar_prods_filter)
+
         # In[22]:
 
         # take only similar prods
@@ -673,7 +670,7 @@ class vol_transfer_logic:
                                                    how="left")
 
         # In[24]:
-        print(cate_fore_similar_prods_present)
+
         cate_fore_similar_prods_present = cate_fore_similar_prods_present[
             ['base_product_number', 'predicted_volume', 'pps_ros_quantile',
              'base_prod', 'sub_prod', 'actual_similarity_score', 'similarity_score',
@@ -770,20 +767,19 @@ class vol_transfer_logic:
 
         substituted_vols_med = med_dh_missing_delised_sub.groupby(['base_product_number_x'], as_index=False).agg(
             {'vol_transfer_prob': sum})
-        print(substituted_vols_med['vol_transfer_prob'].sum())
+
 
         delisted_vols_med = med_dh_missing_delised_sub[
             ['base_product_number_x', 'predicted_volume']].drop_duplicates()
         delisted_vols_med = delisted_vols_med.groupby(['base_product_number_x'], as_index=False).agg(
             {'predicted_volume': sum})
-        print(delisted_vols_med['predicted_volume'].sum())
+
 
         # In[30]:
 
         High_dh_missing_delised = join_tot_delisted1[join_tot_delisted1.pps_ros_quantile == "High"]
 
-        # In[31]:
-        print(High_dh_missing_delised.base_product_number_x.unique())
+
         High_dh_missing_delised['final_sub_score'] = 0
         High_dh_missing_delised['final_sub_score'] = High_dh_missing_delised['new_sub_score'] * (
             1 - High_dh_missing_delised['exclusivity_per_avg'])
@@ -798,13 +794,13 @@ class vol_transfer_logic:
 
         substituted_vols_high = High_dh_missing_delised.groupby(['base_product_number_x'], as_index=False).agg(
             {'vol_transfer_prob': sum})
-        print(substituted_vols_high['vol_transfer_prob'].sum())
+       
 
         delisted_vols_high = High_dh_missing_delised[
             ['base_product_number_x', 'predicted_volume']].drop_duplicates()
         delisted_vols_high = delisted_vols_high.groupby(['base_product_number_x'], as_index=False).agg(
             {'predicted_volume': sum})
-        print(delisted_vols_high['predicted_volume'].sum())
+
 
         # In[33]:
 
@@ -1514,7 +1510,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
         #reading list of products to delist
 
         args_list = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
-        print(args_list)
+        #print(args_list)
 
 
         designation = args_list.pop('designation__in', None)
@@ -1560,16 +1556,16 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
 
             input_tpns = args_list.pop('long_description__in', 0)
-            print(input_tpns)
+            #print(input_tpns)
             input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
             input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
             input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
             input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
             input_tpns = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
-            print('filter at product_impact_chart \n')
-            print(type(input_tpns))
-            print(input_tpns)
+            #print('filter at product_impact_chart \n')
+            #print(type(input_tpns))
+            #print(input_tpns)
 
             product_impact_filter.objects.all().delete()
 
@@ -1583,9 +1579,9 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
 
         #insert values into the model for the filters selected
-        print('Product_impact_chart')
+        #print('Product_impact_chart')
         if store == ['Overview']:
-            print("#######overview###############")
+            #print("#######overview###############")
             if input_tpns == 0:
                 input_tpns_main = read_frame(
                     nego_ads_drf.objects.all().filter(buying_controller__in=bc, store_type__in=['Main Estate'],
@@ -1594,7 +1590,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
                         'base_product_number').distinct())
 
                 delist_main = list(input_tpns_main['base_product_number'])
-                print(delist_main)
+                #print(delist_main)
             else:
                 delist_main = input_tpns
                 #input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
@@ -1603,15 +1599,15 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                 #delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
-            print('below values are passed - main estate')
-            print(bc, store, future, input_tpns_main,delist_main)
+            #print('below values are passed - main estate')
+            #print(bc, store, future, input_tpns_main,delist_main)
 
             # In[6]:
             #call for main estate
 
             product_dataset_main = vol_logic.volume_transfer_logic(bc, ['Main Estate'], future, input_tpns_main, delist_main)
-            print("printing main dataset")
-            print(product_dataset_main)
+            #print("#printing main dataset")
+            #print(product_dataset_main)
 
             if input_tpns == 0:
                 input_tpns_exp = read_frame(
@@ -2081,9 +2077,9 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
             vols_waterfall = vols_waterfall.to_dict(orient='records')
 
-            print('printing for volume transfer')
-            print(product_dataset['volume_transfer'].sum())
-            print(initial_volume)
+            #print('#printing for volume transfer')
+            #print(product_dataset['volume_transfer'].sum())
+            #print(initial_volume)
             if initial_volume == 0:
                 vol_tot_transfer =0
             else:
@@ -2339,10 +2335,10 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
         input_tpns = list(input_tpns)
         bc=all_filter['bc'][0]
         bc=[bc]
-        print(type(bc))
+        #print(type(bc))
         store = all_filter['store'][0]
         store=[store]
-        print(type(store))
+        #print(type(store))
         future = all_filter['future'][0]
         future=[future]
         vol_logic = vol_transfer_logic()
@@ -2480,7 +2476,7 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
 
             sup_sales_table = sup_sales_table[sup_sales_table['vol_impact'] != 0]
 
-            print('final sup_sales table at 4571, inside product_impact_chart')
+            #print('final sup_sales table at 4571, inside product_impact_chart')
 
         else:
 
@@ -2498,8 +2494,8 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
                 #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
 
-            print('below values are passed')
-            print(args, bc, store, future, input_tpns)
+            #print('below values are passed')
+            #print(args, bc, store, future, input_tpns)
 
             # In[4]:
             product_dataset = vol_logic.volume_transfer_logic(bc, store, future, input_tpns, delist)
@@ -2548,7 +2544,7 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
         # num_pages = math.ceil((len(supplier_search_table) / 8))
         # ## calculate start index for data frame
         # start_index = (supplier_page - 1) * 8 + 1
-        # print(start_index)
+        # #print(start_index)
         # # calculate total number of rows
         # count = len(supplier_search_table)
         # # calculate end index
@@ -2574,8 +2570,8 @@ class supplier_popup(vol_transfer_logic,APIView):
         all_filter = read_frame(product_impact_filter.objects.all())
         input_tpns = all_filter['input_tpns']
         input_tpns = list(input_tpns)
-        print('inside supplier pop up')
-        print(input_tpns)
+        #print('inside supplier pop up')
+        #print(input_tpns)
         bc = all_filter['bc'][0]
         bc=[bc]
         store = all_filter['store'][0]
@@ -2622,7 +2618,7 @@ class supplier_popup(vol_transfer_logic,APIView):
                 #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                 delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
 
-            print(args, bc, store, future, input_tpns_exp)
+            #print(args, bc, store, future, input_tpns_exp)
 
             product_dataset_exp = vol_logic.volume_transfer_logic(bc, ['Express'], future, input_tpns_exp, delist_exp)
             product_dataset_exp.head()
@@ -2737,9 +2733,9 @@ class supplier_popup(vol_transfer_logic,APIView):
 
             # ##------- supplier product level impact - pop up in UI------##
 
-            print('at 4583 - product-dataset')
-            # print(product_dataset)
-            # print(sup_table)
+            #print('at 4583 - product-dataset')
+            # #print(product_dataset)
+            # #print(sup_table)
 
             data_pop = pd.merge(product_dataset_main[['productcode', 'substituteproductcode']], sup_table[
                 ['parent_supplier', 'base_product_number', 'predicted_volume_share', 'vols_gain_share',
@@ -2826,8 +2822,8 @@ class supplier_popup(vol_transfer_logic,APIView):
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             #delist_table_popup = pd.DataFrame(delist_prod_subs)
 
-            print('supplier pop up before pop up condition')
-            print(supplier_table_popup.shape)
+            #print('supplier pop up before pop up condition')
+            #print(supplier_table_popup.shape)
 
 
         else:
@@ -2860,8 +2856,8 @@ class supplier_popup(vol_transfer_logic,APIView):
             sup_table, sup_sales_table = vol_logic.supplier_table(product_dataset, store,
                                                       future, bc)
             ##------- supplier product level impact - pop up in UI------##
-            print("printing sup table data")
-            print(sup_table.shape)
+            #print("#printing sup table data")
+            #print(sup_table.shape)
             data_pop = pd.merge(product_dataset[['productcode', 'substituteproductcode']], sup_table[
                 ['parent_supplier', 'base_product_number', 'predicted_volume_share', 'vols_gain_share',
                  'vols_loss_share', 'predicted_value_share', 'value_gain_share', 'value_loss_share']],
@@ -2940,7 +2936,7 @@ class supplier_popup(vol_transfer_logic,APIView):
             sup_product_pop['delist_pred_vol'] = sup_product_pop['delist_pred_vol'].astype('int')
 
             supplier_table_popup = pd.DataFrame(sup_product_pop)
-            print(supplier_table_popup.shape)
+            #print(supplier_table_popup.shape)
             #delist_table_popup = pd.DataFrame(delist_prod_subs)
 
 
@@ -2953,7 +2949,7 @@ class supplier_popup(vol_transfer_logic,APIView):
         sup_pop = pd.DataFrame(supplier)
         sup_pop['supplier'] = sup_pop[0]
         popup_data1 = pd.merge(supplier_table_popup, sup_pop, left_on=['delist_supplier'], right_on=['supplier'], how='inner')
-        print('\n supplier from arguments after converting to list and popup_data1 _____', type(supplier_table_popup['delist_supplier']),type(sup_pop['supplier']))
+        #print('\n supplier from arguments after converting to list and popup_data1 _____', type(supplier_table_popup['delist_supplier']),type(sup_pop['supplier']))
         popup_data1 = popup_data1.drop_duplicates().fillna(0).reset_index(drop=True)
 
         # ## set default page as 1
@@ -2977,7 +2973,7 @@ class supplier_popup(vol_transfer_logic,APIView):
         # num_pages = math.ceil((len(popup_data1) / 8))
         # ## calculate start index for data frame
         # start_index = (supplier_popup_page - 1) * 8 + 1
-        # print(start_index)
+        # #print(start_index)
         # # calculate total number of rows
         # count = len(popup_data1)
         # # calculate end index
@@ -2985,7 +2981,7 @@ class supplier_popup(vol_transfer_logic,APIView):
         # ## subset the queryset to display required data
         # popup_data1 = popup_data1.loc[start_row:end_row, ]
         #
-        # print('\n final output of supplier pop up after everything',popup_data1)
+        # #print('\n final output of supplier pop up after everything',popup_data1)
 
         data = {
             'supplier_table_popup': popup_data1.to_dict(orient='records')
@@ -3049,8 +3045,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                 #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                 delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
 
-            print('below values are passed - express')
-            print(args, bc, store, future, input_tpns_exp)
+            #print('below values are passed - express')
+            #print(args, bc, store, future, input_tpns_exp)
 
             # In[8]:
 
@@ -3222,7 +3218,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True)
 
             #add psg impact column
-            psg_predict_exp = vol_logic.psg_impact(bc, delist, store, future)
+            psg_predict = vol_logic.psg_impact(bc, delist, store, future)
             delist_prod_table = pd.merge(delist_prod_table, psg_predict, on="product_sub_group_description", how="left")
             delist_prod_table['psg_value_impact'] = (
             delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']).round(decimals=1)
@@ -3263,7 +3259,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
         # num_pages = math.ceil((len(delist_search_table) / 8))
         # ## calculate start index for data frame
         # start_index = (delist_page - 1) * 8 + 1
-        # print(start_index)
+        # #print(start_index)
         # # calculate total number of rows
         # count = len(delist_search_table)
         # # calculate end index
@@ -3271,8 +3267,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
         # ## subset the queryset to display required data
         # delist_search_table = delist_search_table.loc[start_row:end_row, ]
         #
-        # print('inside delist_table-- at 5312')
-        # print(delist_search_table)
+        # #print('inside delist_table-- at 5312')
+        # #print(delist_search_table)
 
         data = {
             'delist_prod_table': delist_prod_table.to_dict(orient='records')
@@ -3320,8 +3316,8 @@ class delist_popup(vol_transfer_logic,APIView):
                 #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                 delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
-            # print('below values are passed - main estate')
-            # print(args, bc, store, future, input_tpns_main)
+            # #print('below values are passed - main estate')
+            # #print(args, bc, store, future, input_tpns_main)
 
             # In[6]:
 
@@ -3426,9 +3422,9 @@ class delist_popup(vol_transfer_logic,APIView):
             delist_prod_subs = delist_prod_subs.append(delist_prod_subs_main)
             delist_prod_subs = delist_prod_subs.append(delist_prod_subs_exp)
             delist_prod_subs = delist_prod_subs.drop_duplicates().fillna(0).reset_index(drop=True)
-            print("overview delist popup"
-                  )
-            print(delist_prod_subs.shape)
+            #print("overview delist popup"
+                  # )
+            #print(delist_prod_subs.shape)
             delist_table_popup = pd.DataFrame(delist_prod_subs)
 
         else:
@@ -3449,8 +3445,8 @@ class delist_popup(vol_transfer_logic,APIView):
                 #input_tpns['base_product_number'] = input_tpns['base_product_number'].astype('int')
                 delist = input_tpns['base_product_number'].drop_duplicates().values.tolist()
 
-            print('below values are passed')
-            print(args, bc, store, future, input_tpns)
+            #print('below values are passed')
+            #print(args, bc, store, future, input_tpns)
 
             # In[4]:
             product_dataset = vol_logic.volume_transfer_logic(bc, store, future, input_tpns, delist)
@@ -3545,7 +3541,7 @@ class delist_popup(vol_transfer_logic,APIView):
         # num_pages = math.ceil((len(popup_data2) / 8))
         # ## calculate start index for data frame
         # start_index = (delist_popup_page - 1) * 8 + 1
-        # print(start_index)
+        # #print(start_index)
         # # calculate total number of rows
         # count = len(popup_data2)
         # # calculate end index
@@ -3579,13 +3575,13 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         user_name = args.pop('user_name', None)
         buying_controller_header = args.pop('buying_controller_header', None)
         buyer_header = args.pop('buyer_header', None)
-        print("printing args.................")
-        print(designation,buying_controller_header,buyer_header)
+        #print("#printing args.................")
+        #print(designation,buying_controller_header,buyer_header)
         user_attributes_args = args.copy()
         user_attributes = user_attributes_args
         scenario_name = args.pop('scenario_name', None)
-        print("scenario_name")
-        print(scenario_name)
+        #print("scenario_name")
+        #print(scenario_name)
         #event_name = args.pop('event_name', None)
         #user_id = args.pop('user_id', None)
         Buying_controller = args.pop('buying_controller',None)
@@ -3601,7 +3597,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         #buying_controller_header = args_list.pop('buying_controller_header__in', None)
         #buyer_header = args_list.pop('buyer_header__in', None)
         # input_tpns = args_list.pop('long_description__in', 0)
-        # print(input_tpns)
+        # #print(input_tpns)
         # input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
         # input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
         # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
@@ -3616,24 +3612,24 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         curr_time = today.ctime()
         # %H:%M"
         system_time = strftime("%Y-%m-%d", gmtime())
-        print("system time")
-        print(system_time)
+        #print("system time")
+        #print(system_time)
         # to check if the scenario name exists already
 
         scenario = scenario_name
         check_value = str(user_id) + '_' + scenario
 
-        #print("check_value")
-        #print(check_value)
+        ##print("check_value")
+        ##print(check_value)
 
         x = list(delist_scenario.objects.values_list('user_id', 'scenario_name').distinct())
         x_df = pd.DataFrame(x, columns=["user_id", "scenario_name"])
         check_list = []
         x_df['check_list'] = x_df['user_id'] + '_' + x_df['scenario_name']
-        #print("xx")
-        #print(x_df)
+        ##print("xx")
+        ##print(x_df)
 
-        #print(x_df['check_list'])
+        ##print(x_df['check_list'])
         check_list_data = list(x_df['check_list'])
         if check_value in check_list_data:
             result = "FAILURE"
@@ -3641,9 +3637,9 @@ class delist_scenario_final(vol_transfer_logic,APIView):
             result = "SUCCESS"
 
         if result == "SUCCESS":
-            print("inside success")
+            #print("inside success")
             # read all files
-            print(".........inside_class..............")
+            #print(".........inside_class..............")
 
             all_filter = read_frame(product_impact_filter.objects.all())
             input_tpns = all_filter['input_tpns']
@@ -3656,7 +3652,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 #future = [future]
             months = ['3_months', '6_months', '12_months']
 
-            print(".........inside_class..............")
+            #print(".........inside_class..............")
 
             for i in range(0, len(months)):
                 future = [months[i]]
@@ -3669,8 +3665,8 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                                                           time_period__in=['Last 52 Weeks']).values(
                             'base_product_number').distinct())
                     delist_main = list(input_tpns_main['base_product_number'])
-                    print(delist_main)
-                    print(input_tpns_main)
+                    #print(delist_main)
+                    #print(input_tpns_main)
                 else:
                     # delist_main = input_tpns
                     input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
@@ -3678,17 +3674,17 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                     #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
                     #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
                     delist_main = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
-                    print(delist_main)
-                # print('below values are passed - main estate')
-                # print(args, bc, store, future, input_tpns_main)
+                    #print(delist_main)
+                # #print('below values are passed - main estate')
+                # #print(args, bc, store, future, input_tpns_main)
 
                 # In[6]:
-                #print(bc,future, input_tpns_main, delist_main)
+                ##print(bc,future, input_tpns_main, delist_main)
                 vol_logic = vol_transfer_logic()
-                print("Following values are passed...")
-                print(bc,future,input_tpns_main,delist_main)
+                #print("Following values are passed...")
+                #print(bc,future,input_tpns_main,delist_main)
                 product_dataset_main = vol_logic.volume_transfer_logic(bc,['Main Estate'],future,input_tpns_main,delist_main)
-         #       print(product_dataset_main)
+         #       #print(product_dataset_main)
 
                 # In[7]:
 
@@ -3708,8 +3704,8 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                     #input_tpns_exp['base_product_number'] = input_tpns_exp['base_product_number'].astype('int')
                     delist_exp = input_tpns_exp['base_product_number'].drop_duplicates().values.tolist()
 
-                print('below values are passed - express')
-                #print(args, bc, store, future, input_tpns_exp)
+                #print('below values are passed - express')
+                ##print(args, bc, store, future, input_tpns_exp)
 
                 # In[8]:
 
@@ -3883,8 +3879,8 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 #delist_prods = {'delist_prods':}
                 supp_attr = {'sup_attr': sup_sales_table.to_dict(orient='records')}
                 delist_attr = {'delist_attr': delist_prod_table.to_dict(orient='records')}
-                print("for loop running...")
-                print(i)
+                #print("for loop running...")
+                #print(i)
                 save_scenario = delist_scenario(scenario_name = scenario_name,
                                                 session_id = session_id,
                                                 user_id = user_id,
@@ -3917,13 +3913,13 @@ class display_delist_scenario(vol_transfer_logic,APIView):
 
         queryset_13 = read_frame(delist_scenario.objects.all().filter(**args).filter(time_period="3_months").values('chart_attr','supp_attr','delist_attr'))
         queryset_13 = {'queryset_13': queryset_13.to_dict(orient='records')}
-        print(type(queryset_13))
+        #print(type(queryset_13))
         queryset_26 = read_frame(delist_scenario.objects.all().filter(**args).filter(time_period="6_months").values('chart_attr','supp_attr','delist_attr'))
         queryset_26 = {'queryset_26': queryset_26.to_dict(orient='records')}
-        print(type(queryset_26))
+        #print(type(queryset_26))
         queryset_52 = read_frame(delist_scenario.objects.all().filter(**args).filter(time_period="12_months").values('chart_attr','supp_attr','delist_attr'))
         queryset_52 = {'queryset_52': queryset_52.to_dict(orient='records')}
-        print(type(queryset_52))
+        #print(type(queryset_52))
 
         return JsonResponse({
                 "user_id":user_id,

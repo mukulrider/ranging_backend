@@ -45,9 +45,7 @@ def col_distinct(kwargs, col_name,kwargs_header):
 class negotiation_filters(APIView):
     def get(self, request):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        print(request.GET)
-        print("get keys")
-        print(request.GET.keys())
+
         obj = {}
         get_keys = request.GET.keys()
 
@@ -62,8 +60,7 @@ class negotiation_filters(APIView):
         user_name = sent_req.pop('user_name', None)
         buying_controller_header = sent_req.pop('buying_controller_header',None)
         buyer_header = sent_req.pop('buyer_header',None)
-        print("after pop")
-        print(sent_req)
+
 
         if buyer_header is None:
             kwargs_header = {
@@ -77,7 +74,6 @@ class negotiation_filters(APIView):
 
 
 
-        print('*********************\n       FILTERS2 \n*********************')
         cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
 
         # find lowest element of cols
@@ -109,7 +105,6 @@ class negotiation_filters(APIView):
         col_unique_list_name = []  # rename
         col_unique_list_name_obj = {}  # rename
         for col_name in cols:
-            print('\n********* \n' + col_name + '\n*********')
             col_unique_list = col_distinct({}, col_name,kwargs_header)
             col_unique_list_name.append({'name': col_name,
                                          'unique_elements': col_unique_list})
@@ -119,7 +114,7 @@ class negotiation_filters(APIView):
 
 
             category_of_sent_obj_list = col_distinct(kwargs2, col_name,kwargs_header)
-            print(len(category_of_sent_obj_list))
+
             sent_obj_category_list = []
 
             # get unique elements for `col_name`
@@ -127,7 +122,7 @@ class negotiation_filters(APIView):
                 sent_obj_category_list.append(i)
 
             def highlight_check(category_unique):
-                # print(title)
+
                 if len(sent_req.keys()) > 0:
                     highlighted = False
                     if col_name in sent_req.keys():
@@ -135,7 +130,7 @@ class negotiation_filters(APIView):
                             queryset = nego_ads_drf.objects.filter(**{col_name: category_unique})[:1].get()
                             y = getattr(queryset, cols[second_lowest])
                             for i in sent_req.keys():
-                                print('keys:', i, sent_req.get(i))
+
                                 if y in sent_req.get(i) and cols[second_lowest] == i:
                                     highlighted = True
 
@@ -206,7 +201,7 @@ def col_distinct_product(kwargs, col_name,kwargs_header):
 
 class product_impact_filters(APIView):
     def get(self, request):
-        print(request.GET)
+
         obj = {}
         get_keys = request.GET.keys()
         for i in get_keys:
@@ -219,8 +214,7 @@ class product_impact_filters(APIView):
         user_name = sent_req.pop('user_name', None)
         buying_controller_header = sent_req.pop('buying_controller_header',None)
         buyer_header = sent_req.pop('buyer_header',None)
-        print("after pop")
-        print(sent_req)
+
 
         if buyer_header is None:
             kwargs_header = {
@@ -233,7 +227,6 @@ class product_impact_filters(APIView):
             }
 
 
-        print('*********************\n       FILTERS2 \n*********************')
         cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
                                      'brand_name', 'product_sub_group_description', 'long_description']
 
@@ -266,7 +259,6 @@ class product_impact_filters(APIView):
         col_unique_list_name = []  # rename
         col_unique_list_name_obj = {}  # rename
         for col_name in cols:
-            print('\n********* \n' + col_name + '\n*********')
             col_unique_list = col_distinct_product({}, col_name,kwargs_header)
             col_unique_list_name.append({'name': col_name,
                                          'unique_elements': col_unique_list})
@@ -275,7 +267,7 @@ class product_impact_filters(APIView):
             kwargs2 = {reqobj + '__in': sent_req.get(reqobj) for reqobj in sent_req.keys()}
 
             category_of_sent_obj_list = col_distinct_product(kwargs2, col_name,kwargs_header)
-            print(len(category_of_sent_obj_list))
+
             sent_obj_category_list = []
 
             # get unique elements for `col_name`
@@ -283,7 +275,7 @@ class product_impact_filters(APIView):
                 sent_obj_category_list.append(i)
 
             def highlight_check(category_unique):
-                # print(title)
+
                 if len(sent_req.keys()) > 0:
                     highlighted = False
                     if col_name in sent_req.keys():
@@ -291,7 +283,7 @@ class product_impact_filters(APIView):
                             queryset = product_hierarchy.objects.filter(**{col_name: category_unique})[:1].get()
                             y = getattr(queryset, cols[second_lowest])
                             for i in sent_req.keys():
-                                print('keys:', i, sent_req.get(i))
+
                                 if y in sent_req.get(i) and cols[second_lowest] == i:
                                     highlighted = True
 

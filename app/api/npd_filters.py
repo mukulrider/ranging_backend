@@ -60,7 +60,6 @@ class opportunity_filters(APIView):
         default = args.pop('default__iexact',None)
         if default is None:
             if not args:
-                print("inside default")
 
                 df = read_frame(pricebucket.objects.filter(**kwargs_header).filter(**args))
                 heirarchy = read_frame(pricebucket.objects.filter(**kwargs_header).values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
@@ -177,33 +176,28 @@ class opportunity_filters(APIView):
 
                 df = read_frame(pricebucket.objects.filter(**args))
 
-                print("BC ")
+
                 data ={'buying_controller' : df.buying_controller.unique()}
                 bc = pd.DataFrame(data)
-                print(len(bc))
 
-                print("Buyer ")
+
                 data ={'buyer' : df.buyer.unique()}
                 buyer = pd.DataFrame(data)
-                print(len(buyer))
 
-                print("Jr Buyer ")
+
+
                 data ={'junior_buyer' : df.junior_buyer.unique()}
                 jr_buyer = pd.DataFrame(data)
-                print(len(jr_buyer))
 
-
-                print("PSG ")
                 data ={'product_sub_group_description' : df.product_sub_group_description.unique()}
                 psg = pd.DataFrame(data)
-                print(len(psg))
 
                 bc['selected']=True
                 bc['disabled']=False
                 bc_df = pd.merge(bc_df,bc,how='left')
                 bc_df['selected'] =bc_df['selected'].fillna(False)
                 bc_df['disabled'] =bc_df['disabled'].fillna(True)
-                print(bc_df)
+
                 bc_df = bc_df.rename(columns={'buying_controller': 'name'})
 
                 if len(buyer)==1:
@@ -327,9 +321,9 @@ class impact_filters(APIView):
         jr_buyer_name = args.get('junior_buyer__iexact')
         psg_name = args.get('product_sub_group_description__iexact')
         brand_id = args.get('brand_name__iexact')
-        # print(brand_id)
+
         measure_id = args.get('measure_type__iexact')
-        # print(measure_id)
+
         till_roll_id= args.get('till_roll_description__iexact')
         package_id = args.get('package_type__iexact')
         merch_name = args.get('merchandise_group_description__iexact')
@@ -369,8 +363,6 @@ class impact_filters(APIView):
                             }
 
         kwargs_till_roll = dict(filter(lambda item: item[1] is not None, kwargs_till_roll.items()))
-        print("kwargstill rolllllllllllllll")
-        print(kwargs_till_roll)
 
         kwargs_package = {
                         'buying_controller__iexact': bc_name,
@@ -413,7 +405,6 @@ class impact_filters(APIView):
 
             bc_df['selected'] =False
             bc_df['disabled'] =False
-            print(bc_df)
             bc_df = bc_df.rename(columns={'buying_controller': 'name'})
 
             buyer_df['selected'] =False
@@ -476,11 +467,9 @@ class impact_filters(APIView):
             final = {}
             final["product_hierarchy"] = final_ph
         else:
-            print("kwargs")
-            print(kwargs)
+
             df = read_frame(input_npd.objects.filter(**kwargs))
-            print("inside else .......... dfffffffffffffffff")
-            #print(df)
+
 
             hh = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
                             'measure_type'))
@@ -488,19 +477,17 @@ class impact_filters(APIView):
             merch_range_df = read_frame(merch_range.objects.filter(buying_controller__in=df.buying_controller.unique()))
 
             supplier_df = read_frame(npd_supplier_ads.objects.filter(buying_controller__in=df.buying_controller.unique()))
-            #print(df.buying_controller.unique())
 
 
-            print("buyyyyyyyyyyyyyyyeeeeeeeeeeerrrrrrrrr")
-            print(df.buyer.unique())
+
+
             till_roll_buyer_df = read_frame(buyertillroll_input_npd.objects.filter(buyer__in = df.buyer.unique()))
-            print(len(till_roll_buyer_df))
 
 
             # till_roll_buyer_df = pd.read_csv('BUYERTILLROLL_INPUT_NPD.csv')
             # till_roll_buyer_df = till_roll_buyer_df[till_roll_buyer_df['buyer']==buyer_name]
 
-            print(len(supplier_df))
+
             #merch_range = pd.read_csv('merch_range.csv'
 
 
@@ -525,8 +512,7 @@ class impact_filters(APIView):
             df_measure_id = read_frame(input_npd.objects.filter(**kwargs_measure).values('measure_type'))
 
             df_till_roll_id = read_frame(buyertillroll_input_npd.objects.filter(**kwargs_till_roll).values('till_roll_description'))
-            print("dffffffffffftillllllllll")
-            print(len(df_till_roll_id))
+
 
 
             df_package_id = read_frame(input_npd.objects.filter(**kwargs_package).values('package_type'))
@@ -536,74 +522,72 @@ class impact_filters(APIView):
             df_supplier_id = read_frame(npd_supplier_ads.objects.filter(**kwargs_supplier).values('parent_supplier'))
 
 
-            print("######################")
-            print(len(df_merch_range))
 
-            print("BC ")
+
             data ={'buying_controller' : df.buying_controller.unique()}
             bc = pd.DataFrame(data)
-            print(len(bc))
 
-            print("Buyer ")
+
+
             data ={'buyer' : df.buyer.unique()}
             buyer = pd.DataFrame(data)
-            print(len(buyer))
 
-            print("Jr Buyer ")
+
+
             data ={'junior_buyer' : df.junior_buyer.unique()}
             jr_buyer = pd.DataFrame(data)
-            print(len(jr_buyer))
 
 
-            print("PSG ")
+
+
             data ={'product_sub_group_description' : df.product_sub_group_description.unique()}
             psg = pd.DataFrame(data)
-            print(len(psg))
 
-            print("Supplier ")
+
+
             data ={'parent_supplier' : df_supplier_id.parent_supplier.unique()}
             supplier = pd.DataFrame(data)
-            print(len(supplier))
 
 
 
 
-            print("Brand NaME ")
+
+
             data ={'brand_name' : df_brand_id.brand_name.unique()}
             brand = pd.DataFrame(data)
-            print(len(brand))
 
 
-            print("package type ")
+
+
             data ={'package_type' : df_package_id.package_type.unique()}
             package = pd.DataFrame(data)
-            print(len(package))
 
 
-            print("measure type ")
+
+
             data ={'measure_type' : df_measure_id.measure_type.unique()}
             measure = pd.DataFrame(data)
-            print(len(measure))
 
 
-            print("till roll ")
+
+
             data ={'till_roll_description' : df_till_roll_id.till_roll_description.unique()}
             till_roll = pd.DataFrame(data)
-            print(len(till_roll))
 
 
 
-            print("merch_grp ")
+
+
             data ={'merchandise_group_description' : df_merch_range.merchandise_group_description.unique()}
             merch_grp = pd.DataFrame(data)
-            print(len(merch_grp))
 
 
 
-            print("range_class")
+
+
             data ={'range_class' : df_merch_range.range_class.unique()}
             range_class = pd.DataFrame(data)
-            print(len(range_class))
+
 
 
 
@@ -612,7 +596,7 @@ class impact_filters(APIView):
             bc_df = pd.merge(bc_df,bc,how='left')
             bc_df['selected'] =bc_df['selected'].fillna(False)
             bc_df['disabled'] =bc_df['disabled'].fillna(True)
-            print(bc_df)
+
             bc_df = bc_df.rename(columns={'buying_controller': 'name'})
 
             if len(buyer)==1:
@@ -715,7 +699,7 @@ class impact_filters(APIView):
 
 
             if len(measure)==1:
-                print('yes')
+
                 measure['selected']=True
                 measure['disabled']=False
                 measure_df = pd.merge(measure_df,measure,how='left')
