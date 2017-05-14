@@ -28,7 +28,6 @@ from rest_framework_swagger.views import get_swagger_view
 urlpatterns = [
     url(r'^api/', include('api.urls')),
 
-
     url(r'^$', TemplateView.as_view(template_name="home.html"), name='home'),
     url(r'^signup/$', TemplateView.as_view(template_name="signup.html"),
         name='signup'),
