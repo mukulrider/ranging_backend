@@ -998,6 +998,8 @@ class forecast_impact(APIView):
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype(int)
             psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
             psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
+            psg_product_contri_df['final_score'] = psg_product_contri_df['final_score'].astype(float)
+
     
             product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
             product_desc_branded = product_desc_branded.rename(columns={'final_score':'similarity_score'})
@@ -2196,6 +2198,7 @@ class npd_save_scenario(APIView):
             psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype(int)
             psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
             psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
+            psg_product_contri_df['final_score'] = psg_product_contri_df['final_score'].astype(float)
     
             product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
             product_desc_branded = product_desc_branded.rename(columns={'final_score':'similarity_score'})
