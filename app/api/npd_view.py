@@ -824,9 +824,7 @@ class forecast_impact(APIView):
             
             #### Cannibalization percentage
             sim_prod_subset = sim_prod_new[sim_prod_new['final_score']>0.8]
-            sim_prod_subset.to_csv("sim_prod_subset.csv")
             if len(sim_prod_subset)==0:
-                print("inside simprod subset npd impact")
                 if week_flag =='Latest 13 Weeks':
                     high_volume_cutoff = (high_cutoff/21)*13
                     low_volume_cutoff = (low_cutoff/21)*13
