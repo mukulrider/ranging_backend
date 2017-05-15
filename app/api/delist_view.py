@@ -3160,6 +3160,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
             delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']).round(decimals=1)
             delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
                                                    'predicted_volume', 'predicted_cgm', 'no_of_stores',
+                                                   'per_vol_transfer','per_value_transfer',
                                                    'product_sub_group_description', 'psg_value_impact']]
 
 
@@ -3210,14 +3211,22 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
             delist_prod_table = delist_prod_table[delist_prod_table['no_of_stores'] > 0]
             delist_prod_table = delist_prod_table[delist_prod_table['predicted_volume'] > 0]
 
-            delist_prod_table['per_vol_transfer'] = (delist_prod_table['volume_transfer'] / delist_prod_table[
-                'predicted_volume']) * 100
-            delist_prod_table['per_value_transfer'] = (delist_prod_table['value_transfer'] / delist_prod_table[
-                'predicted_value']) * 100
+            delist_prod_table['per_vol_transfer'] = ((delist_prod_table['volume_transfer'] / delist_prod_table[
+                'predicted_volume']) * 100).round(decimals=1)
+            delist_prod_table['per_value_transfer'] = ((delist_prod_table['value_transfer'] / delist_prod_table[
+                'predicted_value']) * 100).round(decimals=1)
 
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True)
 
             #add psg impact column
+            psg = read_frame(product_hierarchy.objects.all().filter(buying_controller__in=bc,
+                                                                    base_product_number__in=delist).values(
+                'product_sub_group_code', 'base_product_number', 'product_sub_group_description').distinct())
+            delist_prod_table = pd.merge(delist_prod_table,
+                                         psg[['base_product_number', 'product_sub_group_description']],
+                                         left_on="productcode", right_on="base_product_number", how="left")
+            del delist_prod_table['base_product_number']
+
             psg_predict = vol_logic.psg_impact(bc, delist, store, future)
             delist_prod_table = pd.merge(delist_prod_table, psg_predict, on="product_sub_group_description", how="left")
             delist_prod_table['psg_value_impact'] = (
@@ -3225,7 +3234,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
 
             delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
                                                    'predicted_volume', 'predicted_cgm', 'no_of_stores',
-                                                   'base_product_number', 'product_sub_group_description',
+                                                    'product_sub_group_description','per_vol_transfer','per_value_transfer',
                                                    'psg_value_impact']]
 
 
@@ -3860,13 +3869,16 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 del psg_predict['psg_predicted_sales_x']
                 del psg_predict['psg_predicted_sales_y']
 
+                psg = read_frame(product_hierarchy.objects.all().filter(buying_controller__in=bc,
+                                                                        base_product_number__in=delist_main).values(
+                    'product_sub_group_code', 'base_product_number', 'product_sub_group_description').distinct())
                 delist_prod_table = pd.merge(delist_prod_table,
                                              psg[['base_product_number', 'product_sub_group_description']],
                                              left_on="productcode", right_on="base_product_number", how="left")
                 del delist_prod_table['base_product_number']
-
                 delist_prod_table = pd.merge(delist_prod_table, psg_predict, on="product_sub_group_description",
                                              how="left")
+
                 delist_prod_table['psg_value_impact'] = (
                     delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']).round(decimals=1)
                 delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
