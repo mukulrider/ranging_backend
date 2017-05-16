@@ -2819,6 +2819,7 @@ class supplier_popup(vol_transfer_logic,APIView):
             sup_product_pop['delist_pred_value'] = sup_product_pop['delist_pred_value'].astype('int')
             sup_product_pop['delist_pred_vol'] = sup_product_pop['delist_pred_vol'].astype('int')
 
+            sup_product_pop = sup_product_pop[sup_product_pop['substitute_pred_vol'] != 0]
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             #delist_table_popup = pd.DataFrame(delist_prod_subs)
 
@@ -2935,6 +2936,7 @@ class supplier_popup(vol_transfer_logic,APIView):
             sup_product_pop['delist_pred_value'] = sup_product_pop['delist_pred_value'].astype('int')
             sup_product_pop['delist_pred_vol'] = sup_product_pop['delist_pred_vol'].astype('int')
 
+            sup_product_pop = sup_product_pop[sup_product_pop['substitute_pred_vol'] != 0]
             supplier_table_popup = pd.DataFrame(sup_product_pop)
             #print(supplier_table_popup.shape)
             #delist_table_popup = pd.DataFrame(delist_prod_subs)
@@ -3088,7 +3090,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                  'predicted_cgm', 'predicted_cts', 'volume_transfer', 'value_transfer', 'cgm_transfer', 'cts_transfer']]
 
             # delist product table for UI
-            delist_prod_table = product_dataset[['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm','volume_transfer','value_transfer']]
+            delist_prod_table = product_dataset[['productcode','substituteproductcode', 'predicted_volume', 'predicted_value', 'predicted_cgm','volume_transfer','value_transfer']]
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max, 'predicted_value': max, 'predicted_cgm':max,'volume_transfer':sum,'value_transfer':sum})
             prod_hrchy = read_frame(product_desc.objects.all().values('base_product_number', 'brand_indicator',
                                                                       'long_description').distinct())
@@ -3192,7 +3194,7 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                                                                                    'long_description').distinct())
 
             # delist product table for UI
-            delist_prod_table = product_dataset[['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm','volume_transfer','value_transfer']]
+            delist_prod_table = product_dataset[['productcode','substituteproductcode', 'predicted_volume', 'predicted_value', 'predicted_cgm','volume_transfer','value_transfer']]
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(['productcode'], as_index = False).agg({'predicted_volume':max, 'predicted_value': max, 'predicted_cgm':max,'volume_transfer':sum,'value_transfer':sum})
             delist_prod_table = pd.merge(delist_prod_table, prod_hrchy, left_on=['productcode'],
                                          right_on=['base_product_number'], how='left')
@@ -3487,33 +3489,9 @@ class delist_popup(vol_transfer_logic,APIView):
             delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True)
 
             # list of prods & their substitutes
-            delist_prod_subs = read_frame(
-                shelf_review_subs.objects.all().filter(buying_controller__in=bc, store_type__in=store,
-                                                       productcode__in=delist).values('productcode',
-                                                                                      'productdescription',
-                                                                                      'substituteproductcode',
-                                                                                      'substituteproductdescription'))
-            prod_sim = read_frame(
-                prod_similarity_subs.objects.all().filter(buying_controller__in=bc, store_type__in=store,
-                                                          base_prod__in=delist).values('base_prod', 'sub_prod',
-                                                                                       'actual_similarity_score'))
-
-            delist_prod_sim = prod_sim.sort_values(['base_prod', 'actual_similarity_score'], ascending=False).groupby(
-                'base_prod').head(10)
-            delist_prod_sim = pd.merge(delist_prod_sim, prod_hrchy, left_on=['base_prod'],
-                                       right_on=['base_product_number'], how='left')
-            delist_prod_sim = delist_prod_sim.rename(
-                columns={'base_prod': 'productcode', 'long_description': 'productdescription'})
-            delist_prod_sim = pd.merge(delist_prod_sim, prod_hrchy, left_on=['sub_prod'],
-                                       right_on=['base_product_number'], how='left')
-            delist_prod_sim = delist_prod_sim.rename(
-                columns={'sub_prod': 'substituteproductcode', 'long_description': 'substituteproductdescription'})
-            delist_prod_sim = delist_prod_sim[
-                ['productcode', 'productdescription', 'substituteproductcode', 'substituteproductdescription']]
-
-            delist_prod_subs = delist_prod_subs.append(delist_prod_sim)
-            delist_prod_subs = delist_prod_subs.drop_duplicates().fillna(0).reset_index(drop=True)
-            delist_prod_subs = delist_prod_subs[-delist_prod_subs['substituteproductcode'].isin(delist)]
+            delist_prod_subs_main = vol_logic.delist_subs(bc, ['Main Estate'], future, delist)
+            delist_prod_subs = pd.DataFrame()
+            delist_prod_subs = delist_prod_subs.append(delist_prod_subs_main)
             delist_table_popup = pd.DataFrame(delist_prod_subs)
 
         # Original Delist popup starts here
