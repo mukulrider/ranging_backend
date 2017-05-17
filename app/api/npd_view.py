@@ -1484,10 +1484,10 @@ class forecast_impact(APIView):
 
             data_dict_volume={}
             data = [{
-                       "name":"NPD Volume","value":output_cannib_volume['forecast'][0]
+                       "name":"NPD Volume","value":int(output_cannib_volume['forecast'][0])
                        },
                     {
-                        "name":"Cannibalized Volume","value":output_cannib_volume['cannibilization_value'][0]
+                        "name":"Cannibalized Volume","value":-int(output_cannib_volume['cannibilization_value'][0])
                         }]
 
             volume={}
@@ -1498,11 +1498,11 @@ class forecast_impact(APIView):
             data_dict_volume["impact"]=volume
             data_dict_sales={}
             data = [{
-                    "name":"NPD Value","value":output_cannib_sales['forecast'][0]
+                    "name":"NPD Value","value":int(output_cannib_sales['forecast'][0])
                     },
                     {
                     "name":"Cannibalized Sales",
-                    "value":output_cannib_sales['cannibilization_value'][0]
+                    "value":-int(output_cannib_sales['cannibilization_value'][0])
                     }]
             sales={}
             sales={
@@ -2648,10 +2648,10 @@ class npd_save_scenario(APIView):
 
             data_13_dict_volume={}
             data = [{
-                       "name":"NPD Volume","value":output_13_cannib_volume['forecast'][0]
+                       "name":"NPD Volume","value":int(output_13_cannib_volume['forecast'][0])
                        },
                     {
-                        "name":"Cannibalized Volume","value":output_13_cannib_volume['cannibilization_value'][0]
+                        "name":"Cannibalized Volume","value":-int(output_13_cannib_volume['cannibilization_value'][0])
                         }]
 
             volume={}
@@ -2667,11 +2667,11 @@ class npd_save_scenario(APIView):
 
             data_13_dict_sales={}
             data = [{
-                    "name":"NPD Value","value":output_13_cannib_sales['forecast'][0]
+                    "name":"NPD Value","value":int(output_13_cannib_sales['forecast'][0])
                     },
                     {
                     "name":"Cannibalized Sales",
-                    "value":output_13_cannib_sales['cannibilization_value'][0]
+                    "value":-int(output_13_cannib_sales['cannibilization_value'][0])
                     }]
             sales={}
             sales={
@@ -2799,10 +2799,10 @@ class npd_save_scenario(APIView):
 
             data_26_dict_volume={}
             data = [{
-                       "name":"NPD Volume","value":output_26_cannib_volume['forecast'][0]
+                       "name":"NPD Volume","value":int(output_26_cannib_volume['forecast'][0])
                        },
                     {
-                        "name":"Cannibalized Volume","value":output_26_cannib_volume['cannibilization_value'][0]
+                        "name":"Cannibalized Volume","value":-int(output_26_cannib_volume['cannibilization_value'][0])
                         }]
 
             volume={}
@@ -2819,11 +2819,11 @@ class npd_save_scenario(APIView):
 
             data_26_dict_sales={}
             data = [{
-                    "name":"NPD Value","value":output_26_cannib_sales['forecast'][0]
+                    "name":"NPD Value","value":int(output_26_cannib_sales['forecast'][0])
                     },
                     {
                     "name":"Cannibalized Sales",
-                    "value":output_26_cannib_sales['cannibilization_value'][0]
+                    "value":-int(output_26_cannib_sales['cannibilization_value'][0])
                     }]
             sales={}
             sales={
@@ -2949,10 +2949,10 @@ class npd_save_scenario(APIView):
 
             data_52_dict_volume={}
             data = [{
-                       "name":"NPD Volume","value":output_52_cannib_volume['forecast'][0]
+                       "name":"NPD Volume","value":int(output_52_cannib_volume['forecast'][0])
                        },
                     {
-                        "name":"Cannibalized Volume","value":output_52_cannib_volume['cannibilization_value'][0]
+                        "name":"Cannibalized Volume","value":-int(output_52_cannib_volume['cannibilization_value'][0])
                         }]
 
             volume={}
@@ -2969,11 +2969,11 @@ class npd_save_scenario(APIView):
 
             data_52_dict_sales={}
             data = [{
-                    "name":"NPD Value","value":output_52_cannib_sales['forecast'][0]
+                    "name":"NPD Value","value":int(output_52_cannib_sales['forecast'][0])
                     },
                     {
                     "name":"Cannibalized Sales",
-                    "value":output_52_cannib_sales['cannibilization_value'][0]
+                    "value":-int(output_52_cannib_sales['cannibilization_value'][0])
                     }]
             sales={}
             sales={

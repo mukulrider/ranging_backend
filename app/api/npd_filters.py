@@ -842,18 +842,18 @@ class impact_filters(APIView):
             measure_final = json.loads(measure_final)
 
 
-            h = {}
-            h['name']='measure_type'
-            h['items']=measure_final
+            k = {}
+            k['name']='measure_type'
+            k['items']=measure_final
 
             till_roll_df = till_roll_df.sort_values(by='name',ascending=True)
             tillroll_final = till_roll_df.to_json(orient='records')
             tillroll_final = json.loads(tillroll_final)
 
 
-            i = {}
-            i['name']='till_roll_description'
-            i['items']=tillroll_final
+            h = {}
+            h['name']='till_roll_description'
+            h['items']=tillroll_final
 
 
 
@@ -862,9 +862,9 @@ class impact_filters(APIView):
             merch_final = json.loads(merch_final)
 
 
-            j = {}
-            j['name']='merchandise_group_description'
-            j['items']=merch_final
+            i = {}
+            i['name']='merchandise_group_description'
+            i['items']=merch_final
 
 
             range_class_df = range_class_df.sort_values(by='name',ascending=True)
@@ -872,9 +872,9 @@ class impact_filters(APIView):
             range_class_final = json.loads(range_class_final)
 
 
-            k = {}
-            k['name']='range_class'
-            k['items']=range_class_final
+            j = {}
+            j['name']='range_class'
+            j['items']=range_class_final
 
 
 

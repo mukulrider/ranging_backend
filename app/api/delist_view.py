@@ -200,7 +200,7 @@ class supplier_importance_table(APIView):
             return JsonResponse({'pagination_count': p.num_pages,'page': page, 'start_index': p.page(page).start_index(),'count': p.count,'end_index': p.page(page).end_index(),'table': serializer_class.data}, safe=False)
 
         else:
-            queryset = read_frame(nego_ads_drf.objects.filter(**week).filter(**args).filter(long_description__icontains=search))
+            queryset = read_frame(nego_ads_drf.objects.filter(**kwargs_header).filter(**week).filter(**args).filter(long_description__icontains=search))
             product_df = pd.DataFrame(product,columns=['base_product_number'])
             product_df['base_product_number'] = product_df['base_product_number'].astype('int')
             product_df['checked'] = True
@@ -3583,13 +3583,14 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         #user_name = args_list.pop('user_name__in', None)
         #buying_controller_header = args_list.pop('buying_controller_header__in', None)
         #buyer_header = args_list.pop('buyer_header__in', None)
-        # input_tpns = args_list.pop('long_description__in', 0)
+        args_list = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
+        input_tpns = args_list.pop('long_description__in', 0)
         # #print(input_tpns)
-        # input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
-        # input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-        # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
-        # input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
-        # input_tpns = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
+        input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
+        input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
+        input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+        input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
+        input_tpns = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
         if Buying_controller is not None: #or Buyer is None:
             view_mine = "True"
@@ -3628,10 +3629,11 @@ class delist_scenario_final(vol_transfer_logic,APIView):
             # read all files
             #print(".........inside_class..............")
 
-            all_filter = read_frame(product_impact_filter.objects.all())
-            input_tpns = all_filter['input_tpns']
-            input_tpns = list(input_tpns)
-            bc = all_filter['bc'][0]
+            # all_filter = read_frame(product_impact_filter.objects.all())
+            # input_tpns = all_filter['input_tpns']
+            # input_tpns = list(input_tpns)
+            bc = Buying_controller
+           # bc = all_filter['bc'][0]
             bc = [bc]
                 #store = all_filter['store'][0]
             store = ['Overview']
@@ -3789,12 +3791,15 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 #df.round({'A': 1, 'C': 2})
                 sup_sales_table['vol_impact_per'] = sup_sales_table['vol_impact_per'].round(decimals=1)
                 sup_sales_table['value_impact_per'] = sup_sales_table['value_impact_per'].round(decimals=1)
+
                 # delist product table for UI
                 delist_prod_table = product_dataset[
-                    ['productcode', 'predicted_volume', 'predicted_value', 'predicted_cgm']]
+                    ['productcode', 'substituteproductcode', 'predicted_volume', 'predicted_value', 'predicted_cgm',
+                     'volume_transfer', 'value_transfer']]
+
                 delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True).groupby(
                     ['productcode'], as_index=False).agg(
-                    {'predicted_volume': max, 'predicted_value': max, 'predicted_cgm': max})
+                    {'predicted_volume': max, 'predicted_value': max, 'predicted_cgm': max,'volume_transfer':sum,'value_transfer':sum})
                 prod_hrchy = read_frame(product_desc.objects.all().values('base_product_number', 'brand_indicator',
                                                                           'long_description').distinct())
 
@@ -3803,8 +3808,8 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 del delist_prod_table['base_product_number']
                 delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True)
 
-                delist_prod_table = delist_prod_table.groupby(['productcode', 'long_description'], as_index=False).agg(
-                    {'predicted_volume': sum, 'predicted_value': sum, 'predicted_cgm': sum})
+               # delist_prod_table = delist_prod_table.groupby(['productcode', 'long_description'], as_index=False).agg(
+                #    {'predicted_volume': sum, 'predicted_value': sum, 'predicted_cgm': sum})
 
                 # In[22]:
                 contribution_main = read_frame(
@@ -3830,6 +3835,11 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                                              left_on=['productcode'], right_on=['productcode'], how='left')
                 delist_prod_table = delist_prod_table[delist_prod_table['no_of_stores'] > 0]
                 delist_prod_table = delist_prod_table[delist_prod_table['predicted_volume'] > 0]
+                delist_prod_table['per_vol_transfer'] = ((delist_prod_table['volume_transfer'] / delist_prod_table[
+                    'predicted_volume']) * 100).round(decimals=1)
+                delist_prod_table['per_value_transfer'] = ((delist_prod_table['value_transfer'] / delist_prod_table[
+                    'predicted_value']) * 100).round(decimals=1)
+
                 delist_prod_table = delist_prod_table.drop_duplicates().fillna(0).reset_index(drop=True)
                 delist_prod_table['productcode'] =delist_prod_table['productcode'].astype('int')
 
@@ -3861,6 +3871,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                     delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']).round(decimals=1)
                 delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
                                                        'predicted_volume', 'predicted_cgm', 'no_of_stores',
+                                                       'per_vol_transfer','per_value_transfer',
                                                        'product_sub_group_description', 'psg_value_impact']]
 
                 chart_attr = chart_data
