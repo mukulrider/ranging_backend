@@ -15,7 +15,7 @@ class negochartsSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = nego_ads_drf
-		fields = ('store_type','base_product_number', 'long_description', 'cps','pps', 'subs_count', 'sales_value', 'sales_volume', 'cogs_value', 'rate_of_sale','store_count','rsp')
+		fields = ('store_type','base_product_number', 'long_description', 'cps','pps', 'subs_count', 'sales_value', 'sales_volume', 'cogs_value', 'rate_of_sale','store_count','rsp','psg_value_impact')
 
 class npd_impact_tableSerializer(serializers.ModelSerializer):
 	class Meta:

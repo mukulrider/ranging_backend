@@ -90,15 +90,17 @@ class supplier_importance_chart(APIView):
             week['time_period__iexact'] = w[0]
 
         if not args:
-            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**kwargs).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
+            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**kwargs).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','cps','pps','brand_indicator'))
 
         else:
-            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**args).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','brand_indicator'))
+            df = read_frame(nego_ads_drf.objects.filter(**week).filter(**kwargs_header).filter(**args).values('base_product_number','long_description', 'rate_of_sale','cps_quartile','pps_quartile','cps','pps','brand_indicator'))
 
 
         df["rate_of_sale"] = df["rate_of_sale"].astype('float')
         df["cps_quartile"] = df["cps_quartile"].astype('float')
         df["pps_quartile"] = df["pps_quartile"].astype('float')
+        df["cps"] = df["cps"].astype('float')
+        df["pps"] = df["pps"].astype('float')
         df["base_product_number"] = df["base_product_number"].astype('float')
 
 
@@ -112,6 +114,8 @@ class supplier_importance_chart(APIView):
                 "rate_of_sale": df["rate_of_sale"][i],
                 "cps" : df["cps_quartile"][i],
                 "pps" : df["pps_quartile"][i],
+                "cps_value" : df["cps"][i],
+                "pps_value" : df["pps"][i],
                 "brand_ind" : df["brand_indicator"][i]
 
             }
