@@ -37,14 +37,13 @@ from rest_framework_extensions.cache.decorators import cache_response
 #### Negotiation View Filters
 def col_distinct(kwargs, col_name,kwargs_header):
     queryset = nego_ads_drf.objects.filter(**kwargs_header).filter(**kwargs).values(col_name).order_by(col_name).distinct()
-
     base_product_number_list = [k.get(col_name) for k in queryset]
     return base_product_number_list
 
 
 class negotiation_filters(APIView):
     def get(self, request):
-        args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
+        # args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
 
         obj = {}
         get_keys = request.GET.keys()
@@ -53,25 +52,24 @@ class negotiation_filters(APIView):
             obj[i] = request.GET.getlist(i)
 
         sent_req = obj
-        
         user_id = sent_req.pop('user_id',None)
         designation = sent_req.pop('designation',None)
         session_id = sent_req.pop('session_id',None)
         user_name = sent_req.pop('user_name', None)
-        buying_controller_header = sent_req.pop('buying_controller_header',None)
+        buying_controller_header = sent_req.pop('buying_controller_header', None)
         buyer_header = sent_req.pop('buyer_header',None)
 
-        if  designation=='admin':
+        if 'admin' in designation:
             kwargs_header = {}
         else:
             if buyer_header is None:
                 kwargs_header = {
-                    'buying_controller__iexact' : buying_controller_header
+                    'buying_controller__in' : buying_controller_header
                 }
             else:
                 kwargs_header = {
-                    'buying_controller__iexact' : buying_controller_header,
-                    'buyer__iexact' : buyer_header
+                    'buying_controller__in' : buying_controller_header,
+                    'buyer__in' : buyer_header
                 }
 
 
@@ -106,7 +104,7 @@ class negotiation_filters(APIView):
         col_unique_list_name = []  # rename
         col_unique_list_name_obj = {}  # rename
         for col_name in cols:
-            col_unique_list = col_distinct({}, col_name,kwargs_header)
+            col_unique_list = col_distinct({}, col_name, kwargs_header)
             col_unique_list_name.append({'name': col_name,
                                          'unique_elements': col_unique_list})
             col_unique_list_name_obj[col_name] = col_unique_list
@@ -217,7 +215,7 @@ class product_impact_filters(APIView):
         buyer_header = sent_req.pop('buyer_header',None)
 
 
-        if  designation=='admin':
+        if 'admin' in designation:
             kwargs_header = {}
         else:
             if buyer_header is None:
