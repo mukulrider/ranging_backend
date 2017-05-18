@@ -37,8 +37,6 @@ from rest_framework_extensions.cache.decorators import cache_response
 #### Negotiation View Filters
 def col_distinct(kwargs, col_name,kwargs_header):
     queryset = nego_ads_drf.objects.filter(**kwargs_header).filter(**kwargs).values(col_name).order_by(col_name).distinct()
-    print("queryset")
-    print(queryset)
     base_product_number_list = [k.get(col_name) for k in queryset]
     return base_product_number_list
 
@@ -60,19 +58,15 @@ class negotiation_filters(APIView):
         user_name = sent_req.pop('user_name', None)
         buying_controller_header = sent_req.pop('buying_controller_header', None)
         buyer_header = sent_req.pop('buyer_header',None)
-        print("filters**************")
+
         if 'admin' in designation:
-            print("if block")
             kwargs_header = {}
         else:
-            print("else block")
             if buyer_header is None:
-                print("inside buyer_header is None")
                 kwargs_header = {
                     'buying_controller__in' : buying_controller_header
                 }
             else:
-                print("inside buyer_header")
                 kwargs_header = {
                     'buying_controller__in' : buying_controller_header,
                     'buyer__in' : buyer_header
@@ -220,25 +214,18 @@ class product_impact_filters(APIView):
         buying_controller_header = sent_req.pop('buying_controller_header',None)
         buyer_header = sent_req.pop('buyer_header',None)
 
-        print("******** delist filters")
         if 'admin' in designation:
-            print("designation is admin")
             kwargs_header = {}
         else:
-            print("designation is not admin")
-
             if buyer_header is None:
-                print("kwargs_header")
                 kwargs_header = {
                     'buying_controller__in' : buying_controller_header
                 }
-                print(kwargs_header)
             else:
                 kwargs_header = {
                     'buying_controller__in' : buying_controller_header,
                     'buyer__in' : buyer_header
                 }
-                print(kwargs_header)
 
         cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
                                      'brand_name', 'product_sub_group_description', 'long_description']
