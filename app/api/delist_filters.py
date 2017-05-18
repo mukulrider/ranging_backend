@@ -61,17 +61,18 @@ class negotiation_filters(APIView):
         buying_controller_header = sent_req.pop('buying_controller_header',None)
         buyer_header = sent_req.pop('buyer_header',None)
 
-
-        if buyer_header is None:
-            kwargs_header = {
-                'buying_controller__in' : buying_controller_header
-            }
+        if  designation=='admin':
+            kwargs_header = {}
         else:
-            kwargs_header = {
-                'buying_controller__in' : buying_controller_header,
-                'buyer__in' : buyer_header
-            }
-
+            if buyer_header is None:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header
+                }
+            else:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header,
+                    'buyer__iexact' : buyer_header
+                }
 
 
         cols =['buying_controller', 'buyer','junior_buyer','product_sub_group_description','need_state','brand_name']
@@ -216,16 +217,18 @@ class product_impact_filters(APIView):
         buyer_header = sent_req.pop('buyer_header',None)
 
 
-        if buyer_header is None:
-            kwargs_header = {
-                'buying_controller__in' : buying_controller_header
-            }
+        if  designation=='admin':
+            kwargs_header = {}
         else:
-            kwargs_header = {
-                'buying_controller__in' : buying_controller_header,
-                'buyer__in' : buyer_header
-            }
-
+            if buyer_header is None:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header
+                }
+            else:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header,
+                    'buyer__iexact' : buyer_header
+                }
 
         cols =['buying_controller', 'parent_supplier', 'buyer', 'junior_buyer', 'brand_indicator',
                                      'brand_name', 'product_sub_group_description', 'long_description']

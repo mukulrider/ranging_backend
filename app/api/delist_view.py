@@ -59,15 +59,18 @@ class supplier_importance_chart(APIView):
         buyer_header = args_header.pop('buyer_header__iexact',None)
         #header over
 
-        if buyer_header is None:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header
-            }
+        if  designation=='admin':
+            kwargs_header = {}
         else:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header,
-                'buyer__iexact' : buyer_header
-            }
+            if buyer_header is None:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header
+                }
+            else:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header,
+                    'buyer__iexact' : buyer_header
+                }
 
         #input from args
 
@@ -134,15 +137,20 @@ class supplier_importance_table(APIView):
         buying_controller_header = args_header.pop('buying_controller_header__iexact',None)
         buyer_header = args_header.pop('buyer_header__iexact',None)
         #header over
-        if buyer_header is None:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header
-            }
+
+        if  designation=='admin':
+            kwargs_header = {}
         else:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header,
-                'buyer__iexact' : buyer_header
-            }
+            if buyer_header is None:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header
+                }
+            else:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header,
+                    'buyer__iexact' : buyer_header
+                }
+
         #input from args
 
         kwargs = {
@@ -241,7 +249,6 @@ class vol_transfer_logic:
         self.delist_attr = None
 
     def volume_transfer_logic(self,bc, store, future, input_tpns, delist):
-
         # Predicted volume
         join_cate_fore = read_frame(
             product_contri.objects.all().filter(buying_controller__in=bc, store_type__in=store,
@@ -255,7 +262,6 @@ class vol_transfer_logic:
                                       left_on=["base_product_number"], right_on=["base_product_number"], how="left")
         join_cate_fore_pps = join_cate_fore_pps[join_cate_fore_pps.pps_ros_quantile.notnull()]
 
-        # In[5]:
 
         # dunnhumby substitutes
         All_BC_subs = read_frame(
@@ -3576,6 +3582,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         #event_name = args.pop('event_name', None)
         #user_id = args.pop('user_id', None)
         Buying_controller = args.pop('buying_controller',None)
+        buyer = args.pop('buyer', None)
 
         #bc = Buying_controller
         #par_supp = args.pop('parent_supplier',None)
@@ -3890,9 +3897,9 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                                                 session_id = session_id,
                                                 user_id = user_id,
                                                 user_name= user_name,
-                                                buying_controller=buying_controller_header,
+                                                buying_controller=buying_controller,
                                                 designation=designation,
-                                                buyer=buyer_header,
+                                                buyer=buyer,
                                                 time_period = week_tab,
                                                 user_attributes = user_attributes,
                                                 chart_attr = chart_attr,

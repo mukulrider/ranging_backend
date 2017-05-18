@@ -25,7 +25,6 @@ from .models import pricebucket
 # Models for NPD Impact View filters
 from .models import npd_supplier_ads,merch_range,input_npd,buyertillroll_input_npd
 
-
 #for cache 
 from rest_framework_extensions.cache.decorators import cache_response
 
@@ -46,16 +45,21 @@ class opportunity_filters(APIView):
         buyer_header = args.pop('buyer_header__iexact',None)
         #header over
 
-        if buyer_header is None:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header
-            }
+        # for admin user (access to 7 buying controllers)
+        if  designation=='admin':
+            kwargs_header = {}
         else:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header,
-                'buyer__iexact' : buyer_header
-            }
-
+            if buyer_header is None:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header
+                }
+            else:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header,
+                    'buyer__iexact' : buyer_header
+                }
+        print("kwargs_header")
+        print(kwargs_header)
         #input from args
         default = args.pop('default__iexact',None)
         if default is None:
@@ -305,16 +309,21 @@ class impact_filters(APIView):
         buying_controller_header = args.pop('buying_controller_header__iexact',None)
         buyer_header = args.pop('buyer_header__iexact',None)
         #header over
-        if buyer_header is None:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header
-            }
-        else:
-            kwargs_header = {
-                'buying_controller__iexact' : buying_controller_header,
-                'buyer__iexact' : buyer_header
-            }
 
+        # for admin user (access to 7 buying controllers)
+        if  designation=='admin':
+            kwargs_header = {}
+        else:
+            if buyer_header is None:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header
+                }
+            else:
+                kwargs_header = {
+                    'buying_controller__iexact' : buying_controller_header,
+                    'buyer__iexact' : buyer_header
+                }
+                
         #input from args
         bc_name = args.get('buying_controller__iexact')
         buyer_name = args.get('buyer__iexact')

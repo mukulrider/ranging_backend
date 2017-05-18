@@ -27,7 +27,7 @@ from .models import outperformance, pricebucket, unmatchedprod
 from .models import bc_allprod_attributes, attribute_score_allbc, consolidated_calculated_cannibalization, npd_supplier_ads,consolidated_buckets,seasonality_index,uk_holidays,npd_calendar,merch_range,input_npd,brand_grp_mapping,range_space_store_future,store_details,product_contri,product_price,product_desc,cannibalization_vol_buckets
 
 # Models for NPD Imapct Save Scenario
-from .models import SaveScenario
+from .models import SaveScenario, ScenarioTracker
 
 # Serializers for Unmacthed product and supplier table 
 from .serializers import unmatchedprodSerializer, npd_impact_tableSerializer
@@ -1546,1475 +1546,1634 @@ class npd_save_scenario(APIView):
         system_time = strftime("%Y-%m-%d" ,gmtime())
         #define variables
 
-        Buying_controller = args.pop('buying_controller', None)
-        par_supp = args.pop('parent_supplier',None)
-        Buyer = args.pop('buyer', None)
-        Junior_Buyer = args.pop('junior_buyer', '')
-        Package_Type = args.pop('package_type', '')
-        Product_Sub_Group_Description = args.pop('product_sub_group_description', '')
-        measure_type =  args.pop('measure_type', '')
+        #to check if the scenario name exists already        
+        scenario = scenario_name
+        tag = scenario_tag
+        check_value = str(user_id) + '_' + scenario +  '_' + tag
 
-        asp = float(args.pop('asp', 0))
-        acp = float(args.pop('acp', 0))
-        Size = float(args.pop('size', 0))
-        Brand_Name = args.pop('brand_name', '')
-        Till_Roll_Description =args.pop('till_roll_description', '')
-        Merchandise_Group_Description = args.pop('merchandise_group_description', '')
-        Range_class = args.pop('range_class', '')
-        #variables defined
-        #read all files
-        All_attribute = read_frame(bc_allprod_attributes.objects.all())
-        bc_cannibilization = read_frame(consolidated_calculated_cannibalization.objects.all())
-        input_dataset = read_frame(input_npd.objects.all())
-        consolidated_buckets_df = read_frame(consolidated_buckets.objects.all())
-        range_space_store = read_frame(range_space_store_future.objects.all())
-        store_details_df = read_frame(store_details.objects.all())
-        product_contri_df = read_frame(product_contri.objects.all())
-        product_price_df = read_frame(product_price.objects.all())
-        week_mapping = read_frame(npd_calendar.objects.all())
+        x= list(SaveScenario.objects.values_list('user_id','scenario_name','scenario_tag').distinct())
+        x_df = pd.DataFrame(x,columns=["user_id","scenario_name","scenario_tag"])
+        check_list=[]
+        x_df['check_list'] = x_df['user_id'] + '_' + x_df['scenario_name'] + '_' + x_df['scenario_tag']
 
-        merch_range_df = read_frame(merch_range.objects.all())
-        product_desc_df = read_frame(product_desc.objects.all())
-        brand_grp_mapping_df = read_frame(brand_grp_mapping.objects.all())
-        uk_holidays_df = read_frame(uk_holidays.objects.all())
-        attribute_score = read_frame(attribute_score_allbc.objects.all())
-        SI = read_frame(seasonality_index.objects.all())    
-        cann_vol_bucket = read_frame(cannibalization_vol_buckets.objects.all())
+        check_list_data = list(x_df['check_list'])
+        if check_value in check_list_data:
+            result = "FAILURE"
+        else:
+            result = "SUCCESS" 
 
-        #temp read csv
-        # attribute_score = pd.read_csv('attribute_scores_allBC.csv')
-        # SI = pd.read_csv('ALL_BC_Seasonality_Index.csv')
-        # cann_vol_bucket = pd.read_csv('Cannibalization_vol_bucket.csv')
-        # uk_holidays_df = pd.read_csv('monthly_holiday.csv')
-        #files read
+        if result == "SUCCESS":
+            Buying_controller = args.pop('buying_controller', None)
+            par_supp = args.pop('parent_supplier',None)
+            Buyer = args.pop('buyer', None)
+            Junior_Buyer = args.pop('junior_buyer', '')
+            Package_Type = args.pop('package_type', '')
+            Product_Sub_Group_Description = args.pop('product_sub_group_description', '')
+            measure_type =  args.pop('measure_type', '')
 
-        ### To get the priceband , psg code and merch code
+            asp = float(args.pop('asp', 0))
+            acp = float(args.pop('acp', 0))
+            Size = float(args.pop('size', 0))
+            Brand_Name = args.pop('brand_name', '')
+            Till_Roll_Description =args.pop('till_roll_description', '')
+            Merchandise_Group_Description = args.pop('merchandise_group_description', '')
+            Range_class = args.pop('range_class', '')
+            #variables defined
+            #read all files
+            All_attribute = read_frame(bc_allprod_attributes.objects.all())
+            bc_cannibilization = read_frame(consolidated_calculated_cannibalization.objects.all())
+            input_dataset = read_frame(input_npd.objects.all())
+            consolidated_buckets_df = read_frame(consolidated_buckets.objects.all())
+            range_space_store = read_frame(range_space_store_future.objects.all())
+            store_details_df = read_frame(store_details.objects.all())
+            product_contri_df = read_frame(product_contri.objects.all())
+            product_price_df = read_frame(product_price.objects.all())
+            week_mapping = read_frame(npd_calendar.objects.all())
 
-        def get_priceband_psg_merch_code():
-            ###Getting a price band based on user selection
-            if((Buying_controller == 'Frozen Impulse') | (Buying_controller == 'HotandSweet') |(Buying_controller == 'Beers') | (Buying_controller == 'Meat Fish and Veg') |(Buying_controller == 'Grocery Cereals')):
+            merch_range_df = read_frame(merch_range.objects.all())
+            product_desc_df = read_frame(product_desc.objects.all())
+            brand_grp_mapping_df = read_frame(brand_grp_mapping.objects.all())
+            uk_holidays_df = read_frame(uk_holidays.objects.all())
+            attribute_score = read_frame(attribute_score_allbc.objects.all())
+            SI = read_frame(seasonality_index.objects.all())    
+            cann_vol_bucket = read_frame(cannibalization_vol_buckets.objects.all())
 
-                if(0 < asp <= 2):
-                    price_band = '0 to 2'
-                if(2 < asp <= 4):
-                    price_band = '2 to 4'
-                if(4 < asp <= 6):
-                    price_band = '4 to 6'
-                if(6 < asp <= 8):
-                    price_band = '6 to 8'
-                if(8 < asp <= 10):
-                    price_band = '8 to 10'
-                if(10 < asp <= 12):
-                    price_band = '10 to 12'
-                if(12 < asp <= 14):
-                    price_band = '12 to 14'
-                if(14 < asp <= 16):
-                    price_band = '14 to 16'
-                if(16 < asp <= 18):
-                    price_band = '16 to 18'
-                if(18 < asp <= 20):
-                    price_band = '18 to 20'
-                if(20 < asp <= 23):
-                    price_band = '20 to 23'
-                if(23 < asp <= 26):
-                    price_band = '23 to 29'
-                if(26 < asp <= 29):
-                    price_band = '26 to 29'
-                if(29 < asp ):
-                    price_band = 'GRTR 29'
+            ### To get the priceband , psg code and merch code
 
-            if (Buying_controller == 'Spirits'):
-                if(0 < asp <= 3):
-                    price_band = '0 to 3' 
-                if(3 < asp <= 6):
-                    price_band = '3 to 6'
-                if(6 < asp <= 9):
-                    price_band = '6 to 9'
-                if(9 < asp <= 12):
-                    price_band = '9 to 12'
-                if(12 < asp <= 15):
-                    price_band = '12 to 15'
-                if(15 < asp <= 18):
-                    price_band = '15 to 18'
-                if(18 < asp <= 21):
-                    price_band = '18 to 21'
-                if(21 < asp <= 24):
-                    price_band = '21 to 24'
-                if(24 < asp <= 27):
-                    price_band = '24 to 27'
-                if(27 < asp <= 30):
-                    price_band = '27 to 30'
-                if(30 < asp <= 35):
-                    price_band = '30 to 35'
-                if(35 < asp <= 40):
-                    price_band = '35 to 40'
-                if(40 < asp <= 45):
-                    price_band = '40 to 45'
-                if(45 < asp <= 50):
-                    price_band = '45 to 50'
-                if(50 < asp <= 60):
-                    price_band = '50 to 60'
-                if(60 < asp <= 70):
-                    price_band = '60 to 70'
-                if(70 < asp <= 80):
-                    price_band = '70 to 80'
-                if(80 < asp <= 90):
-                    price_band = '80 to 90'
-                if(90 < asp <= 100):
-                    price_band = '90 to 100'
-                if(100 < asp ):
-                    price_band = 'GRTR 100'
+            def get_priceband_psg_merch_code():
+                ###Getting a price band based on user selection
+                if((Buying_controller == 'Frozen Impulse') | (Buying_controller == 'HotandSweet') |(Buying_controller == 'Beers') | (Buying_controller == 'Meat Fish and Veg') |(Buying_controller == 'Grocery Cereals')):
 
-            if (Buying_controller == 'Wines'):
-                if(0 < asp <= 5):
-                    price_band = '0 to 5'
-                if(5 < asp <= 10):
-                    price_band = '5 to 10'
-                if(10 < asp <= 15):
-                    price_band = '10 to 15'
-                if(15 < asp <= 20):
-                    price_band = '15 to 20'
-                if(20 < asp <= 25):
-                    price_band = '20 to 25'
-                if(25 < asp <= 30):
-                    price_band = '25 to 30'
-                if(30 < asp <= 35):
-                    price_band = '30 to 35'
-                if(35 < asp <= 40):
-                    price_band = '35 to 40'
-                if(40 < asp <= 45):
-                    price_band = '40 to 45'
-                if(45 < asp <= 50):
-                    price_band = '45 to 50'
-                if(50 < asp <= 60):
-                    price_band = '50 to 60'
-                if(60 < asp <= 70):
-                    price_band = '60 to 70'
-                if(70 < asp <= 80):
-                    price_band = '70 to 80'
-                if(80 < asp <= 90):
-                    price_band = '80 to 90'
-                if(90 < asp <= 100):
-                    price_band = '90 to 100'
-                if(100 < asp <= 150):
-                    price_band = '100 to 150'
-                if(150 < asp <= 200):
-                    price_band = '150 to 200'
-                if(200 < asp <= 250):
-                    price_band = '200 to 250'
-                if(250 < asp <= 300):
-                    price_band = '250 to 300'
-                if(300 < asp <= 350):
-                    price_band = '300 to 350'
-                if(350 < asp <= 400 ):
-                    price_band = '350 to 400'
+                    if(0 < asp <= 2):
+                        price_band = '0 to 2'
+                    if(2 < asp <= 4):
+                        price_band = '2 to 4'
+                    if(4 < asp <= 6):
+                        price_band = '4 to 6'
+                    if(6 < asp <= 8):
+                        price_band = '6 to 8'
+                    if(8 < asp <= 10):
+                        price_band = '8 to 10'
+                    if(10 < asp <= 12):
+                        price_band = '10 to 12'
+                    if(12 < asp <= 14):
+                        price_band = '12 to 14'
+                    if(14 < asp <= 16):
+                        price_band = '14 to 16'
+                    if(16 < asp <= 18):
+                        price_band = '16 to 18'
+                    if(18 < asp <= 20):
+                        price_band = '18 to 20'
+                    if(20 < asp <= 23):
+                        price_band = '20 to 23'
+                    if(23 < asp <= 26):
+                        price_band = '23 to 29'
+                    if(26 < asp <= 29):
+                        price_band = '26 to 29'
+                    if(29 < asp ):
+                        price_band = 'GRTR 29'
 
-            #####Getting a psg code based on psg desc
-            psg_code = input_dataset[input_dataset['product_sub_group_description'] == Product_Sub_Group_Description].iloc[0]['product_sub_group_code']
+                if (Buying_controller == 'Spirits'):
+                    if(0 < asp <= 3):
+                        price_band = '0 to 3' 
+                    if(3 < asp <= 6):
+                        price_band = '3 to 6'
+                    if(6 < asp <= 9):
+                        price_band = '6 to 9'
+                    if(9 < asp <= 12):
+                        price_band = '9 to 12'
+                    if(12 < asp <= 15):
+                        price_band = '12 to 15'
+                    if(15 < asp <= 18):
+                        price_band = '15 to 18'
+                    if(18 < asp <= 21):
+                        price_band = '18 to 21'
+                    if(21 < asp <= 24):
+                        price_band = '21 to 24'
+                    if(24 < asp <= 27):
+                        price_band = '24 to 27'
+                    if(27 < asp <= 30):
+                        price_band = '27 to 30'
+                    if(30 < asp <= 35):
+                        price_band = '30 to 35'
+                    if(35 < asp <= 40):
+                        price_band = '35 to 40'
+                    if(40 < asp <= 45):
+                        price_band = '40 to 45'
+                    if(45 < asp <= 50):
+                        price_band = '45 to 50'
+                    if(50 < asp <= 60):
+                        price_band = '50 to 60'
+                    if(60 < asp <= 70):
+                        price_band = '60 to 70'
+                    if(70 < asp <= 80):
+                        price_band = '70 to 80'
+                    if(80 < asp <= 90):
+                        price_band = '80 to 90'
+                    if(90 < asp <= 100):
+                        price_band = '90 to 100'
+                    if(100 < asp ):
+                        price_band = 'GRTR 100'
 
-            
-            merch_code = merch_range_df[merch_range_df['merchandise_group_description']==Merchandise_Group_Description].iloc[0]['merchandise_group_code']
-         
-            psg_priceband_merch = {'psg_code' : psg_code, 'price_band' : price_band ,'merch_code' : merch_code}
+                if (Buying_controller == 'Wines'):
+                    if(0 < asp <= 5):
+                        price_band = '0 to 5'
+                    if(5 < asp <= 10):
+                        price_band = '5 to 10'
+                    if(10 < asp <= 15):
+                        price_band = '10 to 15'
+                    if(15 < asp <= 20):
+                        price_band = '15 to 20'
+                    if(20 < asp <= 25):
+                        price_band = '20 to 25'
+                    if(25 < asp <= 30):
+                        price_band = '25 to 30'
+                    if(30 < asp <= 35):
+                        price_band = '30 to 35'
+                    if(35 < asp <= 40):
+                        price_band = '35 to 40'
+                    if(40 < asp <= 45):
+                        price_band = '40 to 45'
+                    if(45 < asp <= 50):
+                        price_band = '45 to 50'
+                    if(50 < asp <= 60):
+                        price_band = '50 to 60'
+                    if(60 < asp <= 70):
+                        price_band = '60 to 70'
+                    if(70 < asp <= 80):
+                        price_band = '70 to 80'
+                    if(80 < asp <= 90):
+                        price_band = '80 to 90'
+                    if(90 < asp <= 100):
+                        price_band = '90 to 100'
+                    if(100 < asp <= 150):
+                        price_band = '100 to 150'
+                    if(150 < asp <= 200):
+                        price_band = '150 to 200'
+                    if(200 < asp <= 250):
+                        price_band = '200 to 250'
+                    if(250 < asp <= 300):
+                        price_band = '250 to 300'
+                    if(300 < asp <= 350):
+                        price_band = '300 to 350'
+                    if(350 < asp <= 400 ):
+                        price_band = '350 to 400'
 
-            return psg_priceband_merch
+                #####Getting a psg code based on psg desc
+                psg_code = input_dataset[input_dataset['product_sub_group_description'] == Product_Sub_Group_Description].iloc[0]['product_sub_group_code']
 
-        #### Making structure with 12 rows. Each row for a month
-        def get_ads_structure():
-            df =dataset1.iloc[0:11,]
-            month_mapping_subset = week_mapping.loc[week_mapping.year_period_number>=current_month]
-
-            ### To get the list of all 12 months
-            month_list = pd.DataFrame(month_mapping_subset['year_period_number'].unique())
-            month_list.columns = ['year_period_number']
-            month_list.sort_values(by= ['year_period_number'],ascending=False)
-            month_list = month_list.iloc[0:12]
-            df = pd.concat([df.reset_index(drop=True), month_list], axis=1)
-            df= df.fillna(0)
-            return df
-        ###On column added which is the year week number
-
-        #### Have incorporated margin_percent and acp 
-        def fill_ads_structure(dataset):
-            ####Brand to ind and grp mapping 
-            brand_grp_mapping = All_attribute
-
-            ### Adding new feature as abs 
-            margin_percent = abs((asp-acp)/acp)
-
-            #### Assigning the value of '1' for the collected inputs (Categorical Variables)
-            if "junior_buyer_" + Junior_Buyer in dataset.columns:
-                dataset.loc[:,"junior_buyer_" + Junior_Buyer]=1
-            if 'buyer_' + Buyer in dataset.columns:
-                dataset.loc[:,"buyer_" + Buyer] = 1
-            if "package_type_" + Package_Type in dataset.columns:
-                dataset.loc[:,"package_type_" + Package_Type] = 1
-            if "product_sub_group_description_" + Product_Sub_Group_Description in dataset.columns:
-                dataset.loc[:,"product_sub_group_description_" + Product_Sub_Group_Description] = 1
-            if "measure_type_" + measure_type in dataset.columns:
-                dataset.loc[:,"measure_type_" + measure_type] = 1
-            if "price_band_" + price_band in dataset.columns:
-                dataset.loc[:,"price_band_" + price_band] = 1
-                        
-            #### Directly input from the users
-            if "asp" in dataset.columns:
-                dataset.loc[:,"asp"] = asp
-            if "acp" in dataset.columns:
-                dataset.loc[:,"acp"] = acp
-            if "margin_percent" in dataset.columns:
-                dataset.loc[:,"margin_percent"] = margin_percent
-            if "size" in dataset.columns:
-                dataset.loc[:,"size"] = Size
-
-            #### Mapping Brand name to brand grp (Getting the rank of the brand selected)
-            ##### Reading a mapping file
-            brand_group = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_grp20']
-
-            #### Assigning the rank of the group in our ADS
-            if "brand_grp20" in dataset.columns:
-                dataset.loc[:,"brand_grp20"] = brand_group
-
-            ####Getting the brand indicator 
-            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
-
-            # Need to QC this
-            if (brand_ind=='T'):
-                brand_indicator = 1
-            if (brand_ind == 'B'):
-                brand_indicator = 0
-            
-            if "brand_ind" in dataset.columns:
-                dataset.loc[:,"brand_ind"] = brand_indicator
-            ### Filling all columns related to week number 
-            #### Looping for all the weeks
-
-            dataset.loc[:,"weeks_since_launch"] = 0
-            #### Arranging week in ascending order
-            month_mapping_subset = week_mapping.sort_values('year_period_number')
-            #Converting date to the date format
-            month_mapping_subset['calendar_date'] = pd.to_datetime(month_mapping_subset['calendar_date'], format= '%Y-%m-%d')
-                    
-            date_map = month_mapping_subset[['year_period_number', 'quarter_number', 'period_number', 'year_number']].drop_duplicates()
-            date_map.columns = ['year_period_number', 'quarter_number', 'period_number', 'year_number']
-            date_sparse = pd.get_dummies(date_map, prefix = ['quarter_number', 'period_number'], 
-                                                   columns = ['quarter_number', 'period_number'])
-            #date_sparse.drop('curr_week_number_53', 1, inplace= True)
-            date_sparse.drop('period_number_13', 1, inplace= True)
-            
-            # Removed the previous hard coded value
-            if all(x in dataset.columns for x in date_sparse.columns[date_sparse.columns != 'year_period_number']):
-                dataset.drop(date_sparse.columns[date_sparse.columns != 'year_period_number'], 1, inplace =True)
-
-                dataset = pd.merge(dataset, date_sparse, on = ['year_period_number'], how = 'left')
-            
-            # Getting week count in each month and use it to create a cumulative column. This column can be used as weeks since launch
-            week_count = week_mapping.groupby('year_period_number', as_index =False)['year_week_number'].count()
-            week_count.columns = ['year_period_number', 'period_week_count']
-            week_count = week_count.loc[week_count.year_period_number>=current_month]
-            week_count['weeks_since_launch'] = week_count.period_week_count.cumsum()
-            
-            if 'weeks_since_launch' in dataset.columns:
-                dataset.drop('weeks_since_launch', 1, inplace =True)
-                dataset = pd.merge(dataset, week_count, on = ['year_period_number'], how = 'left')
-            
-            #### Weeks since launch will be incremental 
-            #Taking weeks from launch as 1 for the first week
-            #### Reading a mapping file
-            SI_psg = SI.loc[(SI['psg'] == psg_code)]
-            SI_psg['adjusted_index']=SI_psg['adjusted_index'].astype(float)
-            SI_psg = SI_psg[['months','adjusted_index']]
-            ####Getting a week column to get the seasonality index
-            dataset['months'] = dataset['year_period_number']%100
-            dataset = pd.merge(dataset, SI_psg, left_on=['months'], right_on=['months'], how='left' )
-            del(dataset['si'])
-            dataset = dataset.rename(columns={'adjusted_index':'si'})
-            del(dataset['months'])
-            dataset['si'] = dataset['si'].astype(float)
-            return dataset
-
-        def similar_products():
-
-            #### Getting number of subs same and different brand
-            All_attribute_bc = All_attribute.loc[(All_attribute['bc'] == Buying_controller)]
-            All_attribute_treated = All_attribute.dropna()
-            # All_attribute_treated.to_csv('all_attribute.csv')
-            # In the new logic, PSG is not a hard and fast rule. So PSG filter is not required
-
-            ###Creating a empty data frame of attributes to compare. Will fill the values based on user selection
-            match_df = pd.DataFrame(0, index = [0],  columns = [ "brand_name", "package_type", "till_roll_description", "size", "measure_type", "price_band", "psg"] )
-
-            ##### As we need price band we need to convert the asp (user input) into price bands based on BC and asp
-
-            #### Filling the empty data frames with values as now we have the price band
-
-            match_df.loc[:,"brand_name"] = Brand_Name
-            match_df.loc[:,"package_type"] = Package_Type
-            match_df.loc[:,"till_roll_description"] = Till_Roll_Description
-            match_df.loc[:,"size"] = Size
-            match_df.loc[:,"measure_type"] = measure_type
-            match_df.loc[:,"price_band"] = price_band
-            match_df.loc[:,"psg"] = Product_Sub_Group_Description
-            
-            #### To compare with all attributes we need to merge all attributes to user selection. For that we will map it on a common key
-            All_attribute_treated['key'] = 1
-            match_df['key'] = 1
-            match_all_prod = pd.merge(match_df, All_attribute_treated, on = 'key')
-            
-            match_all_prod['size_x'] = match_all_prod['size_x'].astype('float')
-            match_all_prod['size_y'] = match_all_prod['size_y'].astype('float')
-
-            ##### Assigning flags to every row for every user selection : psg,brand name, pkg type,size,measure,price band,till roll desc
-            ### Measure and size are related we will be given commom flag based on some condition
-            match_all_prod['brand_flag'] = np.where(match_all_prod.loc[:,"brand_name_x"] == match_all_prod.loc[:,"brand_name_y"], 1, 0)
-            match_all_prod['package_flag'] = np.where(match_all_prod.loc[:,"package_type_x"] == match_all_prod.loc[:,"package_type_y"], 1, 0)
-            match_all_prod['Size_flag'] = np.where((match_all_prod.loc[:,"measure_type_x"] == match_all_prod.loc[:,"measure_type_y"]) & 
-                                       ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
-                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
-                                       ((match_all_prod.loc[:,"measure_type_y"] == 'ML')  & 
-                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
-                                        ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
-                                       ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
-            match_all_prod['price_flag'] = np.where(match_all_prod.loc[:,"price_band_x"] == match_all_prod.loc[:,"price_band_y"], 1, 0)
-            match_all_prod['till_roll_flag'] = np.where(match_all_prod.loc[:,"till_roll_description_x"] == match_all_prod.loc[:,"till_roll_description_y"], 1, 0)
-            match_all_prod['psg_flag'] = np.where(match_all_prod.loc[:,"psg"] == match_all_prod.loc[:,"product_sub_group_description"], 1, 0)
-            
-            ### Subsetting score importance based on PSG
-            score = attribute_score[attribute_score.loc[:, 'bc'] == Buying_controller]
-
-            ###Getting the percentage score based on flag*individual score
-            match_all_prod['brand_score'] = match_all_prod.loc[:,"brand_flag"]*score['avg_brand'].values
-            match_all_prod['package_score'] = match_all_prod.loc[:,"package_flag"]*score['avg_pkg'].values
-            match_all_prod['Size_score'] = match_all_prod.loc[:,"Size_flag"]*score['avg_size'].values
-            match_all_prod['price_score'] = match_all_prod.loc[:,"price_flag"]*score['avg_price'].values
-            match_all_prod['till_roll_score'] = match_all_prod.loc[:,"till_roll_flag"]*score['avg_tillroll'].values
-            match_all_prod['psg_score'] = match_all_prod.loc[:,"psg_flag"]*score['avg_psg'].values
-            
-            ####Getting the final score for every row based on summation of individual attribute score
-            match_all_prod['final_score'] = match_all_prod['brand_score'] + match_all_prod['package_score'] + match_all_prod['Size_score'] + match_all_prod['price_score'] + match_all_prod['till_roll_score'] + match_all_prod['psg_score']
-
-            #### Subsetting for score greater than 0.7 (threshold)
-            # match_all_prod.to_csv('match_all_prod.csv')
-            sim_prod = match_all_prod[match_all_prod['final_score'] > 0.4]
-
-            return sim_prod
-
-        def subs_same_different(dataset):
-            ####Total products left after putting a threshold of 0.7
-
-            sim_prod_copy = sim_prod[sim_prod['final_score']>0.7]
-            tot_prod = sim_prod_copy.shape[0]
-
-            #### Same brand product count
-            same_brand_count = sum(sim_prod_copy['brand_flag'] == 1)
-
-            #### Total - same = different brand
-            diff_brand_count = tot_prod - sum(sim_prod_copy['brand_flag'] == 1)
-
-            ##### Assigning values to our columns in ADS (no_of_subs_same_brand , no_of_subs_diff_brand)
-            if 'no_of_subs_same_brand' in dataset.columns:
-                dataset.loc[:, 'no_of_subs_same_brand'] = same_brand_count
-            if 'no_of_subs_diff_brand' in dataset.columns:
-                dataset.loc[:, 'no_of_subs_diff_brand'] = diff_brand_count
-            return dataset
-
-        def psg_pb_prodcount(dataset):
-
-            #### To get the psg prod count and price band count
-            ###### Subsetting all attribute data for the selected psg
-            All_attribute_psg = All_attribute.loc[(All_attribute['product_sub_group_description'] == Product_Sub_Group_Description)]
-
-            #### Counting the distinct products in the selected psg
-            count_psg_prod = len(All_attribute_psg['base_product_number'].unique())
-
-            ### Counting the distinct products in the price band
-            ### Price band we have calculated before based on if else conditions
-            ## Subsetting for the selected price band
-            All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
-            count_pb_prod = len(All_attribute_pb['base_product_number'].unique())
-            #### Filling values for the count psg prod and price band 
-            if 'psg_prod_count' in dataset.columns:
-                dataset.loc[:, 'psg_prod_count'] = count_psg_prod
-            if 'price_band_prod_count' in dataset.columns:
-                dataset.loc[:, 'price_band_prod_count'] = count_pb_prod
-            return dataset
-
-        ### To incorporate merch grp and range class
-        def no_of_stores_holidays(dataset):
-
-            stores = pd.DataFrame(range_space_store[(range_space_store['merchandise_group_code'] == merch_code) & 
-                                   (range_space_store['range_class'] >= Range_class)]['retail_outlet_number'])
-
-            stores_size = pd.merge(stores, store_details_df, on = 'retail_outlet_number', how = 'left')
-            # APC 1 & 5 are Express stores and remaining others are Main Estate
-            stores_size['store_type']  = np.where((stores_size.area_price_code == 1) | (stores_size.area_price_code == 5), 'EXP', 'ME')
-            
-            # Previous APC_stores has been changed to store_count with modifications
-            store_count = stores_size.groupby(['store_type'], as_index = False).aggregate({'retail_outlet_number': lambda x: x.nunique(),
-                            'pfs_store': lambda x: x.nunique(), 'store_5k': lambda x: x.nunique(),
-                            'store_20k': lambda x: x.nunique(), 'store_50k': lambda x: x.nunique(),
-                            'store_100k': lambda x: x.nunique(), 'store_100kplus': lambda x: x.nunique()})
-            store_count = store_count.loc[:,['store_type', 'retail_outlet_number', 'pfs_store', 'store_5k', 'store_20k', 'store_50k', 'store_100k', 'store_100kplus']]
-            store_count.columns = ['store_type', 'no_stores', 'no_pfs_Stores', 'no_5k_stores',
-               'no_20k_stores', 'no_50k_stores', 'no_100k_stores', 'no_100kplus_stores']
-            store_count.columns = map(str.lower, store_count.columns)
-            df_final = pd.DataFrame()
-            for i in range(0,len(store_count)):
-                df_temp = dataset.copy()
-                ####### To update the no of stores based on store type
-                if "store_type_" + str(store_count['store_type'][i]) in df_temp.columns:
-                    df_temp.loc[:,"store_type_" + str(store_count['store_type'][i])] = 1
-                if "no_stores" in df_temp.columns:  
-                    df_temp.loc[:,"no_stores"] = store_count['no_stores'][i]
-                if "no_pfs_stores" in df_temp.columns:  
-                    df_temp.loc[:,"no_pfs_stores"] = store_count['no_pfs_stores'][i]
-                if "no_5k_stores" in df_temp.columns:
-                    df_temp.loc[:,"no_5k_stores"] = store_count['no_5k_stores'][i]
-                if "no_20k_stores" in df_temp.columns:
-                    df_temp.loc[:,"no_20k_stores"] = store_count['no_20k_stores'][i]
-                if "no_50k_stores" in df_temp.columns:
-                    df_temp.loc[:,"no_50k_stores"] = store_count['no_50k_stores'][i]
-                if "no_100k_stores" in df_temp.columns:
-                    df_temp.loc[:,"no_100k_stores"] = store_count['no_100k_stores'][i]
-                if "no_100kplus_stores" in df_temp.columns:
-                    df_temp.loc[:,"no_100kplus_stores"] = store_count['no_100kplus_stores'][i]
                 
-                uk_holidays_df['year_period_number'] = pd.to_numeric(uk_holidays_df.year_number.map(str) + uk_holidays_df.period_number.map("{:02}".format))
-                #### To get the holidays count based on store type
-                uk_holidays_df_store = uk_holidays_df[['year_period_number','holiday_count','store_type']]
-                uk_holidays_df_store = uk_holidays_df_store.loc[uk_holidays_df['store_type']== store_count['store_type'][i]]
-                uk_holidays_df_store = uk_holidays_df_store[['year_period_number','holiday_count']]
+                merch_code = merch_range_df[merch_range_df['merchandise_group_description']==Merchandise_Group_Description].iloc[0]['merchandise_group_code']
+             
+                psg_priceband_merch = {'psg_code' : psg_code, 'price_band' : price_band ,'merch_code' : merch_code}
 
-                #### To get the count of holidays in a week. Sme week will repeat for n number of holidays n times
-                #holiday_count_week = uk_holidays_df_store.groupby(['year_week_number'], as_index=False).agg({'holiday_flag': sum})
+                return psg_priceband_merch
 
-                ####Doing a left join on our ADS to get the holiday count. Wherever it is NA it will be given 0 as our holiday table has only ####those weeks which has atleast 1 holiday 
-                if 'holiday_count' in df_temp.columns:
-                    dataset.drop('holiday_count', 1, inplace =True)
-                    df_temp = pd.merge(df_temp,uk_holidays_df_store, left_on=['year_period_number'], right_on=['year_period_number'], how='left' )
-                    df_temp= df_temp.fillna(0)
-                
-                df_final = df_final.append(df_temp)
-            df_final_new = df_final
-            df_final_new.loc[:,'launch_month'] = current_month
-            return df_final_new
+            #### Making structure with 12 rows. Each row for a month
+            def get_ads_structure():
+                df =dataset1.iloc[0:11,]
+                month_mapping_subset = week_mapping.loc[week_mapping.year_period_number>=current_month]
 
-        def run_cannibilization_model(input_test_dataset,week_flag,time_frame):
-            Cannibalization_perc = 0 
-            week_flag =week_flag
-            time_frame = time_frame
-            ####Xg boost model pickled
-            #### Have to be inside function which takes test datasets as a argument
-            #### For xg boost to run we need to have our test dataset in matrix form. Converting our test dataframe to required matrix
-            testdmat = xgb.DMatrix(input_test_dataset.loc[:,xg_model.feature_names])
-            #### Predicting the volume for the futute weeks (13,26,51)
-            Volume = xg_model.predict(testdmat)
-            test = pd.DataFrame(Volume)
-            ##### Summing all the volumes for the weeks in 13,26,and 52 window
-            total_forecasted_volume = sum(Volume)
+                ### To get the list of all 12 months
+                month_list = pd.DataFrame(month_mapping_subset['year_period_number'].unique())
+                month_list.columns = ['year_period_number']
+                month_list.sort_values(by= ['year_period_number'],ascending=False)
+                month_list = month_list.iloc[0:12]
+                df = pd.concat([df.reset_index(drop=True), month_list], axis=1)
+                df= df.fillna(0)
+                return df
+            ###On column added which is the year week number
 
-            #### As now we are aware of the total volume forecasted we can multiply with asp (user selection) to get total sales
-            total_forecasted_sales = total_forecasted_volume*asp
+            #### Have incorporated margin_percent and acp 
+            def fill_ads_structure(dataset):
+                ####Brand to ind and grp mapping 
+                brand_grp_mapping = All_attribute
 
-            #### To check if any sister products are available. If len(sim_prod)=0 after merge it means no sister product available or no ##similar products passed the threshod of 0.8 
-            sim_prod_new = pd.merge(sim_prod, bc_cannibilization, left_on=['base_product_number'], right_on=['base_product_number'], how='inner')
-            brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
-            
-            # Need to add this as a model
-            low_cutoff = (cann_vol_bucket.loc[cann_vol_bucket['buying_controller'] == Buying_controller]).iloc[0]['low_cutoff']
-            high_cutoff = (cann_vol_bucket.loc[cann_vol_bucket['buying_controller'] == Buying_controller]).iloc[0]['high_cutoff']
-        
-            #### Cannibalization percentage
-            sim_prod_subset = sim_prod_new[sim_prod_new['final_score']>0.8]
-            
-            if len(sim_prod_subset)==0:
-                if week_flag =='Latest 13 Weeks':
-                    high_volume_cutoff = (high_cutoff/21)*13
-                    low_volume_cutoff = (low_cutoff/21)*13
-                if week_flag =='Latest 26 Weeks':
-                    high_volume_cutoff = (high_cutoff/21)*26
-                    low_volume_cutoff = (low_cutoff/21)*26
-                if week_flag =='Latest 52 Weeks':
-                    high_volume_cutoff = (high_cutoff/21)*52
-                    low_volume_cutoff = (low_cutoff/21)*52 
+                ### Adding new feature as abs 
+                margin_percent = abs((asp-acp)/acp)
 
-                if (total_forecasted_volume>high_volume_cutoff):
-                    Volume_flag= 'High'
-                elif (total_forecasted_volume<low_volume_cutoff):
-                    Volume_flag = 'Low'
-                else :
-                    Volume_flag = 'Medium'
-                ####Need to import psg code to desc mapping
+                #### Assigning the value of '1' for the collected inputs (Categorical Variables)
+                if "junior_buyer_" + Junior_Buyer in dataset.columns:
+                    dataset.loc[:,"junior_buyer_" + Junior_Buyer]=1
+                if 'buyer_' + Buyer in dataset.columns:
+                    dataset.loc[:,"buyer_" + Buyer] = 1
+                if "package_type_" + Package_Type in dataset.columns:
+                    dataset.loc[:,"package_type_" + Package_Type] = 1
+                if "product_sub_group_description_" + Product_Sub_Group_Description in dataset.columns:
+                    dataset.loc[:,"product_sub_group_description_" + Product_Sub_Group_Description] = 1
+                if "measure_type_" + measure_type in dataset.columns:
+                    dataset.loc[:,"measure_type_" + measure_type] = 1
+                if "price_band_" + price_band in dataset.columns:
+                    dataset.loc[:,"price_band_" + price_band] = 1
+                            
+                #### Directly input from the users
+                if "asp" in dataset.columns:
+                    dataset.loc[:,"asp"] = asp
+                if "acp" in dataset.columns:
+                    dataset.loc[:,"acp"] = acp
+                if "margin_percent" in dataset.columns:
+                    dataset.loc[:,"margin_percent"] = margin_percent
+                if "size" in dataset.columns:
+                    dataset.loc[:,"size"] = Size
 
+                #### Mapping Brand name to brand grp (Getting the rank of the brand selected)
+                ##### Reading a mapping file
+                brand_group = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_grp20']
 
-                if (psg_code+Volume_flag+brand_ind  in list(PSGVolBrandBuckets['bucket_value'])):                    
-                    Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets['bucket_value'] == psg_code+Volume_flag+brand_ind]).iloc[0]['cannibalization']
-                
-                elif (psg_code+Volume_flag  in list(PSGVolBuckets['bucket_value'])):
-                    Cannibalization_perc = (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code+Volume_flag]).iloc[0]['cannibalization']
+                #### Assigning the rank of the group in our ADS
+                if "brand_grp20" in dataset.columns:
+                    dataset.loc[:,"brand_grp20"] = brand_group
 
-                elif (psg_code  in list(PSGBuckets['bucket_value'])):
-                    Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
-                    
-                elif (Junior_Buyer+Volume_flag+brand_ind  in list(Junior_BuyerVolBrandBuckets['bucket_value'])):
-                    Cannibalization_perc = (Junior_BuyerVolBrandBuckets.loc[Junior_BuyerVolBrandBuckets['bucket_value'] == Junior_Buyer+Volume_flag+brand_ind]).iloc[0]['cannibalization']
+                ####Getting the brand indicator 
+                brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
 
-                elif (Junior_Buyer+Volume_flag  in list(Junior_BuyerVolBuckets['bucket_value'])):
-                    Cannibalization_perc = (Junior_BuyerVolBuckets.loc[Junior_BuyerVolBuckets['bucket_value'] == Junior_Buyer+Volume_flag]).iloc[0]['cannibalization']
-
-                elif (Junior_Buyer  in list(Junior_BuyerBuckets['bucket_value'])):
-                    Cannibalization_perc = (Junior_BuyerBuckets.loc[Junior_BuyerBuckets['bucket_value'] == Junior_Buyer]).iloc[0]['cannibalization'] 
-                else:
-                    Cannibalization_perc = 0
-                    
-            # This should be used before only 
-
-            #### Applying sim prod with threshold as 0.8
-            # sim_prod_subset.to_csv('sim_prod_subset.csv')
-
-            if len(sim_prod_subset)>0:
+                # Need to QC this
                 if (brand_ind=='T'):
-                    sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[False,False, False])
-                elif (brand_ind=='B'):
-                    sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[True,False, False])
+                    brand_indicator = 1
+                if (brand_ind == 'B'):
+                    brand_indicator = 0
+                
+                if "brand_ind" in dataset.columns:
+                    dataset.loc[:,"brand_ind"] = brand_indicator
+                ### Filling all columns related to week number 
+                #### Looping for all the weeks
 
-                Cannibalization_perc = sim_prod_subset.iloc[0,:]['cannibalization']
+                dataset.loc[:,"weeks_since_launch"] = 0
+                #### Arranging week in ascending order
+                month_mapping_subset = week_mapping.sort_values('year_period_number')
+                #Converting date to the date format
+                month_mapping_subset['calendar_date'] = pd.to_datetime(month_mapping_subset['calendar_date'], format= '%Y-%m-%d')
+                        
+                date_map = month_mapping_subset[['year_period_number', 'quarter_number', 'period_number', 'year_number']].drop_duplicates()
+                date_map.columns = ['year_period_number', 'quarter_number', 'period_number', 'year_number']
+                date_sparse = pd.get_dummies(date_map, prefix = ['quarter_number', 'period_number'], 
+                                                       columns = ['quarter_number', 'period_number'])
+                #date_sparse.drop('curr_week_number_53', 1, inplace= True)
+                date_sparse.drop('period_number_13', 1, inplace= True)
+                
+                # Removed the previous hard coded value
+                if all(x in dataset.columns for x in date_sparse.columns[date_sparse.columns != 'year_period_number']):
+                    dataset.drop(date_sparse.columns[date_sparse.columns != 'year_period_number'], 1, inplace =True)
 
+                    dataset = pd.merge(dataset, date_sparse, on = ['year_period_number'], how = 'left')
+                
+                # Getting week count in each month and use it to create a cumulative column. This column can be used as weeks since launch
+                week_count = week_mapping.groupby('year_period_number', as_index =False)['year_week_number'].count()
+                week_count.columns = ['year_period_number', 'period_week_count']
+                week_count = week_count.loc[week_count.year_period_number>=current_month]
+                week_count['weeks_since_launch'] = week_count.period_week_count.cumsum()
+                
+                if 'weeks_since_launch' in dataset.columns:
+                    dataset.drop('weeks_since_launch', 1, inplace =True)
+                    dataset = pd.merge(dataset, week_count, on = ['year_period_number'], how = 'left')
+                
+                #### Weeks since launch will be incremental 
+                #Taking weeks from launch as 1 for the first week
+                #### Reading a mapping file
+                SI_psg = SI.loc[(SI['psg'] == psg_code)]
+                SI_psg['adjusted_index']=SI_psg['adjusted_index'].astype(float)
+                SI_psg = SI_psg[['months','adjusted_index']]
+                ####Getting a week column to get the seasonality index
+                dataset['months'] = dataset['year_period_number']%100
+                dataset = pd.merge(dataset, SI_psg, left_on=['months'], right_on=['months'], how='left' )
+                del(dataset['si'])
+                dataset = dataset.rename(columns={'adjusted_index':'si'})
+                del(dataset['months'])
+                dataset['si'] = dataset['si'].astype(float)
+                return dataset
 
+            def similar_products():
 
-            ##### To get the cannibilized volume 
-            total_forecasted_volume = float(total_forecasted_volume)
+                #### Getting number of subs same and different brand
+                All_attribute_bc = All_attribute.loc[(All_attribute['bc'] == Buying_controller)]
+                All_attribute_treated = All_attribute.dropna()
+                # All_attribute_treated.to_csv('all_attribute.csv')
+                # In the new logic, PSG is not a hard and fast rule. So PSG filter is not required
 
-            Cannibalization_perc = float(Cannibalization_perc)
+                ###Creating a empty data frame of attributes to compare. Will fill the values based on user selection
+                match_df = pd.DataFrame(0, index = [0],  columns = [ "brand_name", "package_type", "till_roll_description", "size", "measure_type", "price_band", "psg"] )
 
-            forecasted_cannibilization_volume = Cannibalization_perc*total_forecasted_volume
+                ##### As we need price band we need to convert the asp (user input) into price bands based on BC and asp
 
-            ##### To get the cannibilized sales
-            forecasted_cannibilization_volume = float(forecasted_cannibilization_volume)
+                #### Filling the empty data frames with values as now we have the price band
 
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+                match_df.loc[:,"brand_name"] = Brand_Name
+                match_df.loc[:,"package_type"] = Package_Type
+                match_df.loc[:,"till_roll_description"] = Till_Roll_Description
+                match_df.loc[:,"size"] = Size
+                match_df.loc[:,"measure_type"] = measure_type
+                match_df.loc[:,"price_band"] = price_band
+                match_df.loc[:,"psg"] = Product_Sub_Group_Description
+                
+                #### To compare with all attributes we need to merge all attributes to user selection. For that we will map it on a common key
+                All_attribute_treated['key'] = 1
+                match_df['key'] = 1
+                match_all_prod = pd.merge(match_df, All_attribute_treated, on = 'key')
+                
+                match_all_prod['size_x'] = match_all_prod['size_x'].astype('float')
+                match_all_prod['size_y'] = match_all_prod['size_y'].astype('float')
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+                ##### Assigning flags to every row for every user selection : psg,brand name, pkg type,size,measure,price band,till roll desc
+                ### Measure and size are related we will be given commom flag based on some condition
+                match_all_prod['brand_flag'] = np.where(match_all_prod.loc[:,"brand_name_x"] == match_all_prod.loc[:,"brand_name_y"], 1, 0)
+                match_all_prod['package_flag'] = np.where(match_all_prod.loc[:,"package_type_x"] == match_all_prod.loc[:,"package_type_y"], 1, 0)
+                match_all_prod['Size_flag'] = np.where((match_all_prod.loc[:,"measure_type_x"] == match_all_prod.loc[:,"measure_type_y"]) & 
+                                           ((match_all_prod.loc[:,"measure_type_y"] == 'G')  & 
+                                           ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
+                                           ((match_all_prod.loc[:,"measure_type_y"] == 'ML')  & 
+                                           ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 200)) |
+                                            ((match_all_prod.loc[:,"measure_type_y"] == 'SNGL')  & 
+                                           ((match_all_prod.loc[:,"size_x"] - match_all_prod.loc[:,"size_y"]) <= 2)) , 1, 0)
+                match_all_prod['price_flag'] = np.where(match_all_prod.loc[:,"price_band_x"] == match_all_prod.loc[:,"price_band_y"], 1, 0)
+                match_all_prod['till_roll_flag'] = np.where(match_all_prod.loc[:,"till_roll_description_x"] == match_all_prod.loc[:,"till_roll_description_y"], 1, 0)
+                match_all_prod['psg_flag'] = np.where(match_all_prod.loc[:,"psg"] == match_all_prod.loc[:,"product_sub_group_description"], 1, 0)
+                
+                ### Subsetting score importance based on PSG
+                score = attribute_score[attribute_score.loc[:, 'bc'] == Buying_controller]
 
-            ##### To get the net mpact in volume
-            forecasted_net_impact_volume = total_forecasted_volume - forecasted_cannibilization_volume
+                ###Getting the percentage score based on flag*individual score
+                match_all_prod['brand_score'] = match_all_prod.loc[:,"brand_flag"]*score['avg_brand'].values
+                match_all_prod['package_score'] = match_all_prod.loc[:,"package_flag"]*score['avg_pkg'].values
+                match_all_prod['Size_score'] = match_all_prod.loc[:,"Size_flag"]*score['avg_size'].values
+                match_all_prod['price_score'] = match_all_prod.loc[:,"price_flag"]*score['avg_price'].values
+                match_all_prod['till_roll_score'] = match_all_prod.loc[:,"till_roll_flag"]*score['avg_tillroll'].values
+                match_all_prod['psg_score'] = match_all_prod.loc[:,"psg_flag"]*score['avg_psg'].values
+                
+                ####Getting the final score for every row based on summation of individual attribute score
+                match_all_prod['final_score'] = match_all_prod['brand_score'] + match_all_prod['package_score'] + match_all_prod['Size_score'] + match_all_prod['price_score'] + match_all_prod['till_roll_score'] + match_all_prod['psg_score']
 
-            ##### To get the net impact in sales
-            forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
+                #### Subsetting for score greater than 0.7 (threshold)
+                # match_all_prod.to_csv('match_all_prod.csv')
+                sim_prod = match_all_prod[match_all_prod['final_score'] > 0.4]
 
-            All_attribute_subset = All_attribute.dropna()
-            All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
+                return sim_prod
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+            def subs_same_different(dataset):
+                ####Total products left after putting a threshold of 0.7
 
-            ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+                sim_prod_copy = sim_prod[sim_prod['final_score']>0.7]
+                tot_prod = sim_prod_copy.shape[0]
 
-            ## Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+                #### Same brand product count
+                same_brand_count = sum(sim_prod_copy['brand_flag'] == 1)
 
-            ## Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+                #### Total - same = different brand
+                diff_brand_count = tot_prod - sum(sim_prod_copy['brand_flag'] == 1)
 
-            ## Getting the total volume for the selected psg and time period
-            total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
+                ##### Assigning values to our columns in ADS (no_of_subs_same_brand , no_of_subs_diff_brand)
+                if 'no_of_subs_same_brand' in dataset.columns:
+                    dataset.loc[:, 'no_of_subs_same_brand'] = same_brand_count
+                if 'no_of_subs_diff_brand' in dataset.columns:
+                    dataset.loc[:, 'no_of_subs_diff_brand'] = diff_brand_count
+                return dataset
 
-            ## Getting the asp for all the bpn in product contri
-            product_price_df_new = product_price_df
-            product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
+            def psg_pb_prodcount(dataset):
+
+                #### To get the psg prod count and price band count
+                ###### Subsetting all attribute data for the selected psg
+                All_attribute_psg = All_attribute.loc[(All_attribute['product_sub_group_description'] == Product_Sub_Group_Description)]
+
+                #### Counting the distinct products in the selected psg
+                count_psg_prod = len(All_attribute_psg['base_product_number'].unique())
+
+                ### Counting the distinct products in the price band
+                ### Price band we have calculated before based on if else conditions
+                ## Subsetting for the selected price band
+                All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+                count_pb_prod = len(All_attribute_pb['base_product_number'].unique())
+                #### Filling values for the count psg prod and price band 
+                if 'psg_prod_count' in dataset.columns:
+                    dataset.loc[:, 'psg_prod_count'] = count_psg_prod
+                if 'price_band_prod_count' in dataset.columns:
+                    dataset.loc[:, 'price_band_prod_count'] = count_pb_prod
+                return dataset
+
+            ### To incorporate merch grp and range class
+            def no_of_stores_holidays(dataset):
+
+                stores = pd.DataFrame(range_space_store[(range_space_store['merchandise_group_code'] == merch_code) & 
+                                       (range_space_store['range_class'] >= Range_class)]['retail_outlet_number'])
+
+                stores_size = pd.merge(stores, store_details_df, on = 'retail_outlet_number', how = 'left')
+                # APC 1 & 5 are Express stores and remaining others are Main Estate
+                stores_size['store_type']  = np.where((stores_size.area_price_code == 1) | (stores_size.area_price_code == 5), 'EXP', 'ME')
+                
+                # Previous APC_stores has been changed to store_count with modifications
+                store_count = stores_size.groupby(['store_type'], as_index = False).aggregate({'retail_outlet_number': lambda x: x.nunique(),
+                                'pfs_store': lambda x: x.nunique(), 'store_5k': lambda x: x.nunique(),
+                                'store_20k': lambda x: x.nunique(), 'store_50k': lambda x: x.nunique(),
+                                'store_100k': lambda x: x.nunique(), 'store_100kplus': lambda x: x.nunique()})
+                store_count = store_count.loc[:,['store_type', 'retail_outlet_number', 'pfs_store', 'store_5k', 'store_20k', 'store_50k', 'store_100k', 'store_100kplus']]
+                store_count.columns = ['store_type', 'no_stores', 'no_pfs_Stores', 'no_5k_stores',
+                   'no_20k_stores', 'no_50k_stores', 'no_100k_stores', 'no_100kplus_stores']
+                store_count.columns = map(str.lower, store_count.columns)
+                df_final = pd.DataFrame()
+                for i in range(0,len(store_count)):
+                    df_temp = dataset.copy()
+                    ####### To update the no of stores based on store type
+                    if "store_type_" + str(store_count['store_type'][i]) in df_temp.columns:
+                        df_temp.loc[:,"store_type_" + str(store_count['store_type'][i])] = 1
+                    if "no_stores" in df_temp.columns:  
+                        df_temp.loc[:,"no_stores"] = store_count['no_stores'][i]
+                    if "no_pfs_stores" in df_temp.columns:  
+                        df_temp.loc[:,"no_pfs_stores"] = store_count['no_pfs_stores'][i]
+                    if "no_5k_stores" in df_temp.columns:
+                        df_temp.loc[:,"no_5k_stores"] = store_count['no_5k_stores'][i]
+                    if "no_20k_stores" in df_temp.columns:
+                        df_temp.loc[:,"no_20k_stores"] = store_count['no_20k_stores'][i]
+                    if "no_50k_stores" in df_temp.columns:
+                        df_temp.loc[:,"no_50k_stores"] = store_count['no_50k_stores'][i]
+                    if "no_100k_stores" in df_temp.columns:
+                        df_temp.loc[:,"no_100k_stores"] = store_count['no_100k_stores'][i]
+                    if "no_100kplus_stores" in df_temp.columns:
+                        df_temp.loc[:,"no_100kplus_stores"] = store_count['no_100kplus_stores'][i]
+                    
+                    uk_holidays_df['year_period_number'] = pd.to_numeric(uk_holidays_df.year_number.map(str) + uk_holidays_df.period_number.map("{:02}".format))
+                    #### To get the holidays count based on store type
+                    uk_holidays_df_store = uk_holidays_df[['year_period_number','holiday_count','store_type']]
+                    uk_holidays_df_store = uk_holidays_df_store.loc[uk_holidays_df['store_type']== store_count['store_type'][i]]
+                    uk_holidays_df_store = uk_holidays_df_store[['year_period_number','holiday_count']]
+
+                    #### To get the count of holidays in a week. Sme week will repeat for n number of holidays n times
+                    #holiday_count_week = uk_holidays_df_store.groupby(['year_week_number'], as_index=False).agg({'holiday_flag': sum})
+
+                    ####Doing a left join on our ADS to get the holiday count. Wherever it is NA it will be given 0 as our holiday table has only ####those weeks which has atleast 1 holiday 
+                    if 'holiday_count' in df_temp.columns:
+                        dataset.drop('holiday_count', 1, inplace =True)
+                        df_temp = pd.merge(df_temp,uk_holidays_df_store, left_on=['year_period_number'], right_on=['year_period_number'], how='left' )
+                        df_temp= df_temp.fillna(0)
+                    
+                    df_final = df_final.append(df_temp)
+                df_final_new = df_final
+                df_final_new.loc[:,'launch_month'] = current_month
+                return df_final_new
+
+            def run_cannibilization_model(input_test_dataset,week_flag,time_frame):
+                Cannibalization_perc = 0 
+                week_flag =week_flag
+                time_frame = time_frame
+                ####Xg boost model pickled
+                #### Have to be inside function which takes test datasets as a argument
+                #### For xg boost to run we need to have our test dataset in matrix form. Converting our test dataframe to required matrix
+                testdmat = xgb.DMatrix(input_test_dataset.loc[:,xg_model.feature_names])
+                #### Predicting the volume for the futute weeks (13,26,51)
+                Volume = xg_model.predict(testdmat)
+                test = pd.DataFrame(Volume)
+                ##### Summing all the volumes for the weeks in 13,26,and 52 window
+                total_forecasted_volume = sum(Volume)
+
+                #### As now we are aware of the total volume forecasted we can multiply with asp (user selection) to get total sales
+                total_forecasted_sales = total_forecasted_volume*asp
+
+                #### To check if any sister products are available. If len(sim_prod)=0 after merge it means no sister product available or no ##similar products passed the threshod of 0.8 
+                sim_prod_new = pd.merge(sim_prod, bc_cannibilization, left_on=['base_product_number'], right_on=['base_product_number'], how='inner')
+                brand_ind = (brand_grp_mapping_df.loc[brand_grp_mapping_df['brand_name'] == Brand_Name]).iloc[0]['brand_ind']
+                
+                # Need to add this as a model
+                low_cutoff = (cann_vol_bucket.loc[cann_vol_bucket['buying_controller'] == Buying_controller]).iloc[0]['low_cutoff']
+                high_cutoff = (cann_vol_bucket.loc[cann_vol_bucket['buying_controller'] == Buying_controller]).iloc[0]['high_cutoff']
             
-            product_price_df_new = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+                #### Cannibalization percentage
+                sim_prod_subset = sim_prod_new[sim_prod_new['final_score']>0.8]
+                
+                if len(sim_prod_subset)==0:
+                    if week_flag =='Latest 13 Weeks':
+                        high_volume_cutoff = (high_cutoff/21)*13
+                        low_volume_cutoff = (low_cutoff/21)*13
+                    if week_flag =='Latest 26 Weeks':
+                        high_volume_cutoff = (high_cutoff/21)*26
+                        low_volume_cutoff = (low_cutoff/21)*26
+                    if week_flag =='Latest 52 Weeks':
+                        high_volume_cutoff = (high_cutoff/21)*52
+                        low_volume_cutoff = (low_cutoff/21)*52 
 
-            #### Doing a left join to get the asp for all bpn in product contri
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-
-            ### Getting the total sales for all the products in 
-            psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
-            ###Total would be sum of all the product sales
-            total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
-
-            #### Getting the change in % psg volume
-            total_psg_forecasted_volume = float(total_psg_forecasted_volume)
-
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
-            except:
-                psg_perc_volume = 0
-
-            #### Gettig the change in % psg sales
-            total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
-
-            data_volume = [{'forecast': total_forecasted_volume,'modified_forecast': total_forecasted_volume,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc*100,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag ,'price_band' : price_band}]
-
-            data_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales*100,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag,'price_band' : price_band }]
-
-            model_output = [{'data_volume': data_volume , 'data_sales' : data_sales }]
-
-            return model_output
+                    if (total_forecasted_volume>high_volume_cutoff):
+                        Volume_flag= 'High'
+                    elif (total_forecasted_volume<low_volume_cutoff):
+                        Volume_flag = 'Low'
+                    else :
+                        Volume_flag = 'Medium'
+                    ####Need to import psg code to desc mapping
 
 
-        def similar_product_cannabilized(time_frame):
-            sim_prod_copy = sim_prod
-            sim_prod_copy = sim_prod_copy.sort_values(['final_score'], ascending = [False])
-            sim_prod_copy = sim_prod_copy.head(10)
-            sim_prod_product = sim_prod_copy[['base_product_number','final_score']]
-            time_frame = time_frame
-            #### GETTING ONLY THOSE bpn WHICH WERE THERE IN SIM PROD (THRESHOLD OF 0.8)
-            product_contri_df_new = pd.merge(product_contri_df,sim_prod_product,left_on=['base_product_number'], right_on=['base_product_number'],how='inner')
+                    if (psg_code+Volume_flag+brand_ind  in list(PSGVolBrandBuckets['bucket_value'])):                    
+                        Cannibalization_perc = (PSGVolBrandBuckets.loc[PSGVolBrandBuckets['bucket_value'] == psg_code+Volume_flag+brand_ind]).iloc[0]['cannibalization']
+                    
+                    elif (psg_code+Volume_flag  in list(PSGVolBuckets['bucket_value'])):
+                        Cannibalization_perc = (PSGVolBuckets.loc[PSGVolBuckets['bucket_value'] == psg_code+Volume_flag]).iloc[0]['cannibalization']
 
-            All_attribute_subset = All_attribute.dropna()
-            All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
-            product_psg_mapping =pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+                    elif (psg_code  in list(PSGBuckets['bucket_value'])):
+                        Cannibalization_perc = (PSGBuckets.loc[PSGBuckets['bucket_value'] == psg_code]).iloc[0]['cannibalization']
+                        
+                    elif (Junior_Buyer+Volume_flag+brand_ind  in list(Junior_BuyerVolBrandBuckets['bucket_value'])):
+                        Cannibalization_perc = (Junior_BuyerVolBrandBuckets.loc[Junior_BuyerVolBrandBuckets['bucket_value'] == Junior_Buyer+Volume_flag+brand_ind]).iloc[0]['cannibalization']
 
-            ### rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number','final_score'], as_index=False).agg({'predicted_volume': sum})
+                    elif (Junior_Buyer+Volume_flag  in list(Junior_BuyerVolBuckets['bucket_value'])):
+                        Cannibalization_perc = (Junior_BuyerVolBuckets.loc[Junior_BuyerVolBuckets['bucket_value'] == Junior_Buyer+Volume_flag]).iloc[0]['cannibalization']
 
-            ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+                    elif (Junior_Buyer  in list(Junior_BuyerBuckets['bucket_value'])):
+                        Cannibalization_perc = (Junior_BuyerBuckets.loc[Junior_BuyerBuckets['bucket_value'] == Junior_Buyer]).iloc[0]['cannibalization'] 
+                    else:
+                        Cannibalization_perc = 0
+                        
+                # This should be used before only 
+
+                #### Applying sim prod with threshold as 0.8
+                # sim_prod_subset.to_csv('sim_prod_subset.csv')
+
+                if len(sim_prod_subset)>0:
+                    if (brand_ind=='T'):
+                        sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[False,False, False])
+                    elif (brand_ind=='B'):
+                        sim_prod_subset= sim_prod_subset.sort_values(['brand_ind','final_score', 'launch_tesco_week'], ascending=[True,False, False])
+
+                    Cannibalization_perc = sim_prod_subset.iloc[0,:]['cannibalization']
+
+
+
+                ##### To get the cannibilized volume 
+                total_forecasted_volume = float(total_forecasted_volume)
+
+                Cannibalization_perc = float(Cannibalization_perc)
+
+                forecasted_cannibilization_volume = Cannibalization_perc*total_forecasted_volume
+
+                ##### To get the cannibilized sales
+                forecasted_cannibilization_volume = float(forecasted_cannibilization_volume)
+
+                forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
+                #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+
+                Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+
+                ##### To get the net mpact in volume
+                forecasted_net_impact_volume = total_forecasted_volume - forecasted_cannibilization_volume
+
+                ##### To get the net impact in sales
+                forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
+
+                All_attribute_subset = All_attribute.dropna()
+                All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
+
+                product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+
+                ## rolling volume at psg bpn level
+                psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+
+                ## Subsetting above table for only the selected psg
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+
+                ## Taking variable from the function for getting the time frame
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+
+                ## Getting the total volume for the selected psg and time period
+                total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
+
+                ## Getting the asp for all the bpn in product contri
+                product_price_df_new = product_price_df
+                product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
+                
+                product_price_df_new = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+
+                #### Doing a left join to get the asp for all bpn in product contri
+                psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+
+                ### Getting the total sales for all the products in 
+                psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
+                psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+
+                ###Total would be sum of all the product sales
+                total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
+
+                #### Getting the change in % psg volume
+                total_psg_forecasted_volume = float(total_psg_forecasted_volume)
+
+                try :
+                    psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+                except:
+                    psg_perc_volume = 0
+
+                #### Gettig the change in % psg sales
+                total_psg_forecasted_sales = float(total_psg_forecasted_sales)
+                psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+
+                data_volume = [{'forecast': total_forecasted_volume,'modified_forecast': total_forecasted_volume,
+                     'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc*100,
+                     'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag ,'price_band' : price_band}]
+
+                data_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
+                     'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales*100,
+                     'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : week_flag,'price_band' : price_band }]
+
+                model_output = [{'data_volume': data_volume , 'data_sales' : data_sales }]
+
+                return model_output
+
+
+            def similar_product_cannabilized(time_frame):
+                sim_prod_copy = sim_prod
+                sim_prod_copy = sim_prod_copy.sort_values(['final_score'], ascending = [False])
+                sim_prod_copy = sim_prod_copy.head(10)
+                sim_prod_product = sim_prod_copy[['base_product_number','final_score']]
+                time_frame = time_frame
+                #### GETTING ONLY THOSE bpn WHICH WERE THERE IN SIM PROD (THRESHOLD OF 0.8)
+                product_contri_df_new = pd.merge(product_contri_df,sim_prod_product,left_on=['base_product_number'], right_on=['base_product_number'],how='inner')
+
+                All_attribute_subset = All_attribute.dropna()
+                All_attribute_subset = All_attribute_subset[['base_product_number','product_sub_group_description']]
+                product_psg_mapping =pd.merge(product_contri_df_new, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+
+                ### rolling volume at psg bpn level
+                psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number','final_score'], as_index=False).agg({'predicted_volume': sum})
+
+                ### Subsetting above table for only the selected psg
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+            
+                # #### Taking variable from the function for getting the time frame
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+
+                product_price_df_new = product_price_df
+                product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
+                product_price_df_new = product_price_df_new.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+
+                #### Doing a left join to get the asp for all bpn in product contri
+                psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+
+                ### Getting the total sales for all the products in 
+                psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype(int)
+                psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+                psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
+                psg_product_contri_df['final_score'] = psg_product_contri_df['final_score'].astype(float)
         
-            # #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']==time_frame]
+                product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+                product_desc_branded = product_desc_branded.rename(columns={'final_score':'similarity_score'})
+                product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales','similarity_score']]
+                product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T','Own Label')
+                product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B','Branded')
 
-            product_price_df_new = product_price_df
-            product_price_df_new['asp'] = product_price_df_new['asp'].astype('float')
-            product_price_df_new = product_price_df_new.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
-
-            #### Doing a left join to get the asp for all bpn in product contri
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df_new, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-
-            ### Getting the total sales for all the products in 
-            psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype(int)
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-            psg_product_contri_df['predicted_sales'] = psg_product_contri_df['predicted_sales'].astype(int)
-            psg_product_contri_df['final_score'] = psg_product_contri_df['final_score'].astype(float)
-    
-            product_desc_branded = pd.merge(psg_product_contri_df, product_desc_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-            product_desc_branded = product_desc_branded.rename(columns={'final_score':'similarity_score'})
-            product_desc_branded = product_desc_branded[['long_description','brand_indicator','predicted_volume','predicted_sales','similarity_score']]
-            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('T','Own Label')
-            product_desc_branded['brand_indicator'] = product_desc_branded['brand_indicator'].replace('B','Branded')
-
-            return product_desc_branded
+                return product_desc_branded
 
 
-        if (modified_flag==0):
+            if (modified_flag==0):
 
-            similar_product = pd.DataFrame()
-            # call function for priceband and psg code
-            psg_priceband_merch = get_priceband_psg_merch_code()
-            psg_code = psg_priceband_merch['psg_code']
-            price_band = psg_priceband_merch['price_band']
-            merch_code = psg_priceband_merch['merch_code']
-            #changed code 
-            week_mapping['year_period_number'] = pd.to_numeric(week_mapping.year_number.map(str) + week_mapping.period_number.map("{:02}".format))
-            week_mapping = week_mapping.sort_values('year_week_number')
-            week_mapping['calendar_date'] = pd.to_datetime(week_mapping['calendar_date'], format='%Y-%m-%d')
-            today = datetime.datetime.today().strftime('%Y-%m-%d')
-            current_month = (week_mapping.loc[week_mapping['calendar_date'] == today]).iloc[0]['year_period_number']
-            #end
+                similar_product = pd.DataFrame()
+                # call function for priceband and psg code
+                psg_priceband_merch = get_priceband_psg_merch_code()
+                psg_code = psg_priceband_merch['psg_code']
+                price_band = psg_priceband_merch['price_band']
+                merch_code = psg_priceband_merch['merch_code']
+                #changed code 
+                week_mapping['year_period_number'] = pd.to_numeric(week_mapping.year_number.map(str) + week_mapping.period_number.map("{:02}".format))
+                week_mapping = week_mapping.sort_values('year_week_number')
+                week_mapping['calendar_date'] = pd.to_datetime(week_mapping['calendar_date'], format='%Y-%m-%d')
+                today = datetime.datetime.today().strftime('%Y-%m-%d')
+                current_month = (week_mapping.loc[week_mapping['calendar_date'] == today]).iloc[0]['year_period_number']
+                #end
 
-            ### Taking Columns to spread
-            ### Converting buying controller to lower case and concating the name
-            bc_name = (Buying_controller.replace(" ", "").lower())
-            #changed code 
-            gzip_pickle = gzip.open("api/pickle/xg_model_" + Buying_controller + ".pkl", "rb")
-            xg_model = pickle.load(gzip_pickle)
+                ### Taking Columns to spread
+                ### Converting buying controller to lower case and concating the name
+                bc_name = (Buying_controller.replace(" ", "").lower())
+                #changed code 
+                gzip_pickle = gzip.open("api/pickle/xg_model_" + Buying_controller + ".pkl", "rb")
+                xg_model = pickle.load(gzip_pickle)
 
 
-            # dataset1 = xg_model.feature_names
-            #end
-            # dataset1.dropna(inplace=True)
-            dataset1 =pd.DataFrame(columns=xg_model.feature_names)
+                # dataset1 = xg_model.feature_names
+                #end
+                # dataset1.dropna(inplace=True)
+                dataset1 =pd.DataFrame(columns=xg_model.feature_names)
 
-            # call function for creating ads structure
-            df = get_ads_structure()
+                # call function for creating ads structure
+                df = get_ads_structure()
 
-            # call function for filling ads structure
-            df1 = fill_ads_structure(df)
+                # call function for filling ads structure
+                df1 = fill_ads_structure(df)
 
-            # call function for finding similar products
-            sim_prod = similar_products()
-            #call function for substitute calculation
-            if (len(sim_prod)) > 0:
-                df2 = subs_same_different(df1)
+                # call function for finding similar products
+                sim_prod = similar_products()
+                #call function for substitute calculation
+                if (len(sim_prod)) > 0:
+                    df2 = subs_same_different(df1)
+
+                else:
+                    df2 = df1
+                    #changed code
+                    if 'no_of_subs_same_brand' in df2.columns:
+                        df2.loc[:, 'no_of_subs_same_brand'] = 0
+                    if 'no_of_subs_diff_brand' in df2.columns:
+                        df2.loc[:, 'no_of_subs_diff_brand'] = 0
+                    #end
+                All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
+
+                # call function for product count with same psg and price band
+                df3 = psg_pb_prodcount(df2)
+
+                df_final_new = no_of_stores_holidays(df3)
+                #changed code 
+                month_index = df_final_new[['year_period_number']].drop_duplicates().reset_index()
+                month_index = month_index.rename(columns={'index':'rank'})                
+
+                # Creating a index for the week number
+                df_final_new = pd.merge(df_final_new,month_index,on=['year_period_number'],how='left')
+                #end
+
+                # Subsetting for 13 weeks
+                df_test_52weeks = df_final_new
+                #changed code
+                df_test_13weeks = df_test_52weeks[df_test_52weeks['rank']<=3]
+                df_test_26weeks = df_test_52weeks[df_test_52weeks['rank']<=6]
+
+                del(df_test_13weeks['year_period_number'])
+                del(df_test_13weeks['rank'])
+
+
+                del(df_test_26weeks['year_period_number'])
+                del(df_test_26weeks['rank'])
+
+
+                del(df_test_52weeks['year_period_number'])
+                del(df_test_52weeks['rank'])
+
+                #### Similar product matching
+                ###Getting base product number and their respective cannibilization
+                bc_cannibilization = bc_cannibilization[['base_product_number', 'cannibalization']]
+                ## To get the base product number and launch tesco week mapping
+                BPN_launch_week = All_attribute[['base_product_number', 'launch_tesco_week']]
+                ##Consolidated buckets subsetting only for the bc and making three datasets for calculating cannibilization percent
+                consolidated_buckets_df = consolidated_buckets_df[consolidated_buckets_df['buying_controller']==Buying_controller]
+
+                PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
+                PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
+                PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
+
+                # Newly added to get cannibalization for all NPDs
+                Junior_BuyerVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBrandBuckets']
+                Junior_BuyerVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBuckets']
+                Junior_BuyerBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerBuckets']
+
+
+                output_cannib_13weeks = run_cannibilization_model(df_test_13weeks,"Latest 13 Weeks","3_months")
+                output_cannib_26weeks = run_cannibilization_model(df_test_26weeks,"Latest 26 Weeks","6_months")
+                output_cannib_52weeks = run_cannibilization_model(df_test_52weeks,"Latest 52 Weeks","12_months")
+
+                ##for 13 weeks
+                output_cannib_13weeks_volume = pd.DataFrame(output_cannib_13weeks[0]['data_volume'])  ##Output 1 volume
+                output_cannib_13weeks_sales = pd.DataFrame(output_cannib_13weeks[0]['data_sales'])  ## Output 1 Sales
+
+                data_dict_13weeks_volume={}
+                data = [{
+                           "name":"NPD Volume","value":int(output_cannib_13weeks_volume['forecast'][0])
+                       },
+                        {
+                            "name":"Cannibalized Volume","value":-int(output_cannib_13weeks_volume['cannibilization_value'][0])
+                        }]
+
+                volume={}
+                volume={"Cannibilization_perc":output_cannib_13weeks_volume['cannibilization_perc'][0].round(decimals=2),
+                        "perc_impact_psg":output_cannib_13weeks_volume['perc_change_in_psg'][0].round(decimals=2)
+                       }
+                data_dict_13weeks_volume["data"]=data
+                data_dict_13weeks_volume["impact"]=volume
+
+                volume_cann_13 = int(output_cannib_13weeks_volume['cannibilization_value'][0])
+                volume_forecast_13 = int(output_cannib_13weeks_volume['forecast'][0])
+                volume_impact_13 = (int(output_cannib_13weeks_volume['forecast'][0])) - (int(output_cannib_13weeks_volume['cannibilization_value'][0]))
+
+
+                data_dict_13weeks_sales={}
+                data = [{
+                        "name":"NPD Value","value":int(output_cannib_13weeks_sales['forecast'][0])
+                        },
+                        {
+                        "name":"Cannibalized Sales",
+                        "value":-int(output_cannib_13weeks_sales['cannibilization_value'][0])
+                        }]
+                sales={}
+                sales={
+                        "Cannibilization_perc" : output_cannib_13weeks_sales['cannibilization_perc'][0].round(decimals=2),
+                        "perc_impact_psg":(output_cannib_13weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
+                       }
+                data_dict_13weeks_sales["data"]=data
+                data_dict_13weeks_sales["impact"]=sales
+
+
+                value_cann_13 = int(output_cannib_13weeks_sales['cannibilization_value'][0])
+                value_forecast_13 = int(output_cannib_13weeks_sales['forecast'][0])
+                value_impact_13 = (int(output_cannib_13weeks_sales['forecast'][0])) - (int(output_cannib_13weeks_sales['cannibilization_value'][0]))
+
+                impact_data_13weeks = {'sales_chart': data_dict_13weeks_sales,'volume_chart': data_dict_13weeks_volume }
+
+
+                #for similar products table 13 weeks
+                similar_product_13weeks = similar_product_cannabilized('3_months')
+                data_13weeks_table = {'df': similar_product_13weeks.to_dict(orient='records')}
+
+                save_scenario = SaveScenario(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 13,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_13weeks,
+                                            value_forecast = value_forecast_13,
+                                            value_impact = value_impact_13,
+                                            value_cannibalized = value_cann_13,
+                                            volume_forecast = volume_forecast_13,
+                                            volume_impact = volume_impact_13,
+                                            volume_cannibalized = volume_cann_13,
+                                            similar_products = data_13weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario.save()
+
+                save_scenario_tracker = ScenarioTracker(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 13,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_13weeks,
+                                            value_forecast = value_forecast_13,
+                                            value_impact = value_impact_13,
+                                            value_cannibalized = value_cann_13,
+                                            volume_forecast = volume_forecast_13,
+                                            volume_impact = volume_impact_13,
+                                            volume_cannibalized = volume_cann_13,
+                                            similar_products = data_13weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario_tracker.save()            
+
+                ##for 26 weeks
+                output_cannib_26weeks_volume = pd.DataFrame(output_cannib_26weeks[0]['data_volume'])  ##Output 1 volume
+                output_cannib_26weeks_sales = pd.DataFrame(output_cannib_26weeks[0]['data_sales'])  ## Output 1 Sales
+
+
+                data_dict_26weeks_volume={}
+                data = [{
+                           "name":"NPD Volume","value":int(output_cannib_26weeks_volume['forecast'][0])
+                       },
+                        {
+                            "name":"Cannibalized Volume","value":-int(output_cannib_26weeks_volume['cannibilization_value'][0])
+                        }]
+
+                volume={}
+                volume={"Cannibilization_perc":output_cannib_26weeks_volume['cannibilization_perc'][0].round(decimals=2),
+                        "perc_impact_psg":output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=2)
+                       }
+                data_dict_26weeks_volume["data"]=data
+                data_dict_26weeks_volume["impact"]=volume
+
+                volume_cann_26 = int(output_cannib_26weeks_volume['cannibilization_value'][0])
+                volume_forecast_26 = int(output_cannib_26weeks_volume['forecast'][0])
+                volume_impact_26 = (int(output_cannib_26weeks_volume['forecast'][0])) - (int(output_cannib_26weeks_volume['cannibilization_value'][0]))
+
+
+                data_dict_26weeks_sales={}
+                data = [{
+                        "name":"NPD Value","value":int(output_cannib_26weeks_sales['forecast'][0])
+                        },
+                        {
+                        "name":"Cannibalized Sales",
+                        "value":-int(output_cannib_26weeks_sales['cannibilization_value'][0])
+                        }]
+                sales={}
+                sales={
+                        "Cannibilization_perc" : output_cannib_26weeks_sales['cannibilization_perc'][0].round(decimals=2),
+                        "perc_impact_psg":(output_cannib_26weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
+                       }
+                data_dict_26weeks_sales["data"]=data
+                data_dict_26weeks_sales["impact"]=sales
+
+                value_cann_26 = int(output_cannib_26weeks_sales['cannibilization_value'][0])
+                value_forecast_26 = int(output_cannib_26weeks_sales['forecast'][0])
+                value_impact_26 = (int(output_cannib_26weeks_sales['forecast'][0])) - (int(output_cannib_26weeks_sales['cannibilization_value'][0]))
+
+
+                impact_data_26weeks = {'sales_chart': data_dict_26weeks_sales,'volume_chart': data_dict_26weeks_volume }
+
+                similar_product_26weeks = similar_product_cannabilized('6_months')
+                data_26weeks_table = {'df': similar_product_26weeks.to_dict(orient='records')}
+
+
+                save_scenario = SaveScenario(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 26,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_26weeks,
+                                            value_forecast = value_forecast_26,
+                                            value_impact = value_impact_26,
+                                            value_cannibalized = value_cann_26,
+                                            volume_forecast = volume_forecast_26,
+                                            volume_impact = volume_impact_26,
+                                            volume_cannibalized = volume_cann_26,
+                                            similar_products = data_26weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario.save()
+
+                save_scenario_tracker = ScenarioTracker(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 26,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_26weeks,
+                                            value_forecast = value_forecast_26,
+                                            value_impact = value_impact_26,
+                                            value_cannibalized = value_cann_26,
+                                            volume_forecast = volume_forecast_26,
+                                            volume_impact = volume_impact_26,
+                                            volume_cannibalized = volume_cann_26,
+                                            similar_products = data_26weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario_tracker.save()
+
+
+                ##for 52 weeks
+                output_cannib_52weeks_volume = pd.DataFrame(output_cannib_52weeks[0]['data_volume'])  ##Output 1 volume
+                output_cannib_52weeks_sales = pd.DataFrame(output_cannib_52weeks[0]['data_sales'])  ## Output 1 Sales
+
+                data_dict_52weeks_volume={}
+                data = [{
+                           "name":"NPD Volume","value":int(output_cannib_52weeks_volume['forecast'][0])
+                       },
+                        {
+                            "name":"Cannibalized Volume","value":-int(output_cannib_52weeks_volume['cannibilization_value'][0])
+                        }]
+
+                volume={}
+                volume={"Cannibilization_perc":output_cannib_52weeks_volume['cannibilization_perc'][0].round(decimals=2),
+                        "perc_impact_psg":output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=2)
+                       }
+                data_dict_52weeks_volume["data"]=data
+                data_dict_52weeks_volume["impact"]=volume
+
+                volume_cann_52 = int(output_cannib_52weeks_volume['cannibilization_value'][0])
+                volume_forecast_52 = int(output_cannib_52weeks_volume['forecast'][0])
+                volume_impact_52 = (int(output_cannib_52weeks_volume['forecast'][0])) - (int(output_cannib_52weeks_volume['cannibilization_value'][0]))
+
+                data_dict_52weeks_sales={}
+                data = [{
+                        "name":"NPD Value","value":int(output_cannib_52weeks_sales['forecast'][0])
+                        },
+                        {
+                        "name":"Cannibalized Sales",
+                        "value":-int(output_cannib_52weeks_sales['cannibilization_value'][0])
+                        }]
+                sales={}
+                sales={
+                        "Cannibilization_perc" : output_cannib_52weeks_sales['cannibilization_perc'][0].round(decimals=2),
+                        "perc_impact_psg":(output_cannib_52weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
+                       }
+                data_dict_52weeks_sales["data"]=data
+                data_dict_52weeks_sales["impact"]=sales
+
+
+                value_cann_52 = int(output_cannib_52weeks_sales['cannibilization_value'][0])
+                value_forecast_52 = int(output_cannib_52weeks_sales['forecast'][0])
+                value_impact_52 = (int(output_cannib_52weeks_sales['forecast'][0])) - (int(output_cannib_52weeks_sales['cannibilization_value'][0]))
+
+
+                impact_data_52weeks = {'sales_chart': data_dict_52weeks_sales,'volume_chart': data_dict_52weeks_volume }
+
+                similar_product_52weeks = similar_product_cannabilized('12_months')
+                data_52weeks_table = {'df': similar_product_52weeks.to_dict(orient='records')}
+
+                save_scenario = SaveScenario(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 52,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_52weeks,
+                                            value_forecast = value_forecast_52,
+                                            value_impact = value_impact_52,
+                                            value_cannibalized = value_cann_52,
+                                            volume_forecast = volume_forecast_52,
+                                            volume_impact = volume_impact_52,
+                                            volume_cannibalized = volume_cann_52,
+                                            similar_products = data_52weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario.save()
+
+                save_scenario_tracker = ScenarioTracker(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 52,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_52weeks,
+                                            value_forecast = value_forecast_52,
+                                            value_impact = value_impact_52,
+                                            value_cannibalized = value_cann_52,
+                                            volume_forecast = volume_forecast_52,
+                                            volume_impact = volume_impact_52,
+                                            volume_cannibalized = volume_cann_52,
+                                            similar_products = data_52weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario_tracker.save()
+
 
             else:
-                df2 = df1
-                #changed code
-                if 'no_of_subs_same_brand' in df2.columns:
-                    df2.loc[:, 'no_of_subs_same_brand'] = 0
-                if 'no_of_subs_diff_brand' in df2.columns:
-                    df2.loc[:, 'no_of_subs_diff_brand'] = 0
-                #end
-            All_attribute_pb = All_attribute.loc[(All_attribute['price_band']== price_band)]
-
-            # call function for product count with same psg and price band
-            df3 = psg_pb_prodcount(df2)
-
-            df_final_new = no_of_stores_holidays(df3)
-            #changed code 
-            month_index = df_final_new[['year_period_number']].drop_duplicates().reset_index()
-            month_index = month_index.rename(columns={'index':'rank'})                
-
-            # Creating a index for the week number
-            df_final_new = pd.merge(df_final_new,month_index,on=['year_period_number'],how='left')
-            #end
-
-            # Subsetting for 13 weeks
-            df_test_52weeks = df_final_new
-            #changed code
-            df_test_13weeks = df_test_52weeks[df_test_52weeks['rank']<=3]
-            df_test_26weeks = df_test_52weeks[df_test_52weeks['rank']<=6]
-
-            del(df_test_13weeks['year_period_number'])
-            del(df_test_13weeks['rank'])
-
-
-            del(df_test_26weeks['year_period_number'])
-            del(df_test_26weeks['rank'])
-
-
-            del(df_test_52weeks['year_period_number'])
-            del(df_test_52weeks['rank'])
-
-            #### Similar product matching
-            ###Getting base product number and their respective cannibilization
-            bc_cannibilization = bc_cannibilization[['base_product_number', 'cannibalization']]
-            ## To get the base product number and launch tesco week mapping
-            BPN_launch_week = All_attribute[['base_product_number', 'launch_tesco_week']]
-            ##Consolidated buckets subsetting only for the bc and making three datasets for calculating cannibilization percent
-            consolidated_buckets_df = consolidated_buckets_df[consolidated_buckets_df['buying_controller']==Buying_controller]
-
-            PSGVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBrandBuckets']
-            PSGVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGVolBuckets']
-            PSGBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='PSGBuckets']
-
-            # Newly added to get cannibalization for all NPDs
-            Junior_BuyerVolBrandBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBrandBuckets']
-            Junior_BuyerVolBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerVolBuckets']
-            Junior_BuyerBuckets = consolidated_buckets_df[consolidated_buckets_df['bucket_flag']=='Junior_BuyerBuckets']
-
-
-            output_cannib_13weeks = run_cannibilization_model(df_test_13weeks,"Latest 13 Weeks","3_months")
-            output_cannib_26weeks = run_cannibilization_model(df_test_26weeks,"Latest 26 Weeks","6_months")
-            output_cannib_52weeks = run_cannibilization_model(df_test_52weeks,"Latest 52 Weeks","12_months")
-
-            ##for 13 weeks
-            output_cannib_13weeks_volume = pd.DataFrame(output_cannib_13weeks[0]['data_volume'])  ##Output 1 volume
-            output_cannib_13weeks_sales = pd.DataFrame(output_cannib_13weeks[0]['data_sales'])  ## Output 1 Sales
-
-            data_dict_13weeks_volume={}
-            data = [{
-                       "name":"NPD Volume","value":int(output_cannib_13weeks_volume['forecast'][0])
-                   },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_cannib_13weeks_volume['cannibilization_value'][0])
-                    }]
-
-            volume={}
-            volume={"Cannibilization_perc":output_cannib_13weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_13weeks_volume['perc_change_in_psg'][0].round(decimals=2)
-                   }
-            data_dict_13weeks_volume["data"]=data
-            data_dict_13weeks_volume["impact"]=volume
-
-            volume_cann_13 = int(output_cannib_13weeks_volume['cannibilization_value'][0])
-            volume_forecast_13 = int(output_cannib_13weeks_volume['forecast'][0])
-            volume_impact_13 = (int(output_cannib_13weeks_volume['forecast'][0])) - (int(output_cannib_13weeks_volume['cannibilization_value'][0]))
-
-
-            data_dict_13weeks_sales={}
-            data = [{
-                    "name":"NPD Value","value":int(output_cannib_13weeks_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_cannib_13weeks_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_cannib_13weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_13weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
-                   }
-            data_dict_13weeks_sales["data"]=data
-            data_dict_13weeks_sales["impact"]=sales
-
-
-            value_cann_13 = int(output_cannib_13weeks_sales['cannibilization_value'][0])
-            value_forecast_13 = int(output_cannib_13weeks_sales['forecast'][0])
-            value_impact_13 = (int(output_cannib_13weeks_sales['forecast'][0])) - (int(output_cannib_13weeks_sales['cannibilization_value'][0]))
-
-            impact_data_13weeks = {'sales_chart': data_dict_13weeks_sales,'volume_chart': data_dict_13weeks_volume }
-
-
-            #for similar products table 13 weeks
-            similar_product_13weeks = similar_product_cannabilized('3_months')
-            data_13weeks_table = {'df': similar_product_13weeks.to_dict(orient='records')}
-
-            save_scenario = SaveScenario(user_id = user_id,
-                                        user_name = user_name,
-                                        designation = designation,
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        scenario_tag = scenario_tag,
-                                        asp = asp,
-                                        week_tab = 13,
-                                        buying_controller = buying_controller_header,
-                                        buyer = buyer_header,
-                                        parent_supplier = par_supp,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_13weeks,
-                                        value_forecast = value_forecast_13,
-                                        value_impact = value_impact_13,
-                                        value_cannibalized = value_cann_13,
-                                        volume_forecast = volume_forecast_13,
-                                        volume_impact = volume_impact_13,
-                                        volume_cannibalized = volume_cann_13,
-                                        similar_products = data_13weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
-            save_scenario.save()
-
-
-            ##for 26 weeks
-            output_cannib_26weeks_volume = pd.DataFrame(output_cannib_26weeks[0]['data_volume'])  ##Output 1 volume
-            output_cannib_26weeks_sales = pd.DataFrame(output_cannib_26weeks[0]['data_sales'])  ## Output 1 Sales
-
-
-            data_dict_26weeks_volume={}
-            data = [{
-                       "name":"NPD Volume","value":int(output_cannib_26weeks_volume['forecast'][0])
-                   },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_cannib_26weeks_volume['cannibilization_value'][0])
-                    }]
-
-            volume={}
-            volume={"Cannibilization_perc":output_cannib_26weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_26weeks_volume['perc_change_in_psg'][0].round(decimals=2)
-                   }
-            data_dict_26weeks_volume["data"]=data
-            data_dict_26weeks_volume["impact"]=volume
-
-            volume_cann_26 = int(output_cannib_26weeks_volume['cannibilization_value'][0])
-            volume_forecast_26 = int(output_cannib_26weeks_volume['forecast'][0])
-            volume_impact_26 = (int(output_cannib_26weeks_volume['forecast'][0])) - (int(output_cannib_26weeks_volume['cannibilization_value'][0]))
-
-
-            data_dict_26weeks_sales={}
-            data = [{
-                    "name":"NPD Value","value":int(output_cannib_26weeks_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_cannib_26weeks_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_cannib_26weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_26weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
-                   }
-            data_dict_26weeks_sales["data"]=data
-            data_dict_26weeks_sales["impact"]=sales
-
-            value_cann_26 = int(output_cannib_26weeks_sales['cannibilization_value'][0])
-            value_forecast_26 = int(output_cannib_26weeks_sales['forecast'][0])
-            value_impact_26 = (int(output_cannib_26weeks_sales['forecast'][0])) - (int(output_cannib_26weeks_sales['cannibilization_value'][0]))
-
-
-            impact_data_26weeks = {'sales_chart': data_dict_26weeks_sales,'volume_chart': data_dict_26weeks_volume }
-
-            similar_product_26weeks = similar_product_cannabilized('6_months')
-            data_26weeks_table = {'df': similar_product_26weeks.to_dict(orient='records')}
-
-
-            save_scenario = SaveScenario(user_id = user_id,
-                                        user_name = user_name,
-                                        designation = designation,
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        scenario_tag = scenario_tag,
-                                        asp = asp,
-                                        week_tab = 26,
-                                        buying_controller = buying_controller_header,
-                                        buyer = buyer_header,
-                                        parent_supplier = par_supp,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_26weeks,
-                                        value_forecast = value_forecast_26,
-                                        value_impact = value_impact_26,
-                                        value_cannibalized = value_cann_26,
-                                        volume_forecast = volume_forecast_26,
-                                        volume_impact = volume_impact_26,
-                                        volume_cannibalized = volume_cann_26,
-                                        similar_products = data_26weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
-            save_scenario.save()
-
-            ##for 52 weeks
-            output_cannib_52weeks_volume = pd.DataFrame(output_cannib_52weeks[0]['data_volume'])  ##Output 1 volume
-            output_cannib_52weeks_sales = pd.DataFrame(output_cannib_52weeks[0]['data_sales'])  ## Output 1 Sales
-
-            data_dict_52weeks_volume={}
-            data = [{
-                       "name":"NPD Volume","value":int(output_cannib_52weeks_volume['forecast'][0])
-                   },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_cannib_52weeks_volume['cannibilization_value'][0])
-                    }]
-
-            volume={}
-            volume={"Cannibilization_perc":output_cannib_52weeks_volume['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":output_cannib_52weeks_volume['perc_change_in_psg'][0].round(decimals=2)
-                   }
-            data_dict_52weeks_volume["data"]=data
-            data_dict_52weeks_volume["impact"]=volume
-
-            volume_cann_52 = int(output_cannib_52weeks_volume['cannibilization_value'][0])
-            volume_forecast_52 = int(output_cannib_52weeks_volume['forecast'][0])
-            volume_impact_52 = (int(output_cannib_52weeks_volume['forecast'][0])) - (int(output_cannib_52weeks_volume['cannibilization_value'][0]))
-
-            data_dict_52weeks_sales={}
-            data = [{
-                    "name":"NPD Value","value":int(output_cannib_52weeks_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_cannib_52weeks_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_cannib_52weeks_sales['cannibilization_perc'][0].round(decimals=2),
-                    "perc_impact_psg":(output_cannib_52weeks_sales['perc_change_in_psg'][0]).round(decimals=2)
-                   }
-            data_dict_52weeks_sales["data"]=data
-            data_dict_52weeks_sales["impact"]=sales
-
-
-            value_cann_52 = int(output_cannib_52weeks_sales['cannibilization_value'][0])
-            value_forecast_52 = int(output_cannib_52weeks_sales['forecast'][0])
-            value_impact_52 = (int(output_cannib_52weeks_sales['forecast'][0])) - (int(output_cannib_52weeks_sales['cannibilization_value'][0]))
-
-
-            impact_data_52weeks = {'sales_chart': data_dict_52weeks_sales,'volume_chart': data_dict_52weeks_volume }
-
-            similar_product_52weeks = similar_product_cannabilized('12_months')
-            data_52weeks_table = {'df': similar_product_52weeks.to_dict(orient='records')}
-
-            save_scenario = SaveScenario(user_id = user_id,
-                                        user_name = user_name,
-                                        designation = designation,
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        scenario_tag = scenario_tag,
-                                        asp = asp,
-                                        week_tab = 52,
-                                        buying_controller = buying_controller_header,
-                                        buyer = buyer_header,
-                                        parent_supplier = par_supp,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_52weeks,
-                                        value_forecast = value_forecast_52,
-                                        value_impact = value_impact_52,
-                                        value_cannibalized = value_cann_52,
-                                        volume_forecast = volume_forecast_52,
-                                        volume_impact = volume_impact_52,
-                                        volume_cannibalized = volume_cann_52,
-                                        similar_products = data_52weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
-            save_scenario.save()
-
-        else:
-            #calculate forecast for all week tabs
-            if (week_selected =="Latest 13 Weeks"):
-                total_forecasted_volume_13 = total_forecasted_volume
-                total_forecasted_volume_26 =  2 * total_forecasted_volume_13
-                total_forecasted_volume_52 = 2 * total_forecasted_volume_26
-
-            elif (week_selected =="Latest 26 Weeks"):
-                total_forecasted_volume_26 = total_forecasted_volume
-                total_forecasted_volume_13 = total_forecasted_volume_26/2
-                total_forecasted_volume_52 = 2 * total_forecasted_volume_26
-
-            elif (week_selected =="Latest 52 Weeks"):
-                total_forecasted_volume_52 = total_forecasted_volume
-                total_forecasted_volume_26 = total_forecasted_volume_52/2
-                total_forecasted_volume_13 = total_forecasted_volume_26/2
-            #### for calculating data table
-            psg_priceband_merch = get_priceband_psg_merch_code()
-
-            price_band = psg_priceband_merch['price_band']
-            psg_code = psg_priceband_merch['psg_code']
-            sim_prod = similar_products()
-            psg_priceband_merch = get_priceband_psg_merch_code()
-
-
-            ##for 13 weeks
-            similar_product = similar_product_cannabilized("3_months")
-            #for similar products table
-            data_13weeks_table = {'df': similar_product.to_dict(orient='records')}
-
-            forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_13)
-
-            ##### To get the cannibilized sales
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
-
-            total_forecasted_sales = float(total_forecasted_volume_13)*float(asp)
-
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
-
-            ##### To get the net mpact in volume
-            forecasted_net_impact_volume = total_forecasted_volume_13 - forecasted_cannibilization_volume
-
-            ##### To get the net impact in sales
-            forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
-
-            All_attribute = All_attribute.dropna()
-            All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
-
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
-
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
-
-            ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-
-            #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="3_months"]
-
-            ###### Getting the total volume for the selected psg and time period
-            total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
-
-            ##### Getting the asp for all the bpn in product contri
-
-            product_price_df['asp'] = product_price_df['asp'].astype('float')
-            product_price_df = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
-
-            #### Doing a left join to get the asp for all bpn in product contri
-
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-
-            ### Getting the total sales for all the products in
-            psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
-
-
-            ###Total would be sum of all the product sales
-            total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
-
-            #### Getting the change in % psg volume
-            total_psg_forecasted_volume = float(total_psg_forecasted_volume)
-
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
-            except:
-                psg_perc_volume = 0
-            #### Gettig the change in % psg sales
-            total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
-
-            data_13weeks_volume = [{'forecast': total_forecasted_volume_13,'modified_forecast': total_forecasted_volume_13,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 13 Weeks" ,'price_band' : price_band}]
-
-            data_13weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 13 Weeks",'price_band' : price_band }]
-
-            output_13_cannib_volume = pd.DataFrame(data_13weeks_volume)  ##Output 1 volume
-            output_13_cannib_sales = pd.DataFrame(data_13weeks_sales)  ## Output 1 Sales
-
-            data_13_dict_volume={}
-            data = [{
-                       "name":"NPD Volume","value":int(output_13_cannib_volume['forecast'][0])
-                       },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_13_cannib_volume['cannibilization_value'][0])
+                #calculate forecast for all week tabs
+                if (week_selected =="Latest 13 Weeks"):
+                    total_forecasted_volume_13 = total_forecasted_volume
+                    total_forecasted_volume_26 =  2 * total_forecasted_volume_13
+                    total_forecasted_volume_52 = 2 * total_forecasted_volume_26
+
+                elif (week_selected =="Latest 26 Weeks"):
+                    total_forecasted_volume_26 = total_forecasted_volume
+                    total_forecasted_volume_13 = total_forecasted_volume_26/2
+                    total_forecasted_volume_52 = 2 * total_forecasted_volume_26
+
+                elif (week_selected =="Latest 52 Weeks"):
+                    total_forecasted_volume_52 = total_forecasted_volume
+                    total_forecasted_volume_26 = total_forecasted_volume_52/2
+                    total_forecasted_volume_13 = total_forecasted_volume_26/2
+                #### for calculating data table
+                psg_priceband_merch = get_priceband_psg_merch_code()
+
+                price_band = psg_priceband_merch['price_band']
+                psg_code = psg_priceband_merch['psg_code']
+                sim_prod = similar_products()
+                psg_priceband_merch = get_priceband_psg_merch_code()
+
+
+                ##for 13 weeks
+                similar_product = similar_product_cannabilized("3_months")
+                #for similar products table
+                data_13weeks_table = {'df': similar_product.to_dict(orient='records')}
+
+                forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_13)
+
+                ##### To get the cannibilized sales
+                forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
+                #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+
+                total_forecasted_sales = float(total_forecasted_volume_13)*float(asp)
+
+                Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+
+                ##### To get the net mpact in volume
+                forecasted_net_impact_volume = total_forecasted_volume_13 - forecasted_cannibilization_volume
+
+                ##### To get the net impact in sales
+                forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
+
+                All_attribute = All_attribute.dropna()
+                All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
+
+                product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+
+                 ## rolling volume at psg bpn level
+                psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+
+                ### Subsetting above table for only the selected psg
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+
+                #### Taking variable from the function for getting the time frame
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="3_months"]
+
+                ###### Getting the total volume for the selected psg and time period
+                total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
+
+                ##### Getting the asp for all the bpn in product contri
+
+                product_price_df['asp'] = product_price_df['asp'].astype('float')
+                product_price_df = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+
+                #### Doing a left join to get the asp for all bpn in product contri
+
+                psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+
+                ### Getting the total sales for all the products in
+                psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
+                psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+
+
+                ###Total would be sum of all the product sales
+                total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
+
+                #### Getting the change in % psg volume
+                total_psg_forecasted_volume = float(total_psg_forecasted_volume)
+
+                try :
+                    psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+                except:
+                    psg_perc_volume = 0
+                #### Gettig the change in % psg sales
+                total_psg_forecasted_sales = float(total_psg_forecasted_sales)
+                psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+
+                data_13weeks_volume = [{'forecast': total_forecasted_volume_13,'modified_forecast': total_forecasted_volume_13,
+                     'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
+                     'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 13 Weeks" ,'price_band' : price_band}]
+
+                data_13weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
+                     'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
+                     'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 13 Weeks",'price_band' : price_band }]
+
+                output_13_cannib_volume = pd.DataFrame(data_13weeks_volume)  ##Output 1 volume
+                output_13_cannib_sales = pd.DataFrame(data_13weeks_sales)  ## Output 1 Sales
+
+                data_13_dict_volume={}
+                data = [{
+                           "name":"NPD Volume","value":int(output_13_cannib_volume['forecast'][0])
+                           },
+                        {
+                            "name":"Cannibalized Volume","value":-int(output_13_cannib_volume['cannibilization_value'][0])
+                            }]
+
+                volume={}
+                volume={"Cannibilization_perc":output_13_cannib_volume['cannibilization_perc'][0],
+                                                "perc_impact_psg":output_13_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
+                                   }
+                data_13_dict_volume["data"]=data
+                data_13_dict_volume["impact"]=volume
+
+                volume_cann_13 = int(output_13_cannib_volume['cannibilization_value'][0])
+                volume_forecast_13 = int(output_13_cannib_volume['forecast'][0])
+                volume_impact_13 = (int(output_13_cannib_volume['forecast'][0])) - (int(output_13_cannib_volume['cannibilization_value'][0]))
+
+                data_13_dict_sales={}
+                data = [{
+                        "name":"NPD Value","value":int(output_13_cannib_sales['forecast'][0])
+                        },
+                        {
+                        "name":"Cannibalized Sales",
+                        "value":-int(output_13_cannib_sales['cannibilization_value'][0])
                         }]
+                sales={}
+                sales={
+                        "Cannibilization_perc" : output_13_cannib_sales['cannibilization_perc'][0],
+                        "perc_impact_psg":(output_13_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
+                       }
+                data_13_dict_sales["data"]=data
+                data_13_dict_sales["impact"]=sales
 
-            volume={}
-            volume={"Cannibilization_perc":output_13_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_13_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
-                               }
-            data_13_dict_volume["data"]=data
-            data_13_dict_volume["impact"]=volume
-
-            volume_cann_13 = int(output_13_cannib_volume['cannibilization_value'][0])
-            volume_forecast_13 = int(output_13_cannib_volume['forecast'][0])
-            volume_impact_13 = (int(output_13_cannib_volume['forecast'][0])) - (int(output_13_cannib_volume['cannibilization_value'][0]))
-
-            data_13_dict_sales={}
-            data = [{
-                    "name":"NPD Value","value":int(output_13_cannib_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_13_cannib_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_13_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_13_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
-                   }
-            data_13_dict_sales["data"]=data
-            data_13_dict_sales["impact"]=sales
-
-            value_cann_13 = int(output_13_cannib_sales['cannibilization_value'][0])
-            value_forecast_13 = int(output_13_cannib_sales['forecast'][0])
-            value_impact_13 = (int(output_13_cannib_sales['forecast'][0])) - (int(output_13_cannib_sales['cannibilization_value'][0]))
+                value_cann_13 = int(output_13_cannib_sales['cannibilization_value'][0])
+                value_forecast_13 = int(output_13_cannib_sales['forecast'][0])
+                value_impact_13 = (int(output_13_cannib_sales['forecast'][0])) - (int(output_13_cannib_sales['cannibilization_value'][0]))
 
 
-            impact_data_13weeks = {'sales_chart': data_13_dict_sales,'volume_chart': data_13_dict_volume}
+                impact_data_13weeks = {'sales_chart': data_13_dict_sales,'volume_chart': data_13_dict_volume}
 
-            save_scenario = SaveScenario(user_id = user_id,
-                                        user_name = user_name,
-                                        designation = designation,
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        scenario_tag = scenario_tag,
-                                        asp = asp,
-                                        week_tab = 13,
-                                        buying_controller = buying_controller_header,
-                                        buyer = buyer_header,
-                                        parent_supplier = par_supp,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_13weeks,
-                                        value_forecast = value_forecast_13,
-                                        value_impact = value_impact_13,
-                                        value_cannibalized = value_cann_13,
-                                        volume_forecast = volume_forecast_13,
-                                        volume_impact = volume_impact_13,
-                                        volume_cannibalized = volume_cann_13,
-                                        similar_products = data_13weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
-            save_scenario.save()
+                save_scenario = SaveScenario(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 13,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_13weeks,
+                                            value_forecast = value_forecast_13,
+                                            value_impact = value_impact_13,
+                                            value_cannibalized = value_cann_13,
+                                            volume_forecast = volume_forecast_13,
+                                            volume_impact = volume_impact_13,
+                                            volume_cannibalized = volume_cann_13,
+                                            similar_products = data_13weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario.save()
 
+                save_scenario_tracker = ScenarioTracker(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 13,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_13weeks,
+                                            value_forecast = value_forecast_13,
+                                            value_impact = value_impact_13,
+                                            value_cannibalized = value_cann_13,
+                                            volume_forecast = volume_forecast_13,
+                                            volume_impact = volume_impact_13,
+                                            volume_cannibalized = volume_cann_13,
+                                            similar_products = data_13weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario_tracker.save()
 
-            ##for 26 weeks
-            similar_product = similar_product_cannabilized("6_months")
+                ##for 26 weeks
+                similar_product = similar_product_cannabilized("6_months")
 
-            data_26weeks_table = {'df': similar_product.to_dict(orient='records')}
-
-
-            forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_26)
-
-            ##### To get the cannibilized sales
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
-            total_forecasted_sales = float(total_forecasted_volume_26)*float(asp)
-
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
-
-            ##### To get the net mpact in volume
-            forecasted_net_impact_volume = total_forecasted_volume_26 - forecasted_cannibilization_volume
-
-            ##### To get the net impact in sales
-            forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
-
-            All_attribute = All_attribute.dropna()
-            All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
-
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
-
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
-
-            ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
-
-            #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="6_months"]
-
-            ###### Getting the total volume for the selected psg and time period
-            total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
-
-            ##### Getting the asp for all the bpn in product contri
-
-            product_price_df['asp'] = product_price_df['asp'].astype('float')
-            product_price_df = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
-
-            #### Doing a left join to get the asp for all bpn in product contri
-
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
-
-            ### Getting the total sales for all the products in
-            psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+                data_26weeks_table = {'df': similar_product.to_dict(orient='records')}
 
 
-            ###Total would be sum of all the product sales
-            total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
+                forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_26)
 
-            #### Getting the change in % psg volume
-            total_psg_forecasted_volume = float(total_psg_forecasted_volume)
+                ##### To get the cannibilized sales
+                forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
+                #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+                total_forecasted_sales = float(total_forecasted_volume_26)*float(asp)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
-            except:
-                psg_perc_volume = 0
+                Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
 
-            #### Gettig the change in % psg sales
+                ##### To get the net mpact in volume
+                forecasted_net_impact_volume = total_forecasted_volume_26 - forecasted_cannibilization_volume
 
-            total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+                ##### To get the net impact in sales
+                forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
-            data_26weeks_volume = [{'forecast': total_forecasted_volume_26,'modified_forecast': total_forecasted_volume_26,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 26 Weeks" ,'price_band' : price_band}]
+                All_attribute = All_attribute.dropna()
+                All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
 
-            data_26weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 26 Weeks",'price_band' : price_band }]
+                product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
 
-            output_26_cannib_volume = pd.DataFrame(data_26weeks_volume)  ##Output 1 volume
-            output_26_cannib_sales = pd.DataFrame(data_26weeks_sales)  ## Output 1 Sales
+                 ## rolling volume at psg bpn level
+                psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
 
-            data_26_dict_volume={}
-            data = [{
-                       "name":"NPD Volume","value":int(output_26_cannib_volume['forecast'][0])
-                       },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_26_cannib_volume['cannibilization_value'][0])
+                ### Subsetting above table for only the selected psg
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+
+                #### Taking variable from the function for getting the time frame
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="6_months"]
+
+                ###### Getting the total volume for the selected psg and time period
+                total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
+
+                ##### Getting the asp for all the bpn in product contri
+
+                product_price_df['asp'] = product_price_df['asp'].astype('float')
+                product_price_df = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+
+                #### Doing a left join to get the asp for all bpn in product contri
+
+                psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+
+                ### Getting the total sales for all the products in
+                psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
+                psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+
+
+                ###Total would be sum of all the product sales
+                total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
+
+                #### Getting the change in % psg volume
+                total_psg_forecasted_volume = float(total_psg_forecasted_volume)
+
+                try :
+                    psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+                except:
+                    psg_perc_volume = 0
+
+                #### Gettig the change in % psg sales
+
+                total_psg_forecasted_sales = float(total_psg_forecasted_sales)
+                psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+
+                data_26weeks_volume = [{'forecast': total_forecasted_volume_26,'modified_forecast': total_forecasted_volume_26,
+                     'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
+                     'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 26 Weeks" ,'price_band' : price_band}]
+
+                data_26weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
+                     'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
+                     'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 26 Weeks",'price_band' : price_band }]
+
+                output_26_cannib_volume = pd.DataFrame(data_26weeks_volume)  ##Output 1 volume
+                output_26_cannib_sales = pd.DataFrame(data_26weeks_sales)  ## Output 1 Sales
+
+                data_26_dict_volume={}
+                data = [{
+                           "name":"NPD Volume","value":int(output_26_cannib_volume['forecast'][0])
+                           },
+                        {
+                            "name":"Cannibalized Volume","value":-int(output_26_cannib_volume['cannibilization_value'][0])
+                            }]
+
+                volume={}
+                volume={"Cannibilization_perc":output_26_cannib_volume['cannibilization_perc'][0],
+                                                "perc_impact_psg":output_26_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
+                                   }
+                data_26_dict_volume["data"]=data
+                data_26_dict_volume["impact"]=volume
+
+
+                volume_cann_26 = int(output_26_cannib_volume['cannibilization_value'][0])
+                volume_forecast_26 = int(output_26_cannib_volume['forecast'][0])
+                volume_impact_26 = int(output_26_cannib_volume['forecast'][0]) - int(output_26_cannib_volume['cannibilization_value'][0])
+
+                data_26_dict_sales={}
+                data = [{
+                        "name":"NPD Value","value":int(output_26_cannib_sales['forecast'][0])
+                        },
+                        {
+                        "name":"Cannibalized Sales",
+                        "value":-int(output_26_cannib_sales['cannibilization_value'][0])
                         }]
+                sales={}
+                sales={
+                        "Cannibilization_perc" : output_26_cannib_sales['cannibilization_perc'][0],
+                        "perc_impact_psg":(output_26_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
+                       }
+                data_26_dict_sales["data"]=data
+                data_26_dict_sales["impact"]=sales
 
-            volume={}
-            volume={"Cannibilization_perc":output_26_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_26_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
-                               }
-            data_26_dict_volume["data"]=data
-            data_26_dict_volume["impact"]=volume
-
-
-            volume_cann_26 = int(output_26_cannib_volume['cannibilization_value'][0])
-            volume_forecast_26 = int(output_26_cannib_volume['forecast'][0])
-            volume_impact_26 = int(output_26_cannib_volume['forecast'][0]) - int(output_26_cannib_volume['cannibilization_value'][0])
-
-            data_26_dict_sales={}
-            data = [{
-                    "name":"NPD Value","value":int(output_26_cannib_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_26_cannib_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_26_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_26_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
-                   }
-            data_26_dict_sales["data"]=data
-            data_26_dict_sales["impact"]=sales
-
-            value_cann_26 = int(output_26_cannib_sales['cannibilization_value'][0])
-            value_forecast_26 = int(output_26_cannib_sales['forecast'][0])
-            value_impact_26 = (int(output_26_cannib_sales['forecast'][0])) - (int(output_26_cannib_sales['cannibilization_value'][0]))
+                value_cann_26 = int(output_26_cannib_sales['cannibilization_value'][0])
+                value_forecast_26 = int(output_26_cannib_sales['forecast'][0])
+                value_impact_26 = (int(output_26_cannib_sales['forecast'][0])) - (int(output_26_cannib_sales['cannibilization_value'][0]))
 
 
 
-            impact_data_26weeks = {'sales_chart': data_26_dict_sales,'volume_chart': data_26_dict_volume}
+                impact_data_26weeks = {'sales_chart': data_26_dict_sales,'volume_chart': data_26_dict_volume}
 
-            save_scenario = SaveScenario(user_id = user_id,
-                                        user_name = user_name,
-                                        designation = designation,
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        scenario_tag = scenario_tag,
-                                        week_tab = 26,
-                                        buying_controller = buying_controller_header,
-                                        buyer = buyer_header,
-                                        parent_supplier = par_supp,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_26weeks,
-                                        value_forecast = value_forecast_26,
-                                        value_impact = value_impact_26,
-                                        value_cannibalized = value_cann_26,
-                                        volume_forecast = volume_forecast_26,
-                                        volume_impact = volume_impact_26,
-                                        volume_cannibalized = volume_cann_26,
-                                        similar_products = data_26weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
-            save_scenario.save()
+                save_scenario = SaveScenario(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            week_tab = 26,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_26weeks,
+                                            value_forecast = value_forecast_26,
+                                            value_impact = value_impact_26,
+                                            value_cannibalized = value_cann_26,
+                                            volume_forecast = volume_forecast_26,
+                                            volume_impact = volume_impact_26,
+                                            volume_cannibalized = volume_cann_26,
+                                            similar_products = data_26weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario.save()
 
-            ##for 52 weeks
-            similar_product = similar_product_cannabilized("12_months")
+                save_scenario_tracker = ScenarioTracker(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            week_tab = 26,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_26weeks,
+                                            value_forecast = value_forecast_26,
+                                            value_impact = value_impact_26,
+                                            value_cannibalized = value_cann_26,
+                                            volume_forecast = volume_forecast_26,
+                                            volume_impact = volume_impact_26,
+                                            volume_cannibalized = volume_cann_26,
+                                            similar_products = data_26weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario_tracker.save()
 
-            data_52weeks_table = {'df': similar_product.to_dict(orient='records')}
+                ##for 52 weeks
+                similar_product = similar_product_cannabilized("12_months")
 
-            forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_52)
+                data_52weeks_table = {'df': similar_product.to_dict(orient='records')}
 
-            ##### To get the cannibilized sales
-            forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
-            #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
-            total_forecasted_sales = float(total_forecasted_volume_52)*float(asp)
+                forecasted_cannibilization_volume = float(Cannibalization_perc) * float(total_forecasted_volume_52)
 
-            Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
+                ##### To get the cannibilized sales
+                forecasted_cannibilization_sales = forecasted_cannibilization_volume*asp
+                #forecasted_cannibilization_sales = forecasted_cannibilization_sales.round(2)
+                total_forecasted_sales = float(total_forecasted_volume_52)*float(asp)
 
-            ##### To get the net mpact in volume
-            forecasted_net_impact_volume = total_forecasted_volume_52 - forecasted_cannibilization_volume
+                Cannibalization_perc_sales = (forecasted_cannibilization_sales/total_forecasted_sales)
 
-            ##### To get the net impact in sales
-            forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
+                ##### To get the net mpact in volume
+                forecasted_net_impact_volume = total_forecasted_volume_52 - forecasted_cannibilization_volume
 
-            All_attribute = All_attribute.dropna()
-            All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
+                ##### To get the net impact in sales
+                forecasted_net_impact_sales = total_forecasted_sales - forecasted_cannibilization_sales
 
-            product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
+                All_attribute = All_attribute.dropna()
+                All_attribute_subset = All_attribute[['base_product_number','product_sub_group_description']]
 
-             ## rolling volume at psg bpn level
-            psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
+                product_psg_mapping =pd.merge(product_contri_df, All_attribute_subset, left_on=['base_product_number'], right_on=['base_product_number'], how='left' )
 
-            ### Subsetting above table for only the selected psg
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
+                 ## rolling volume at psg bpn level
+                psg_product_contri_df = product_psg_mapping.groupby(['time_period','product_sub_group_description','base_product_number'], as_index=False).agg({'predicted_volume': sum})
 
-            #### Taking variable from the function for getting the time frame
-            psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="12_months"]
+                ### Subsetting above table for only the selected psg
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['product_sub_group_description']==Product_Sub_Group_Description]
 
-            ###### Getting the total volume for the selected psg and time period
-            total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
+                #### Taking variable from the function for getting the time frame
+                psg_product_contri_df = psg_product_contri_df.loc[psg_product_contri_df['time_period']=="12_months"]
 
-            ##### Getting the asp for all the bpn in product contri
+                ###### Getting the total volume for the selected psg and time period
+                total_psg_forecasted_volume = sum(psg_product_contri_df['predicted_volume'])
 
-            product_price_df['asp'] = product_price_df['asp'].astype('float')
-            product_price_df = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
+                ##### Getting the asp for all the bpn in product contri
 
-            #### Doing a left join to get the asp for all bpn in product contri
+                product_price_df['asp'] = product_price_df['asp'].astype('float')
+                product_price_df = product_price_df.groupby(['base_product_number'], as_index=False).agg({'asp': 'mean'})
 
-            psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+                #### Doing a left join to get the asp for all bpn in product contri
 
-            ### Getting the total sales for all the products in
-            psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
-            psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
+                psg_product_contri_df = pd.merge(psg_product_contri_df, product_price_df, left_on=['base_product_number'], right_on=['base_product_number'], how='left')
+
+                ### Getting the total sales for all the products in
+                psg_product_contri_df['predicted_volume'] = psg_product_contri_df['predicted_volume'].astype('float')
+                psg_product_contri_df.loc[:,'predicted_sales'] = psg_product_contri_df['predicted_volume']*psg_product_contri_df['asp']
 
 
-            ###Total would be sum of all the product sales
-            total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
+                ###Total would be sum of all the product sales
+                total_psg_forecasted_sales = sum(psg_product_contri_df['predicted_sales'])
 
-            #### Getting the change in % psg volume
-            total_psg_forecasted_volume = float(total_psg_forecasted_volume)
+                #### Getting the change in % psg volume
+                total_psg_forecasted_volume = float(total_psg_forecasted_volume)
 
-            try :
-                psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
-            except:
-                psg_perc_volume = 0
+                try :
+                    psg_perc_volume = (forecasted_net_impact_volume/total_psg_forecasted_volume)
+                except:
+                    psg_perc_volume = 0
 
-            #### Gettig the change in % psg sales
+                #### Gettig the change in % psg sales
 
-            total_psg_forecasted_sales = float(total_psg_forecasted_sales)
-            psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
+                total_psg_forecasted_sales = float(total_psg_forecasted_sales)
+                psg_perc_sales = (forecasted_net_impact_sales/total_psg_forecasted_sales)
 
-            data_52weeks_volume = [{'forecast': total_forecasted_volume_52,'modified_forecast': total_forecasted_volume_52,
-                 'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
-                 'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 52 Weeks" ,'price_band' : price_band}]
+                data_52weeks_volume = [{'forecast': total_forecasted_volume_52,'modified_forecast': total_forecasted_volume_52,
+                     'cannibilization_value' : forecasted_cannibilization_volume, 'cannibilization_perc' : Cannibalization_perc,
+                     'net_impact_value': forecasted_net_impact_volume , 'perc_change_in_psg' : psg_perc_volume*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 52 Weeks" ,'price_band' : price_band}]
 
-            data_52weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
-                 'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
-                 'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
-                 Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
-                 asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 52 Weeks",'price_band' : price_band }]
+                data_52weeks_sales = [{'forecast': total_forecasted_sales,'modified_forecast': total_forecasted_sales,
+                     'cannibilization_value' : forecasted_cannibilization_sales, 'cannibilization_perc' : Cannibalization_perc_sales,
+                     'net_impact_value': forecasted_net_impact_sales , 'perc_change_in_psg' : psg_perc_sales*100,'buying_controller':
+                     Buying_controller ,'junior_buyer' : Junior_Buyer , 'buyer' : Buyer , 'psg' : Product_Sub_Group_Description,'asp' :
+                     asp , 'acp' : acp ,'size' : Size ,'package_type' : Package_Type ,'till_roll_desc': Till_Roll_Description , 'week_flag' : "Latest 52 Weeks",'price_band' : price_band }]
 
-            output_52_cannib_volume = pd.DataFrame(data_52weeks_volume)  ##Output 1 volume
-            output_52_cannib_sales = pd.DataFrame(data_52weeks_sales)  ## Output 1 Sales
+                output_52_cannib_volume = pd.DataFrame(data_52weeks_volume)  ##Output 1 volume
+                output_52_cannib_sales = pd.DataFrame(data_52weeks_sales)  ## Output 1 Sales
 
-            data_52_dict_volume={}
-            data = [{
-                       "name":"NPD Volume","value":int(output_52_cannib_volume['forecast'][0])
-                       },
-                    {
-                        "name":"Cannibalized Volume","value":-int(output_52_cannib_volume['cannibilization_value'][0])
+                data_52_dict_volume={}
+                data = [{
+                           "name":"NPD Volume","value":int(output_52_cannib_volume['forecast'][0])
+                           },
+                        {
+                            "name":"Cannibalized Volume","value":-int(output_52_cannib_volume['cannibilization_value'][0])
+                            }]
+
+                volume={}
+                volume={"Cannibilization_perc":output_52_cannib_volume['cannibilization_perc'][0],
+                                                "perc_impact_psg":output_52_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
+                                   }
+                data_52_dict_volume["data"]=data
+                data_52_dict_volume["impact"]=volume
+
+                volume_cann_52 = int(output_52_cannib_volume['cannibilization_value'][0])
+                volume_forecast_52 = int(output_52_cannib_volume['forecast'][0])
+                volume_impact_52 = int(output_52_cannib_volume['forecast'][0]) - int(output_52_cannib_volume['cannibilization_value'][0])
+
+
+                data_52_dict_sales={}
+                data = [{
+                        "name":"NPD Value","value":int(output_52_cannib_sales['forecast'][0])
+                        },
+                        {
+                        "name":"Cannibalized Sales",
+                        "value":-int(output_52_cannib_sales['cannibilization_value'][0])
                         }]
+                sales={}
+                sales={
+                        "Cannibilization_perc" : output_52_cannib_sales['cannibilization_perc'][0],
+                        "perc_impact_psg":(output_52_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
+                       }
+                data_52_dict_sales["data"]=data
+                data_52_dict_sales["impact"]=sales
 
-            volume={}
-            volume={"Cannibilization_perc":output_52_cannib_volume['cannibilization_perc'][0],
-                                            "perc_impact_psg":output_52_cannib_volume['perc_change_in_psg'][0].round(decimals=2)
-                               }
-            data_52_dict_volume["data"]=data
-            data_52_dict_volume["impact"]=volume
+                value_cann_52 = int(output_52_cannib_sales['cannibilization_value'][0])
+                value_forecast_52 = int(output_52_cannib_sales['forecast'][0])
+                value_impact_52 = (int(output_52_cannib_sales['forecast'][0])) - (int(output_52_cannib_sales['cannibilization_value'][0]))
 
-            volume_cann_52 = int(output_52_cannib_volume['cannibilization_value'][0])
-            volume_forecast_52 = int(output_52_cannib_volume['forecast'][0])
-            volume_impact_52 = int(output_52_cannib_volume['forecast'][0]) - int(output_52_cannib_volume['cannibilization_value'][0])
+                impact_data_52weeks = {'sales_chart': data_52_dict_sales,'volume_chart': data_52_dict_volume}
 
+                save_scenario = SaveScenario(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 52,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_52weeks,
+                                            value_forecast = value_forecast_52,
+                                            value_impact = value_impact_52,
+                                            value_cannibalized = value_cann_52,
+                                            volume_forecast = volume_forecast_52,
+                                            volume_impact = volume_impact_52,
+                                            volume_cannibalized = volume_cann_52,
+                                            similar_products = data_52weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario.save()
 
-            data_52_dict_sales={}
-            data = [{
-                    "name":"NPD Value","value":int(output_52_cannib_sales['forecast'][0])
-                    },
-                    {
-                    "name":"Cannibalized Sales",
-                    "value":-int(output_52_cannib_sales['cannibilization_value'][0])
-                    }]
-            sales={}
-            sales={
-                    "Cannibilization_perc" : output_52_cannib_sales['cannibilization_perc'][0],
-                    "perc_impact_psg":(output_52_cannib_sales['perc_change_in_psg'][0]).round(decimals=2)
-                   }
-            data_52_dict_sales["data"]=data
-            data_52_dict_sales["impact"]=sales
+                save_scenario_tracker = ScenarioTracker(user_id = user_id,
+                                            user_name = user_name,
+                                            designation = designation,
+                                            session_id = session_id,
+                                            scenario_name = scenario_name,
+                                            scenario_tag = scenario_tag,
+                                            asp = asp,
+                                            week_tab = 52,
+                                            buying_controller = Buying_controller,
+                                            buyer = Buyer,
+                                            parent_supplier = par_supp,
+                                            user_attributes = user_attributes,
+                                            forecast_data = impact_data_52weeks,
+                                            value_forecast = value_forecast_52,
+                                            value_impact = value_impact_52,
+                                            value_cannibalized = value_cann_52,
+                                            volume_forecast = volume_forecast_52,
+                                            volume_impact = volume_impact_52,
+                                            volume_cannibalized = volume_cann_52,
+                                            similar_products = data_52weeks_table,
+                                            modified_flag = modified_flag,
+                                            system_time = system_time,
+                                            page = "npd")
+                save_scenario_tracker.save()
 
-            value_cann_52 = int(output_52_cannib_sales['cannibilization_value'][0])
-            value_forecast_52 = int(output_52_cannib_sales['forecast'][0])
-            value_impact_52 = (int(output_52_cannib_sales['forecast'][0])) - (int(output_52_cannib_sales['cannibilization_value'][0]))
-
-            impact_data_52weeks = {'sales_chart': data_52_dict_sales,'volume_chart': data_52_dict_volume}
-
-            save_scenario = SaveScenario(user_id = user_id,
-                                        user_name = user_name,
-                                        designation = designation,
-                                        session_id = session_id,
-                                        scenario_name = scenario_name,
-                                        scenario_tag = scenario_tag,
-                                        asp = asp,
-                                        week_tab = 52,
-                                        buying_controller = buying_controller_header,
-                                        buyer = buyer_header,
-                                        parent_supplier = par_supp,
-                                        user_attributes = user_attributes,
-                                        forecast_data = impact_data_52weeks,
-                                        value_forecast = value_forecast_52,
-                                        value_impact = value_impact_52,
-                                        value_cannibalized = value_cann_52,
-                                        volume_forecast = volume_forecast_52,
-                                        volume_impact = volume_impact_52,
-                                        volume_cannibalized = volume_cann_52,
-                                        similar_products = data_52weeks_table,
-                                        modified_flag = modified_flag,
-                                        system_time = system_time,
-                                        page = "npd")
-            save_scenario.save()
-
-        return JsonResponse({"save_scenario" : "SUCCESS"}, safe = False)
+        return JsonResponse({"save_scenario" : result}, safe = False)
 
 # npd impact list scenario
 class npd_list_scenario(APIView):
