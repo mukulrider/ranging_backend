@@ -1542,12 +1542,12 @@ class product_impact_chart(vol_transfer_logic,APIView):
                                                                    store=store[0], bc=bc[0])
 
         else:
-            bc = args.get('buying_controller__iexact')
-            if bc is not None:
-                bc = bc.replace('__', '&')
-                bc = [bc]
-            else:
-                bc = ['Meat Fish and Veg']
+            bc = buying_controller_header
+            # if bc is not None:
+            #     bc = bc.replace('__', '&')
+            #     bc = [bc]
+            # else:
+            #     bc = ['Meat Fish and Veg']
             store = args.get('store_type__iexact')
             if store is not None:
                 store = [store]
@@ -1662,10 +1662,18 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 'value_transfer_y']
             product_dataset['cgm_transfer'] = product_dataset['cgm_transfer_x'] + product_dataset['cgm_transfer_y']
             product_dataset['cts_transfer'] = product_dataset['cts_transfer_x'] + product_dataset['cts_transfer_y']
-            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
-            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
+                product_dataset.brand_indicator_y)
             product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
                 product_dataset.brand_indicator_y)
             del product_dataset["brand_indicator_x"]
@@ -2420,10 +2428,18 @@ class product_impact_supplier_table(vol_transfer_logic,APIView):
                 'value_transfer_y']
             product_dataset['cgm_transfer'] = product_dataset['cgm_transfer_x'] + product_dataset['cgm_transfer_y']
             product_dataset['cts_transfer'] = product_dataset['cts_transfer_x'] + product_dataset['cts_transfer_y']
-            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
-            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
+                product_dataset.brand_indicator_y)
             product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
                 product_dataset.brand_indicator_y)
             del product_dataset["brand_indicator_x"]
@@ -2653,10 +2669,18 @@ class supplier_popup(vol_transfer_logic,APIView):
                 'value_transfer_y']
             product_dataset['cgm_transfer'] = product_dataset['cgm_transfer_x'] + product_dataset['cgm_transfer_y']
             product_dataset['cts_transfer'] = product_dataset['cts_transfer_x'] + product_dataset['cts_transfer_y']
-            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
-            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
+            #     product_dataset.brand_indicator_y)
+            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
             product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
                 product_dataset.brand_indicator_y)
             del product_dataset["brand_indicator_x"]
@@ -3086,10 +3110,18 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
                 'value_transfer_y']
             product_dataset['cgm_transfer'] = product_dataset['cgm_transfer_x'] + product_dataset['cgm_transfer_y']
             product_dataset['cts_transfer'] = product_dataset['cts_transfer_x'] + product_dataset['cts_transfer_y']
-            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
-            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
+                product_dataset.brand_indicator_y)
             product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
                 product_dataset.brand_indicator_y)
             del product_dataset["brand_indicator_x"]
@@ -3168,8 +3200,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
             del delist_prod_table['base_product_number']
 
             delist_prod_table = pd.merge(delist_prod_table, psg_predict, on="product_sub_group_description", how="left")
-            delist_prod_table['psg_value_impact'] = (
-            delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']).round(decimals=1)
+            delist_prod_table['psg_value_impact'] = ((
+            delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales'])*100).round(decimals=1)
             delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
                                                    'predicted_volume', 'predicted_cgm', 'no_of_stores',
                                                    'per_vol_transfer','per_value_transfer',
@@ -3241,8 +3273,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
 
             psg_predict = vol_logic.psg_impact(bc, delist, store, future)
             delist_prod_table = pd.merge(delist_prod_table, psg_predict, on="product_sub_group_description", how="left")
-            delist_prod_table['psg_value_impact'] = (
-            delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']).round(decimals=1)
+            delist_prod_table['psg_value_impact'] = ((
+            delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales'])*100).round(decimals=1)
 
             delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
                                                    'predicted_volume', 'predicted_cgm', 'no_of_stores',
@@ -3382,10 +3414,18 @@ class delist_popup(vol_transfer_logic,APIView):
                 'value_transfer_y']
             product_dataset['cgm_transfer'] = product_dataset['cgm_transfer_x'] + product_dataset['cgm_transfer_y']
             product_dataset['cts_transfer'] = product_dataset['cts_transfer_x'] + product_dataset['cts_transfer_y']
-            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
-            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
-                product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            # product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
+            #     product_dataset['brand_indicator_y'])
+            product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                product_dataset[
+                                                                                                    'brand_indicator_y'])
+            product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
+                product_dataset.brand_indicator_y)
             product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
                 product_dataset.brand_indicator_y)
             del product_dataset["brand_indicator_x"]
@@ -3584,6 +3624,9 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         Buying_controller = args.pop('buying_controller',None)
         buyer = args.pop('buyer', None)
 
+        if Buying_controller is None:
+            Buying_controller = buying_controller_header
+
         #bc = Buying_controller
         #par_supp = args.pop('parent_supplier',None)
         #Buyer = args.pop('buyer',None)
@@ -3643,7 +3686,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
             # all_filter = read_frame(product_impact_filter.objects.all())
             # input_tpns = all_filter['input_tpns']
             # input_tpns = list(input_tpns)
-            bc = Buying_controller
+            bc = buying_controller_header
            # bc = all_filter['bc'][0]
             bc = [bc]
                 #store = all_filter['store'][0]
@@ -3736,10 +3779,18 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                     'value_transfer_y']
                 product_dataset['cgm_transfer'] = product_dataset['cgm_transfer_x'] + product_dataset['cgm_transfer_y']
                 product_dataset['cts_transfer'] = product_dataset['cts_transfer_x'] + product_dataset['cts_transfer_y']
-                product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
-                    product_dataset['brand_indicator_y'])
-                product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
-                    product_dataset['brand_indicator_y'])
+                # product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].fillna(
+                #     product_dataset['brand_indicator_y'])
+                # product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].fillna(
+                #     product_dataset['brand_indicator_y'])
+                product_dataset['brand_indicator_x'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                    product_dataset[
+                                                                                                        'brand_indicator_y'])
+                product_dataset['brand_indicator_y'] = product_dataset['brand_indicator_x'].replace(0,
+                                                                                                    product_dataset[
+                                                                                                        'brand_indicator_y'])
+                product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
+                    product_dataset.brand_indicator_y)
                 product_dataset['brand_indicator'] = product_dataset.brand_indicator_x.combine_first(
                     product_dataset.brand_indicator_y)
                 del product_dataset["brand_indicator_x"]
@@ -3878,8 +3929,8 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 delist_prod_table = pd.merge(delist_prod_table, psg_predict, on="product_sub_group_description",
                                              how="left")
 
-                delist_prod_table['psg_value_impact'] = (
-                    delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']).round(decimals=1)
+                delist_prod_table['psg_value_impact'] = ((
+                    delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales'])*100).round(decimals=1)
                 delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
                                                        'predicted_volume', 'predicted_cgm', 'no_of_stores',
                                                        'per_vol_transfer','per_value_transfer',
@@ -3897,9 +3948,9 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                                                 session_id = session_id,
                                                 user_id = user_id,
                                                 user_name= user_name,
-                                                buying_controller=buying_controller,
+                                                buying_controller=buying_controller_header,
                                                 designation=designation,
-                                                buyer=buyer,
+                                                buyer=buyer_header,
                                                 time_period = week_tab,
                                                 user_attributes = user_attributes,
                                                 chart_attr = chart_attr,

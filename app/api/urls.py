@@ -36,6 +36,7 @@ urlpatterns = [
     ####Url for negotiation filter data 
     ### Multselect filters
     url(r'^nego/filter_data', delist_filters.negotiation_filters.as_view(), name='negotiation_filters'),
+    url(r'^nego/filter_new', delist_filters.negotiation_filters_new.as_view(), name='negotiation_filters_new'),
 
     ####Negotiation URL 
     url(r'^nego_chart$', delist_view.supplier_importance_chart.as_view(), name='supplier_importance_chart'),
@@ -46,7 +47,8 @@ urlpatterns = [
 
     ####Url for product impact filter data
     ### Multiselect Filters
-    url(r'^product_impact/filter_data', delist_filters.product_impact_filters.as_view(),name='product_impact_filters'), 
+    url(r'^product_impact/filter_data', delist_filters.product_impact_filters.as_view(), name='product_impact_filters'),
+    url(r'^product_impact/filter_new', delist_filters.product_impact_filters_new.as_view(), name='product_impact_filters_new'),
 
     url(r'^product_impact_chart', delist_view.product_impact_chart.as_view(), name='product_impact_chart'),
     
