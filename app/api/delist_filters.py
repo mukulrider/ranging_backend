@@ -797,18 +797,18 @@ class negotiation_filters_new(APIView):
                 if need_state_list is not None:
                     need_state['selected'] = True
                     need_state['highlighted'] = False
-                    if psg_list is not None:
-                        print("psg is present")
-                        kwargs_need_state = {
-                            'buyer__in': buyer_list,
-                            'product_sub_group_description__in': psg_list,
-                            'junior_buyer__in': jr_buyer_list,
-                            'brand_name__in': brand_name_list
-                        }
-                        kwargs_need_state = dict(filter(lambda item: item[1] is not None, kwargs_need_state.items()))
-                        print(kwargs_need_state)
-                        heirarchy_check = read_frame(
-                            nego_ads_drf.objects.filter(**kwargs_need_state))
+                    # if psg_list is not None:
+                    #     print("psg is present")
+                    kwargs_need_state = {
+                        'buyer__in': buyer_list,
+                        'product_sub_group_description__in': psg_list,
+                        'junior_buyer__in': jr_buyer_list,
+                        'brand_name__in': brand_name_list
+                    }
+                    kwargs_need_state = dict(filter(lambda item: item[1] is not None, kwargs_need_state.items()))
+                    print(kwargs_need_state)
+                    heirarchy_check = read_frame(
+                        nego_ads_drf.objects.filter(**kwargs_need_state))
 
 
                     need_state_df_check = pd.merge(need_state_df_heirarchy,
@@ -829,22 +829,22 @@ class negotiation_filters_new(APIView):
                     need_state_df['highlighted'] = need_state_df['highlighted'].fillna(True)
                     print(need_state_df)
                     need_state_df = need_state_df.rename(columns={'need_state': 'title'})
-                    if brand_name_list is not None:
-                        print("need_state selected")
-                        need_state_df = need_state_df.rename(columns={'title': 'need_state'})
-                        need_state_list_df = pd.DataFrame(need_state_list, columns={'need_state'})
-                        data = {'need_state': need_state_list_df.need_state.unique()}
-                        print(data)
-                        need_state = pd.DataFrame(data)
-                        need_state['selected'] = True
-                        need_state['highlighted'] = False
-                        print(need_state)
-                        need_state_df = pd.merge(need_state_df_heirarchy, need_state, how='left')
-                        need_state_df['selected'] = need_state_df['selected'].fillna(False)
-                        need_state_df['highlighted'] = need_state_df['highlighted'].fillna(True)
-                        need_state_df = need_state_df[['need_state', 'selected', 'highlighted']]
-                        need_state_df = need_state_df.rename(columns={'need_state': 'title'})
-                        print(need_state_df)
+                    # if brand_name_list is not None:
+                    #     print("need_state selected")
+                    #     need_state_df = need_state_df.rename(columns={'title': 'need_state'})
+                    #     need_state_list_df = pd.DataFrame(need_state_list, columns={'need_state'})
+                    #     data = {'need_state': need_state_list_df.need_state.unique()}
+                    #     print(data)
+                    #     need_state = pd.DataFrame(data)
+                    #     need_state['selected'] = True
+                    #     need_state['highlighted'] = False
+                    #     print(need_state)
+                    #     need_state_df = pd.merge(need_state_df_heirarchy, need_state, how='left')
+                    #     need_state_df['selected'] = need_state_df['selected'].fillna(False)
+                    #     need_state_df['highlighted'] = need_state_df['highlighted'].fillna(True)
+                    #     need_state_df = need_state_df[['need_state', 'selected', 'highlighted']]
+                    #     need_state_df = need_state_df.rename(columns={'need_state': 'title'})
+                    #     print(need_state_df)
                 else:
                     need_state['selected'] = False
                     need_state['highlighted'] = False
@@ -856,20 +856,20 @@ class negotiation_filters_new(APIView):
                 if brand_name_list is not None:
                     brand_name['selected'] = True
                     brand_name['highlighted'] = False
-                    if need_state_list is not None:
-                        print("need State is present")
-                        kwargs_brand_name = {
-                            'buyer__in': buyer_list,
-                            'product_sub_group_description__in': psg_list,
-                            'junior_buyer__in': jr_buyer_list,
-                            'need_state__in': need_state_list
-                        }
-                        kwargs_brand_name = dict(filter(lambda item: item[1] is not None, kwargs_brand_name.items()))
-                        print(kwargs_brand_name)
-                        heirarchy_check = read_frame(
-                            nego_ads_drf.objects.filter(**kwargs_brand_name))
+                    #if need_state_list is not None:
+                    #    print("need State is present")
+                    kwargs_brand_name = {
+                        'buyer__in': buyer_list,
+                        'product_sub_group_description__in': psg_list,
+                        'junior_buyer__in': jr_buyer_list,
+                        'need_state__in': need_state_list
+                    }
+                    kwargs_brand_name = dict(filter(lambda item: item[1] is not None, kwargs_brand_name.items()))
+                    print(kwargs_brand_name)
+                    heirarchy_check = read_frame(
+                        nego_ads_drf.objects.filter(**kwargs_brand_name))
 
-
+                    print(heirarchy_check['brand_name'].drop_duplicates())
                     brand_name_df_check = pd.merge(brand_name_df_heirarchy,
                                                    heirarchy_check[['brand_name']].drop_duplicates(),
                                                    on="brand_name",
@@ -1371,7 +1371,6 @@ class product_impact_filters_new(APIView):
                     parent_supplier['selected'] = True
                     parent_supplier['highlighted'] = False
                     kwargs_parent_sup = {
-                        'parent_supplier__in': parent_supplier_list,
                         'buyer__in': buyer_list,
                         'junior_buyer__in': jr_buyer_list,
                         'brand_name__in':brand_name_list,
@@ -1385,10 +1384,10 @@ class product_impact_filters_new(APIView):
                     parent_supplier_df_check = pd.merge(parent_supplier_df_heirarchy,
                                                         heirarchy_check[['parent_supplier']].drop_duplicates(),
                                                         on="parent_supplier", how='right')
-                    #print("after merge_1...")
-                    # print(parent_supplier_df_check)
-                    # print("printing supplier")
-                    # print(parent_supplier)
+                    print("after merge_1...")
+                    print(parent_supplier_df_check)
+                    print("printing supplier")
+                    print(parent_supplier)
                     parent_supplier_df_selected = pd.merge(parent_supplier_df_check[['parent_supplier']],
                                                            parent_supplier, on="parent_supplier", how='left')
                     # print("after mergeeee...")
@@ -1404,25 +1403,25 @@ class product_impact_filters_new(APIView):
                     # print(parent_supplier_df)
                     parent_supplier_df = parent_supplier_df.rename(columns={'parent_supplier': 'title'})
 
-                    if buyer_header is not None:
-                        pass
-                    else:
-                        if buyer_list is not None:
-                            #print("inside buyer")
-                            parent_supplier_df = parent_supplier_df.rename(columns={'title': 'parent_supplier'})
-                            parent_supplier_list_df = pd.DataFrame(parent_supplier_list, columns={'parent_supplier'})
-                            data = {'parent_supplier': parent_supplier_list_df.parent_supplier.unique()}
-                            # print(data)
-                            parent_supplier = pd.DataFrame(data)
-                            parent_supplier['selected'] = True
-                            parent_supplier['highlighted'] = False
-                            # print(parent_supplier)
-                            parent_supplier_df = pd.merge(parent_supplier_df_heirarchy, parent_supplier, how='left')
-                            parent_supplier_df['selected'] = parent_supplier_df['selected'].fillna(False)
-                            parent_supplier_df['highlighted'] = parent_supplier_df['highlighted'].fillna(True)
-                            parent_supplier_df = parent_supplier_df[['parent_supplier', 'selected', 'highlighted']]
-                            parent_supplier_df = parent_supplier_df.rename(columns={'parent_supplier': 'title'})
-                            #print(parent_supplier_df)
+                    # if buyer_header is not None:
+                    #     pass
+                    # else:
+                    #     if buyer_list is not None:
+                    #         #print("inside buyer")
+                    #         parent_supplier_df = parent_supplier_df.rename(columns={'title': 'parent_supplier'})
+                    #         parent_supplier_list_df = pd.DataFrame(parent_supplier_list, columns={'parent_supplier'})
+                    #         data = {'parent_supplier': parent_supplier_list_df.parent_supplier.unique()}
+                    #         # print(data)
+                    #         parent_supplier = pd.DataFrame(data)
+                    #         parent_supplier['selected'] = True
+                    #         parent_supplier['highlighted'] = False
+                    #         # print(parent_supplier)
+                    #         parent_supplier_df = pd.merge(parent_supplier_df_heirarchy, parent_supplier, how='left')
+                    #         parent_supplier_df['selected'] = parent_supplier_df['selected'].fillna(False)
+                    #         parent_supplier_df['highlighted'] = parent_supplier_df['highlighted'].fillna(True)
+                    #         parent_supplier_df = parent_supplier_df[['parent_supplier', 'selected', 'highlighted']]
+                    #         parent_supplier_df = parent_supplier_df.rename(columns={'parent_supplier': 'title'})
+                    #         #print(parent_supplier_df)
                 else:
                     parent_supplier['selected'] = False
                     parent_supplier['highlighted'] = False

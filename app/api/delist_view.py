@@ -3277,8 +3277,8 @@ class product_impact_delist_table(vol_transfer_logic,APIView):
 
             psg_predict = vol_logic.psg_impact(bc, delist, store, future)
             delist_prod_table = pd.merge(delist_prod_table, psg_predict, on="product_sub_group_description", how="left")
-            delist_prod_table['psg_value_impact'] = (
-            delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales']*100).round(decimals=1)
+            delist_prod_table['psg_value_impact'] = ((
+            delist_prod_table['predicted_value'] / delist_prod_table['psg_predicted_sales'])*100).round(decimals=1)
 
             delist_prod_table = delist_prod_table[['productcode', 'long_description', 'predicted_value',
                                                    'predicted_volume', 'predicted_cgm', 'no_of_stores',
@@ -3687,7 +3687,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
             # all_filter = read_frame(product_impact_filter.objects.all())
             # input_tpns = all_filter['input_tpns']
             # input_tpns = list(input_tpns)
-            bc = Buying_controller
+            bc = buying_controller_header
            # bc = all_filter['bc'][0]
             bc = [bc]
                 #store = all_filter['store'][0]
@@ -3949,9 +3949,9 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                                                 session_id = session_id,
                                                 user_id = user_id,
                                                 user_name= user_name,
-                                                buying_controller=buying_controller,
+                                                buying_controller=buying_controller_header,
                                                 designation=designation,
-                                                buyer=buyer,
+                                                buyer=buyer_header,
                                                 time_period = week_tab,
                                                 user_attributes = user_attributes,
                                                 chart_attr = chart_attr,
