@@ -85,5 +85,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+.idea/vcs.xml
+.idea/Latest_7BC_code.iml
 .idea/dataSources.local.xml
 .idea/workspace.xml
+.idea/modules.xml
+.idea/misc.xml
