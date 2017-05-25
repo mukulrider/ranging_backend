@@ -3972,6 +3972,8 @@ class display_delist_scenario(vol_transfer_logic,APIView):
         args.pop('format__iexact', None)
         user_id = args.get('user_id__iexact', None)
         scenario_name = args.get('scenario_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact',None)
+        buyer_header=args.pop('buyer_header__iexact',None)
         #event_name = args.get('event_name__iexact', None)
 
         queryset_13 = read_frame(delist_scenario.objects.all().filter(**args).filter(time_period="3_months").values('chart_attr','supp_attr','delist_attr'))
