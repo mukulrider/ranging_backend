@@ -811,9 +811,9 @@ class impact_filters(APIView):
             d['name']='product_sub_group_description'
             d['items']=psg_final
 
-
-
-            supplier_df = supplier_df.sort_values(by='name',ascending=True)
+            supplier_df['name_supplier'] = supplier_df['name'].str.split('-').str[1]
+            supplier_df = supplier_df.sort_values(by='name_supplier', ascending=True)
+            del supplier_df['name_supplier']
             supplier_final = supplier_df.to_json(orient='records')
             supplier_final = json.loads(supplier_final)
 
