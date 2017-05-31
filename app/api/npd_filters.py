@@ -70,14 +70,25 @@ class opportunity_filters(APIView):
 
                 data ={'buying_controller' : df.buying_controller.unique()}
                 bc = pd.DataFrame(data)
-                bc['selected']=False
-                bc['disabled'] =False
+                if len(bc)==1:
+
+                    bc['selected']=True
+                    bc['disabled'] =False
+                else:
+                    bc['selected']=False
+                    bc['disabled'] =False
+
 
 
                 data ={'buyer' : df.buyer.unique()}
                 buyer = pd.DataFrame(data)
-                buyer['selected']=False
-                buyer['disabled'] =False
+
+                if len(buyer)==1:
+                    buyer['selected']=True
+                    buyer['disabled'] =False
+                else:
+                    buyer['selected']=False
+                    buyer['disabled'] =False
 
 
                 data ={'junior_buyer' : df.junior_buyer.unique()}
@@ -411,13 +422,20 @@ class impact_filters(APIView):
             jr_buyer_df = heirarchy[['junior_buyer']].drop_duplicates()
             psg_df = heirarchy[['product_sub_group_description']].drop_duplicates()
 
+            if len(bc_df)==1:
+                bc_df['selected'] =True
+                bc_df['disabled'] =False
+            else:
+                bc_df['selected'] =False
+                bc_df['disabled'] =False
 
-            bc_df['selected'] =False
-            bc_df['disabled'] =False
             bc_df = bc_df.rename(columns={'buying_controller': 'name'})
-
-            buyer_df['selected'] =False
-            buyer_df['disabled'] =False
+            if len(buyer_df)==1:
+                buyer_df['selected'] =True
+                buyer_df['disabled'] =False
+            else:
+                buyer_df['selected'] =False
+                buyer_df['disabled'] =False
             buyer_df = buyer_df.rename(columns={'buyer': 'name'})
 
 

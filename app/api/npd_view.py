@@ -1574,7 +1574,7 @@ class npd_save_scenario(APIView):
             if check_value in check_list_data:
                 result = "FAILURE"
             else:
-                result = "SUCCESS" 
+                result = "SUCCESS"
         elif overwrite ==1:
             result = "SUCCESS"
 
