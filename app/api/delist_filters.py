@@ -1162,7 +1162,9 @@ class product_impact_filters_new(APIView):
                 a['items'] = bc_final
                 a['category_director'] = "Beers, Wines and Spirits"
 
-                parent_supplier_df = parent_supplier_df.sort_values(by='title', ascending=True)
+                parent_supplier_df['name_supplier'] = parent_supplier_df['title'].str.split('-').str[1]
+                parent_supplier_df = parent_supplier_df.sort_values(by=['selected','name_supplier'], ascending=[False,True])
+                del parent_supplier_df['name_supplier']
                 parent_supplier_df['highlighted'] = ~parent_supplier_df['highlighted']
                 parent_supplier_df_sel = parent_supplier_df[['selected']]
                 parent_supplier_df['resource'] = parent_supplier_df_sel.to_dict(orient='records')
@@ -1722,20 +1724,20 @@ class product_impact_filters_new(APIView):
                     long_description['selected'] = True
                     long_description['highlighted'] = False
                     print(long_description)
-                    if psg_list is not None:
-                        print("psg list is present")
-                        kwargs_long = {
-                            'parent_supplier__in': parent_supplier_list,
-                            'junior_buyer__in': jr_buyer_list,
-                            'brand_indicator__in': brand_indicator_list,
-                            'brand_name__in': brand_name_list,
-                            'buyer__in': buyer_list,
-                            'product_sub_group_description__in':psg_list
-                        }
-                        kwargs_long = dict(filter(lambda item: item[1] is not None, kwargs_long.items()))
-                        print(kwargs_long)
-                        heirarchy_check = read_frame(
-                            product_hierarchy.objects.filter(**kwargs_long))
+                    #if psg_list is not None:
+                    print("psg list is present")
+                    kwargs_long = {
+                        'parent_supplier__in': parent_supplier_list,
+                        'junior_buyer__in': jr_buyer_list,
+                        'brand_indicator__in': brand_indicator_list,
+                        'brand_name__in': brand_name_list,
+                        'buyer__in': buyer_list,
+                        'product_sub_group_description__in':psg_list
+                    }
+                    kwargs_long = dict(filter(lambda item: item[1] is not None, kwargs_long.items()))
+                    print(kwargs_long)
+                    heirarchy_check = read_frame(
+                        product_hierarchy.objects.filter(**kwargs_long))
 
                     print("not present")
                     print(heirarchy_check.columns)
@@ -1782,11 +1784,15 @@ class product_impact_filters_new(APIView):
                 a['items'] = bc_final
                 a['category_director'] = "Beers, Wines and Spirits"
 
-                parent_supplier_df = parent_supplier_df.sort_values(by=['selected','title'], ascending=[False,True])
+
+                parent_supplier_df['name_supplier'] = parent_supplier_df['title'].str.split('-').str[1]
+                parent_supplier_df = parent_supplier_df.sort_values(by=['selected','name_supplier'], ascending=[False,True])
+                del parent_supplier_df['name_supplier']
                 parent_supplier_df['highlighted'] = ~parent_supplier_df['highlighted']
                 parent_supplier_df_sel = parent_supplier_df[['selected']]
                 parent_supplier_df['resource'] = parent_supplier_df_sel.to_dict(orient='records')
                 del parent_supplier_df_sel['selected']
+
                 parent_supplier_final = parent_supplier_df.to_json(orient='records')
                 parent_supplier_final = json.loads(parent_supplier_final)
 
