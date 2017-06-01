@@ -351,6 +351,7 @@ class negotiation_filters_new(APIView):
         user_name = args.pop('user_name__in', None)
         buying_controller_header = args.pop('buying_controller_header__in', None)
         buyer_header = args.pop('buyer_header__in', None)
+
         # header over
         cols = ['buying_controller', 'buyer', 'junior_buyer', 'product_sub_group_description', 'need_state',
                 'brand_name']
@@ -586,8 +587,8 @@ class negotiation_filters_new(APIView):
                 brand_name_df_heirarchy = heirarchy[['brand_name']].drop_duplicates()
 
                 args_list = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
-                bc_list = args_list.pop('buying_controller__in', None)
-                buyer_list = args_list.pop('buyer__in', None)
+                bc_list = args_list.pop('buying_controller_header__in', None)
+                buyer_list = args_list.pop('buyer_header__in', None)
                 jr_buyer_list = args_list.pop('junior_buyer__in', None)
                 psg_list = args_list.pop('product_sub_group_description__in', None)
                 need_state_list = args_list.pop('need_state__in', None)
@@ -1281,7 +1282,7 @@ class product_impact_filters_new(APIView):
                                                                                            'product_sub_group_description',
                                                                                            'brand_indicator',
                                                                                            'brand_name',
-                                                                                           'long_description'))
+                                                                                           'long_description','base_product_number'))
                 else:
                     heirarchy = read_frame(
                         product_hierarchy.objects.filter(**kwargs_header).values('buying_controller',
@@ -1290,7 +1291,7 @@ class product_impact_filters_new(APIView):
                                                                                            'product_sub_group_description',
                                                                                            'brand_indicator',
                                                                                            'brand_name',
-                                                                                           'long_description'))
+                                                                                           'long_description','base_product_number'))
                 bc_df = heirarchy[['buying_controller']].drop_duplicates()
                 parent_supplier_df_heirarchy = heirarchy[['parent_supplier']].drop_duplicates()
                 buyer_df_heirarchy = heirarchy[['buyer']].drop_duplicates()
@@ -1318,7 +1319,8 @@ class product_impact_filters_new(APIView):
                 psg_list = args_list.pop('product_sub_group_description__in', None)
                 brand_name_list = args_list.pop('brand_name__in', None)
                 brand_indicator_list = args_list.pop('brand_indicator__in', None)
-                long_description_list = args_list.pop('long_description__in', None)
+                long_description_list = args_list.pop('base_product_number__in', None)
+
 
                 print(args)
                 df = read_frame(product_hierarchy.objects.filter(**args))
@@ -1366,7 +1368,7 @@ class product_impact_filters_new(APIView):
                                                                                            'product_sub_group_description',
                                                                                            'brand_indicator',
                                                                                            'brand_name',
-                                                                                           'long_description'))
+                                                                                           'long_description','base_product_number'))
 
                 if parent_supplier_list is not None:
                     #print("inside buyerrr..")
@@ -1377,7 +1379,7 @@ class product_impact_filters_new(APIView):
                         'junior_buyer__in': jr_buyer_list,
                         'brand_name__in':brand_name_list,
                         'product_sub_group_description__in':psg_list,
-                        'long_description__in':long_description_list
+                        'base_product_number__in':long_description_list
                     }
                     kwargs_parent_sup = dict(filter(lambda item: item[1] is not None, kwargs_parent_sup.items()))
                     print(kwargs_parent_sup)

@@ -168,7 +168,11 @@ class psgskudistribution(APIView):
             final_data.append(dict_psg_data)
 
         retailers_distinct = list(queryset_df['retailer'].unique())
-        colors_list = ['#B2B2B2','#7FB256','#0931F6','#C288D6','#896219','#F60909','#E5F213']
+        if ((buying_controller_header == 'Meat Fish and Veg') | (buying_controller_header == 'Frozen Impulse')):
+            colors_list = ['#B2B2B2', '#7FB256', '#266054', '#0931F6', '#C288D6', '#896219', '#F60909', '#E5F213']
+        else:
+            colors_list = ['#B2B2B2', '#7FB256', '#0931F6', '#C288D6', '#896219', '#F60909', '#E5F213']
+
         label = {}
         label = {
             "labels": retailers_distinct
@@ -222,15 +226,30 @@ class pricebucket_skudistribution(APIView):
         arr=[]
         color_comp=[]
         arr_colors={}
-        arr_colors={
-            "Tesco" : '#F60909',
-            "Lidl" : '#C288D6',
-            "Aldi" : '#B2B2B2',
-            "Asda" : '#7FB256',
-            "Morrisons" : '#896219',
-            "JS" : '#0931F6',
-            "Waitrose" : '#E5F213'
+        if ((buying_controller_header == 'Meat Fish and Veg') | (buying_controller_header == 'Frozen Impulse')):
+
+            arr_colors = {
+                "Tesco": '#F60909',
+                "Lidl": '#C288D6',
+                "Aldi": '#B2B2B2',
+                "Asda": '#7FB256',
+                "Morrisons": '#896219',
+                "JS": '#0931F6',
+                "Waitrose": '#E5F213',
+                "Iceland": '#266054'
             }
+        else:
+
+            arr_colors = {
+                "Tesco": '#F60909',
+                "Lidl": '#C288D6',
+                "Aldi": '#B2B2B2',
+                "Asda": '#7FB256',
+                "Morrisons": '#896219',
+                "JS": '#0931F6',
+                "Waitrose": '#E5F213'
+            }
+
         data_dict={}
         for i in range(0, len(comp_g)):
             competitor = comp_g[i]

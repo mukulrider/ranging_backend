@@ -688,6 +688,9 @@ class vol_transfer_logic:
             drop=True)
 
         # In[25]:
+        if cate_fore_similar_prods_present.empty:
+            cate_fore_similar_prods_present['sim_np'] = True
+
 
         check_sub_delisted1 = pd.merge(cate_fore_similar_prods_present, input_tpns, left_on=['sub_prod'],
                                        right_on=['base_product_number'], how='left')
@@ -1565,11 +1568,11 @@ class product_impact_chart(vol_transfer_logic,APIView):
                 future = ['12_months']
 
 
-            input_tpns = args_list.pop('long_description__in', 0)
+            input_tpns = args_list.pop('base_product_number__in', 0)
             #print(input_tpns)
             input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
             input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-            input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+            #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
             input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
             input_tpns = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
@@ -2319,7 +2322,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
         if vol_tot_transfer == 0:
             input_tpns = pd.DataFrame(input_tpns)
-            data = {}
+            data = {'message': 'Demand transfer cannot be calculated due to unavailability of substitute products'}
         else:
             data = {
                 'cgm_chart': cgm_waterfall,
@@ -3614,8 +3617,7 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         buyer_header = args.pop('buyer_header', None)
         #print("#printing args.................")
         #print(designation,buying_controller_header,buyer_header)
-        user_attributes_args = args.copy()
-        user_attributes = user_attributes_args
+
         scenario_name = args.pop('scenario_name', None)
         #print("scenario_name")
         #print(scenario_name)
@@ -3623,6 +3625,8 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         #user_id = args.pop('user_id', None)
         Buying_controller = args.pop('buying_controller',None)
         buyer = args.pop('buyer', None)
+        # replacing apostrophe with _*_ in scenario name and scenario tag
+        scenario_name = scenario_name.replace("'", "_*_")
 
         if Buying_controller is None:
             Buying_controller = buying_controller_header
@@ -3637,12 +3641,16 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         #user_name = args_list.pop('user_name__in', None)
         #buying_controller_header = args_list.pop('buying_controller_header__in', None)
         #buyer_header = args_list.pop('buyer_header__in', None)
-        args_list = {reqobj + '__in': request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
-        input_tpns = args_list.pop('long_description__in', 0)
+        args_list = {reqobj: request.GET.getlist(reqobj) for reqobj in request.GET.keys()}
+        user_attributes_args = args_list.copy()
+        print("printing...")
+        print(user_attributes_args)
+        user_attributes = user_attributes_args
+        input_tpns = args_list.pop('base_product_number', 0)
         # #print(input_tpns)
         input_tpns_main = pd.DataFrame(input_tpns).reset_index(drop=True)
         input_tpns_main['base_product_number'] = input_tpns_main[0].copy()
-        input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
+        #input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].str[-8:]
         input_tpns_main['base_product_number'] = input_tpns_main['base_product_number'].astype('int')
         input_tpns = input_tpns_main['base_product_number'].drop_duplicates().values.tolist()
 
@@ -3654,29 +3662,36 @@ class delist_scenario_final(vol_transfer_logic,APIView):
         curr_time = today.ctime()
         # %H:%M"
         system_time = strftime("%Y-%m-%d", gmtime())
-        #print("system time")
-        #print(system_time)
+
+        # for overwriting
+        overwrite = int(args.pop('overwrite', 0))
+
         # to check if the scenario name exists already
-
-        scenario = scenario_name
-        check_value = str(user_id) + '_' + scenario
-
-        ##print("check_value")
-        ##print(check_value)
-
+        #scenario = scenario_name.lower()
+        print("check value")
+        print("user id",user_id)
+        print("scenario_name",scenario_name)
+        check_value = str(user_id) + '_' + scenario_name
+        print(check_value)
         x = list(delist_scenario.objects.values_list('user_id', 'scenario_name').distinct())
         x_df = pd.DataFrame(x, columns=["user_id", "scenario_name"])
         check_list = []
         x_df['check_list'] = x_df['user_id'] + '_' + x_df['scenario_name']
-        ##print("xx")
-        ##print(x_df)
 
-        ##print(x_df['check_list'])
         check_list_data = list(x_df['check_list'])
-        if check_value in check_list_data:
-            result = "FAILURE"
-        else:
+        print("check_list_data")
+        print(check_list_data)
+        if overwrite == 0:
+            print("inside overide 0")
+            if check_value in check_list_data:
+                print("inside failure")
+                result = "FAILURE"
+            else:
+                result = "SUCCESS"
+        elif overwrite ==1:
+            print("overwitre 1")
             result = "SUCCESS"
+
 
         if result == "SUCCESS":
             #print("inside success")
@@ -3944,6 +3959,9 @@ class delist_scenario_final(vol_transfer_logic,APIView):
                 delist_attr = {'delist_attr': delist_prod_table.to_dict(orient='records')}
                 #print("for loop running...")
                 #print(i)
+                if overwrite == 1:
+                    delist_scenario.objects.filter(user_id=user_id, scenario_name=scenario_name).delete()
+
                 save_scenario = delist_scenario(scenario_name = scenario_name,
                                                 session_id = session_id,
                                                 user_id = user_id,
@@ -3976,6 +3994,10 @@ class display_delist_scenario(vol_transfer_logic,APIView):
         buyer_header=args.pop('buyer_header__iexact',None)
         #event_name = args.get('event_name__iexact', None)
 
+
+        user_attributes = read_frame(delist_scenario.objects.filter(**args).filter(time_period="12_months").values('user_attributes'))
+        print(user_attributes)
+
         queryset_13 = read_frame(delist_scenario.objects.all().filter(**args).filter(time_period="3_months").values('chart_attr','supp_attr','delist_attr'))
         queryset_13 = {'queryset_13': queryset_13.to_dict(orient='records')}
         #print(type(queryset_13))
@@ -3989,7 +4011,7 @@ class display_delist_scenario(vol_transfer_logic,APIView):
         return JsonResponse({
                 "user_id":user_id,
                 "scenario_name": scenario_name,
-                #"event_name": event_name,
+                "user_attributes": user_attributes['user_attributes'][0],
                 "week_13" : queryset_13,
                 "week_26" : queryset_26,
                 "week_52" : queryset_52})
