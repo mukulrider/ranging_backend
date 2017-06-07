@@ -2322,7 +2322,7 @@ class product_impact_chart(vol_transfer_logic,APIView):
 
         if vol_tot_transfer == 0:
             input_tpns = pd.DataFrame(input_tpns)
-            data = {'message': 'Demand transfer cannot be calculated due to unavailability of substitute products'}
+            data = {'message': 'No data to display as demand transfer cannot be calculated due to unavailability of substitute products from Dunnhumby'}
         else:
             data = {
                 'cgm_chart': cgm_waterfall,
@@ -4021,8 +4021,17 @@ class delist_scenario_list(APIView):
     def get(self, request, format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
         user_id = args.pop('user_id__iexact', None)
-        queryset = delist_scenario.objects.filter(user_id=user_id).values('system_time','scenario_name').distinct().order_by('-system_time')
-        serializer_class = delist_savescenarioserializer(queryset, many=True)
+        delete_row = args.pop('delete__iexact', 0)
+
+        if delete_row == 0:
+            queryset = delist_scenario.objects.filter(user_id=user_id).values('system_time','scenario_name').distinct().order_by('-system_time')
+            serializer_class = delist_savescenarioserializer(queryset, many=True)
+        else:
+            delist_scenario.objects.filter(**args).delete()
+            queryset = delist_scenario.objects.filter(user_id=user_id).values('system_time', 'scenario_name').distinct().order_by(
+                '-system_time')
+            serializer_class = delist_savescenarioserializer(queryset, many=True)
+
         return JsonResponse(serializer_class.data, safe=False)
 
 
