@@ -17,6 +17,9 @@ from django_pandas.io import read_frame
 from django.utils import six
 import json
 import numpy as np
+import environ
+import logging
+
 # import re
 
 #Models for negotiation
@@ -58,10 +61,10 @@ if not os.path.exists('logs'):
 if not os.path.exists('logs/' + os.path.basename(__file__)[:-3]):
     os.makedirs('logs/' + os.path.basename(__file__)[:-3])
 # defaults
-logging.basicConfig(filename='logs/' + os.path.basename(__file__)[:-3] + '/' + os.path.basename(__file__)[:-3] + '_' +
-                            str(datetime.datetime.utcnow())[:-7] + '.log',
-                    level=logging.DEBUG,
-                    format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+# logging.basicConfig(filename='logs/' + os.path.basename(__file__)[:-3] + '/' + os.path.basename(__file__)[:-3] + '_' +
+#                             str(datetime.datetime.utcnow())[:-7] + '.log',
+#                     level=logging.DEBUG,
+#                     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 
 ## for Negotiation

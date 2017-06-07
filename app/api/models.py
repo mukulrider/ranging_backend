@@ -636,4 +636,4 @@ class generate_add_order(models.Model):
 
  def __unicode__(self):
     return '%d: %s' % (self.event_name)
-
+#

@@ -22,6 +22,9 @@ import numpy as np
 # logs
 import os
 import datetime
+import environ
+import logging
+
 
 ROOT_DIR = environ.Path(__file__) - 1
 
@@ -35,10 +38,10 @@ if not os.path.exists('logs'):
 if not os.path.exists('logs/' + os.path.basename(__file__)[:-3]):
     os.makedirs('logs/' + os.path.basename(__file__)[:-3])
 # defaults
-logging.basicConfig(filename='logs/' + os.path.basename(__file__)[:-3] + '/' + os.path.basename(__file__)[:-3] + '_' +
-                            str(datetime.datetime.utcnow())[:-7] + '.log',
-                    level=logging.DEBUG,
-                    format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+# logging.basicConfig(filename='logs/' + os.path.basename(__file__)[:-3] + '/' + os.path.basename(__file__)[:-3] + '_' +
+#                             str(datetime.datetime.utcnow())[:-7] + '.log',
+#                     level=logging.DEBUG,
+#                     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 
 # Models for NPD Opportunity View
