@@ -25,8 +25,29 @@ from .models import pricebucket
 # Models for NPD Impact View filters
 from .models import npd_supplier_ads,merch_range,input_npd,buyertillroll_input_npd
 
-#for cache 
+#for cache
 from rest_framework_extensions.cache.decorators import cache_response
+
+# logs
+import os
+import datetime
+
+ROOT_DIR = environ.Path(__file__) - 1
+
+env = environ.Env()
+env_file = str(ROOT_DIR.path('.env'))
+print('Loading : {}'.format(env_file))
+env.read_env(env_file)
+print('The .env file has been loaded. See base.py for more information')
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+if not os.path.exists('logs/' + os.path.basename(__file__)[:-3]):
+    os.makedirs('logs/' + os.path.basename(__file__)[:-3])
+# defaults
+logging.basicConfig(filename='logs/' + os.path.basename(__file__)[:-3] + '/' + os.path.basename(__file__)[:-3] + '_' +
+                            str(datetime.datetime.utcnow())[:-7] + '.log',
+                    level=logging.DEBUG,
+                    format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 
 
@@ -334,7 +355,7 @@ class impact_filters(APIView):
                     'buying_controller__iexact' : buying_controller_header,
                     'buyer__iexact' : buyer_header
                 }
-                
+
         #input from args
         bc_name = args.get('buying_controller__iexact')
         buyer_name = args.get('buyer__iexact')

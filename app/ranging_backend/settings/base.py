@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.facebook',
     'rest_framework_swagger',
     'rest_framework_cache',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
