@@ -826,6 +826,7 @@ class npd_impact_functions:
         ####Xg boost model pickled
         #### Have to be inside function which takes test datasets as a argument
         #### For xg boost to run we need to have our test dataset in matrix form. Converting our test dataframe to required matrix
+
         testdmat = xgb.DMatrix(input_test_dataset.loc[:,xg_model.feature_names])
         #### Predicting the volume for the futute weeks (13,26,51)
         Volume = xg_model.predict(testdmat)
@@ -1370,7 +1371,6 @@ class forecast_impact(APIView):
         if (modified_flag==0):
 
             similar_product = pd.DataFrame()
-
             # call function for priceband and psg code
             psg_priceband_merch = npd_functions.get_priceband_psg_merch_code(prod_param_list,df_list)
             psg_code = psg_priceband_merch['psg_code']

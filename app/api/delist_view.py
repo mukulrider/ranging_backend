@@ -4020,7 +4020,12 @@ class display_delist_scenario(vol_transfer_logic,APIView):
 class delist_scenario_list(APIView):
     def get(self, request, format=None):
         args = {reqobj + '__iexact': request.GET.get(reqobj) for reqobj in request.GET.keys()}
-        user_id = args.pop('user_id__iexact', None)
+        user_id = args.get('user_id__iexact', None)
+        designation = args.pop('designation__iexact', None)
+        session_id = args.pop('session_id__iexact', None)
+        user_name = args.pop('user_name__iexact', None)
+        buying_controller_header = args.pop('buying_controller_header__iexact', None)
+        buyer_header = args.pop('buyer_header__iexact', None)
         delete_row = args.pop('delete__iexact', 0)
 
         if delete_row == 0:
