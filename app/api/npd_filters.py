@@ -205,7 +205,7 @@ class opportunity_filters(APIView):
                 final.append(d)
             else:
 
-                heirarchy = read_frame(pricebucket.objects.values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
+                heirarchy = read_frame(pricebucket.objects.filter(**kwargs_header).values('buying_controller','buyer','junior_buyer','product_sub_group_description'))
 
                 bc_df = heirarchy[['buying_controller']].drop_duplicates()
                 buyer_df = heirarchy[['buyer']].drop_duplicates()
@@ -523,6 +523,8 @@ class impact_filters(APIView):
 
             hh = read_frame(input_npd.objects.filter(buying_controller__in=df.buying_controller.unique()).values('buying_controller','buyer','junior_buyer','product_sub_group_description','brand_name','package_type',
                             'measure_type'))
+            heirarchy = read_frame(input_npd.objects.filter(**kwargs_header).values('buying_controller','buyer','junior_buyer','product_sub_group_description')) 
+
 
             merch_range_df = read_frame(merch_range.objects.filter(buying_controller__in=df.buying_controller.unique()))
 
@@ -541,10 +543,10 @@ class impact_filters(APIView):
             #merch_range = pd.read_csv('merch_range.csv'
 
 
-            bc_df = hh[['buying_controller']].drop_duplicates()
-            buyer_df = hh[['buyer']].drop_duplicates()
-            jr_buyer_df = hh[['junior_buyer']].drop_duplicates()
-            psg_df = hh[['product_sub_group_description']].drop_duplicates()
+            bc_df = heirarchy[['buying_controller']].drop_duplicates()
+            buyer_df = heirarchy[['buyer']].drop_duplicates()
+            jr_buyer_df = heirarchy[['junior_buyer']].drop_duplicates()
+            psg_df = heirarchy[['product_sub_group_description']].drop_duplicates()
             brand_df = hh[['brand_name']].drop_duplicates()
             package_df = hh[['package_type']].drop_duplicates()
             #till_roll_df = hh[['till_roll_description']].drop_duplicates()
